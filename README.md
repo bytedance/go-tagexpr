@@ -47,6 +47,7 @@ Struct tag syntax spec:
 |`<=`|`le`|
 |`&&`|Logic `and`|
 |`\|\|`|Logic `or`|
+|`()`|Expression group|
 |`0`|Digital "0"|
 |`'X'`|String "X"|
 |`$`|Current struct field|
