@@ -58,7 +58,7 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`0`|Digital "0"|
 |`'S'`|String "S"|
 |`(X)$`|Struct field named X|
-|`$`|Shorthand for `(X)$`, omit `(X)` to indicate current field|
+|`$`|Shorthand for `(X)$`, omit `(X)` to indicate current struct field|
 |`(X)$['A']`|Map or struct field value with name A in the struct field X|
 |`(X)$[0]`|The 0th element of the struct field X(type: map, slice, array)|
 |`(X)$$`|Traverse each element of the struct field X(type: map, slice, array)|
