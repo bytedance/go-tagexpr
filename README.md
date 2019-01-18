@@ -6,7 +6,7 @@ An interesting go struct tag expression syntax for field validation, etc.
 
 In development
 
-## Example (plan)
+## Example
 
 ```go
 type T struct {
