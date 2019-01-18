@@ -43,8 +43,8 @@ type T struct {
 |`<=`|`le`|
 |`&&`|Logic `and`|
 |`||`|Logic `or`|
-|`0`|Digital `0`|
-|`'X'`|String `X`|
+|`0`|Digital "0"|
+|`'X'`|String "X"|
 |`$`|Current struct field|
 |`$(X)`|Struct field named X|
 |`$['A']`|Struct field or map value with name A in the current struct field|
