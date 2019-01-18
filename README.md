@@ -34,7 +34,7 @@ Struct tag syntax spec:
 |`/`|Digital division|
 |`%`|Digital division remainder|
 |`&`|Integer bitwise `and`|
-|`|`|Integer bitwise `or`|
+|`\|`|Integer bitwise `or`|
 |`^`|Integer bitwise `not` or `xor`|
 |`&^`|Integer bitwise `clean`|
 |`<<`|Integer bitwise `move left`|
@@ -46,7 +46,7 @@ Struct tag syntax spec:
 |`<`|`lt`|
 |`<=`|`le`|
 |`&&`|Logic `and`|
-|`||`|Logic `or`|
+|`\|\|`|Logic `or`|
 |`0`|Digital "0"|
 |`'X'`|String "X"|
 |`$`|Current struct field|
