@@ -22,6 +22,10 @@ type T struct {
 
 ## Syntax
 
+Struct tag syntax spec:
+
+`tagName:"{subtagName:expression} [{subtagName2:expression2}]..."`
+
 |Operator or Expression|Explain|
 |-----|---------|
 |`+`|Digital addition or string splicing|
