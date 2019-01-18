@@ -11,9 +11,9 @@ In development
 ```go
 type T struct {
 	A int              `tagexpr:"{expr1:$<0||$>=100}"`
-	B string           `tagexpr:"{expr1:len($)>1 || regexp('^\\w*$')},{expr2:sprintf('Invalid B:%s',$)}"`
+	B string           `tagexpr:"{expr1:len($)>1 || regexp('^\\w*$', $)}"`
 	C bool             `tagexpr:"{expr1:(G)$['J']>0 && $}{expr2:'C must be true when T.G.J>0'}"`
-	D []string         `tagexpr:"{expr1:len($)>0 && $[0]=='D'}"`
+	D []string         `tagexpr:"{expr1:len($)>0 && $[0]=='D'} {expr2:sprintf('Invalid D:%s',$)}"`
 	E map[string]int   `tagexpr:"{expr1:$k!='' && $v>0}{expr1:$['E']>0}"`
 	F map[string][]int `tagexpr:"{expr1:$$v>0 && len($['F'])>0 && $['F'][0]>1}"`
 	G struct{ J int }
@@ -66,3 +66,4 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`(X)$v`|Traverse each element value of the struct field X(type: map, slice, array)|
 |`len((X)$)`|Built-in function `len`, the length of struct field X|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
+|`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|
