@@ -33,7 +33,7 @@ type T struct {
 
 NOTE: **The `exprName` under the same struct field cannot be the same！**
 
-|Operator or Expression|Explain|
+|Operator or Expression example|Explain|
 |-----|---------|
 |`+`|Digital addition or string splicing|
 |`-`|Digital subtraction|
