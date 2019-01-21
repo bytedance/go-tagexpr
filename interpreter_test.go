@@ -32,6 +32,10 @@ func TestInterpreter(t *testing.T) {
 		{expr: "1+(2*(3+4))", val: 15.0},
 
 		{expr: "20/2+1+2", val: 13.0},
+		{expr: "-20/2+1+2", val: -7.0},
+		{expr: "20/2+1-2-1", val: 8.0},
+		{expr: "30/(2+1)/5-2-1", val: -1.0},
+		{expr: "100/((2+8)*5)-(1+1-0)", val: 0.0},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)

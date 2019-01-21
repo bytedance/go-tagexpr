@@ -78,6 +78,7 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	case '+':
 		return newAdditionExpr()
 	case '-':
+		return newSubtractionExpr()
 	case '*':
 		return newMultiplicationExpr()
 	case '/':

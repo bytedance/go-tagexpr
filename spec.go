@@ -209,6 +209,16 @@ func (de *divisionExpr) Calculate() interface{} {
 	return v0 / v1
 }
 
+type subtractionExpr struct{ exprBackground }
+
+func newSubtractionExpr() Expr { return &subtractionExpr{} }
+
+func (de *subtractionExpr) Calculate() interface{} {
+	v0, _ := de.leftOperand.Calculate().(float64)
+	v1, _ := de.rightOperand.Calculate().(float64)
+	return v0 - v1
+}
+
 func readPairedSymbol(p *string, left, right rune) *string {
 	s := *p
 	if len(s) == 0 || rune(s[0]) != left {
