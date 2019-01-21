@@ -69,6 +69,7 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	case ">=":
 	case "<=":
 	case "!=":
+		return newNotEqualExpr()
 	}
 	defer func() {
 		if e != nil {

@@ -236,6 +236,14 @@ func (ee *equalExpr) Calculate() interface{} {
 	}
 }
 
+type notEqualExpr struct{ equalExpr }
+
+func newNotEqualExpr() Expr { return &notEqualExpr{} }
+
+func (ne *notEqualExpr) Calculate() interface{} {
+	return !ne.equalExpr.Calculate().(bool)
+}
+
 func readPairedSymbol(p *string, left, right rune) *string {
 	s := *p
 	if len(s) == 0 || rune(s[0]) != left {
