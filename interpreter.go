@@ -54,9 +54,9 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	}
 	a := s[:2]
 	switch a {
-	case "<<":
-	case ">>":
-	case "&^":
+	// case "<<":
+	// case ">>":
+	// case "&^":
 	case "||":
 	case "&&":
 	case "==":
@@ -71,9 +71,9 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 		}
 	}()
 	switch a[0] {
-	case '&':
-	case '|':
-	case '^':
+	// case '&':
+	// case '|':
+	// case '^':
 	case '!':
 	case '+':
 		return newAdditionExpr()
@@ -84,6 +84,7 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	case '/':
 		return newDivisionExpr()
 	case '%':
+		return newRemainderExpr()
 	case '<':
 	case '>':
 	case '=':

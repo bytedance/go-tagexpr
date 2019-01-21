@@ -36,20 +36,14 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 
 |Operator or Expression example|Explain|
 |-----|---------|
-|`1`|int64 "1"|
+|`1`|float64 "1"|
 |`1.0`|float64 "1.0"|
 |`'S'`|String "S"|
 |`+`|Digital addition or string splicing|
 |`-`|Digital subtraction or negative|
 |`*`|Digital multiplication|
 |`/`|Digital division|
-|`%`|int64 division remainder|
-|`&`|Integer bitwise `and`|
-|`\|`|Integer bitwise `or`|
-|`^`|Integer bitwise `not` or `xor`|
-|`&^`|Integer bitwise `clean`|
-|`<<`|Integer bitwise `shift left`|
-|`>>`|Integer bitwise `shift right`|
+|`%`|division remainder, as: `float64(int64(a)%int64(b))`|
 |`==`|`eq`|
 |`!=`|`ne`|
 |`>`|`gt`|
@@ -71,3 +65,10 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|
 |`regexp('^\\w*$')`|Regular match the current struct field, return boolean|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
+
+<!-- |`&`|Integer bitwise `and`|
+|`\|`|Integer bitwise `or`|
+|`^`|Integer bitwise `not` or `xor`|
+|`&^`|Integer bitwise `clean`|
+|`<<`|Integer bitwise `shift left`|
+|`>>`|Integer bitwise `shift right`| -->

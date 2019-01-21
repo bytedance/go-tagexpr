@@ -1,6 +1,7 @@
 package tagexpr
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -217,6 +218,20 @@ func (de *subtractionExpr) Calculate() interface{} {
 	v0, _ := de.leftOperand.Calculate().(float64)
 	v1, _ := de.rightOperand.Calculate().(float64)
 	return v0 - v1
+}
+
+type remainderExpr struct{ exprBackground }
+
+func newRemainderExpr() Expr { return &remainderExpr{} }
+
+func (re *remainderExpr) Calculate() interface{} {
+	v1, _ := re.rightOperand.Calculate().(float64)
+	if v1 == 0 {
+		fmt.Println(re.rightOperand.Calculate())
+		return math.NaN()
+	}
+	v0, _ := re.leftOperand.Calculate().(float64)
+	return float64(int64(v0) % int64(v1))
 }
 
 func readPairedSymbol(p *string, left, right rune) *string {

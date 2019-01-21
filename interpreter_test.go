@@ -1,6 +1,7 @@
 package tagexpr
 
 import (
+	"math"
 	"reflect"
 	"testing"
 )
@@ -35,7 +36,13 @@ func TestInterpreter(t *testing.T) {
 		{expr: "-20/2+1+2", val: -7.0},
 		{expr: "20/2+1-2-1", val: 8.0},
 		{expr: "30/(2+1)/5-2-1", val: -1.0},
-		{expr: "100/((2+8)*5)-(1+1-0)", val: 0.0},
+		{expr: "100/(( 2+8)*5 )-(1 +1- 0)", val: 0.0},
+		{expr: "1/0", val: math.NaN()},
+
+		{expr: "20%2", val: 0.0},
+		{expr: "6 % 5", val: 1.0},
+		{expr: "20%(7%5)", val: 0.0},
+		{expr: "20%7 %5", val: 1.0},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
@@ -45,6 +52,9 @@ func TestInterpreter(t *testing.T) {
 		}
 		val := vm.Run()
 		if !reflect.DeepEqual(val, c.val) {
+			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
+				continue
+			}
 			t.Fatalf("expr: %q, got: %v, want: %v", c.expr, val, c.val)
 		}
 	}
