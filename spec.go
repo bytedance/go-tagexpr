@@ -1,7 +1,6 @@
 package tagexpr
 
 import (
-	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -17,34 +16,13 @@ type Expr interface {
 	Calculate() interface{}
 }
 
-// // Operator kind
-// type Operator uint
-
-// // Operator enumerate
-// const (
-// 	Addition          Operator = iota // \+
-// 	Subtraction                       // -
-// 	Multiplication                    // \*
-// 	Division                          // \/
-// 	Remainder                         // %
-// 	BitwiseAnd                        // &
-// 	BitwiseOr                         // \|
-// 	BitwiseXor                        // \^
-// 	BitwiseClean                      // &\^
-// 	BitwiseShiftLeft                  // <<
-// 	BitwiseShiftRight                 // >>
-// 	Equal                             // ==
 // 	NotEqual                          // !=
 // 	Greater                           // >
 // 	GreaterEqual                      // >=
 // 	Less                              // <
 // 	LessEqual                         // <=
 // 	And                               // &&
-// 	Or                                // \|\|
-// 	Group                             // \(\)
-// 	String                            // '\w'
-// 	Digital                           // \d+(\.\d+)?
-// )
+// 	Or                                // ||
 
 type exprBackground struct {
 	parent       Expr
@@ -227,11 +205,35 @@ func newRemainderExpr() Expr { return &remainderExpr{} }
 func (re *remainderExpr) Calculate() interface{} {
 	v1, _ := re.rightOperand.Calculate().(float64)
 	if v1 == 0 {
-		fmt.Println(re.rightOperand.Calculate())
 		return math.NaN()
 	}
 	v0, _ := re.leftOperand.Calculate().(float64)
 	return float64(int64(v0) % int64(v1))
+}
+
+type equalExpr struct{ exprBackground }
+
+func newEqualExpr() Expr { return &equalExpr{} }
+
+func (ee *equalExpr) Calculate() interface{} {
+	v0 := ee.leftOperand.Calculate()
+	v1 := ee.rightOperand.Calculate()
+	switch r := v0.(type) {
+	case float64:
+		var r1 float64
+		r1, _ = v1.(float64)
+		return r == r1
+	case string:
+		var r1 string
+		r1, _ = v1.(string)
+		return r == r1
+	case bool:
+		var r1 bool
+		r1, _ = v1.(bool)
+		return r == r1
+	default:
+		return false
+	}
 }
 
 func readPairedSymbol(p *string, left, right rune) *string {

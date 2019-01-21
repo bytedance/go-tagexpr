@@ -52,6 +52,11 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	if len(s) < 2 {
 		return nil
 	}
+	defer func() {
+		if e != nil && *expr == s {
+			*expr = (*expr)[2:]
+		}
+	}()
 	a := s[:2]
 	switch a {
 	// case "<<":
@@ -60,10 +65,10 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	case "||":
 	case "&&":
 	case "==":
+		return newEqualExpr()
 	case ">=":
 	case "<=":
 	case "!=":
-	default:
 	}
 	defer func() {
 		if e != nil {
@@ -87,8 +92,6 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 		return newRemainderExpr()
 	case '<':
 	case '>':
-	case '=':
-	default:
 	}
 	return nil
 }
