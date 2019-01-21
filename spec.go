@@ -187,7 +187,7 @@ func (ae *additionExpr) Calculate() interface{} {
 
 type multiplicationExpr struct{ exprBackground }
 
-func newMultiplicationExprExpr() Expr { return &multiplicationExpr{} }
+func newMultiplicationExpr() Expr { return &multiplicationExpr{} }
 
 func (ae *multiplicationExpr) Calculate() interface{} {
 	v0, _ := ae.leftOperand.Calculate().(float64)
