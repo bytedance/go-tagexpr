@@ -36,17 +36,20 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 
 |Operator or Expression example|Explain|
 |-----|---------|
+|`1`|int64 "1"|
+|`1.0`|float64 "1.0"|
+|`'S'`|String "S"|
 |`+`|Digital addition or string splicing|
-|`-`|Digital subtraction|
+|`-`|Digital subtraction or negative|
 |`*`|Digital multiplication|
 |`/`|Digital division|
-|`%`|Digital division remainder|
+|`%`|int64 division remainder|
 |`&`|Integer bitwise `and`|
 |`\|`|Integer bitwise `or`|
 |`^`|Integer bitwise `not` or `xor`|
 |`&^`|Integer bitwise `clean`|
-|`<<`|Integer bitwise `move left`|
-|`>>`|Integer bitwise `move right`|
+|`<<`|Integer bitwise `shift left`|
+|`>>`|Integer bitwise `shift right`|
 |`==`|`eq`|
 |`!=`|`ne`|
 |`>`|`gt`|
@@ -56,8 +59,6 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`&&`|Logic `and`|
 |`\|\|`|Logic `or`|
 |`()`|Expression group|
-|`0`|Digital "0"|
-|`'S'`|String "S"|
 |`(X)$`|Struct field value named X|
 |`$`|Shorthand for `(X)$`, omit `(X)` to indicate current struct field value|
 |`(X)$['A']`|Map or struct field value with name A in the struct field X|
