@@ -16,7 +16,6 @@ type Expr interface {
 	Calculate() interface{}
 }
 
-// 	NotEqual                          // !=
 // 	Greater                           // >
 // 	GreaterEqual                      // >=
 // 	Less                              // <
@@ -48,21 +47,37 @@ func (eb *exprBackground) SetRightOperand(right Expr) {
 
 func (*exprBackground) Calculate() interface{} { return nil }
 
-type groupExpr struct{ exprBackground }
+type groupExpr struct {
+	exprBackground
+	boolPrefix bool
+}
 
-func newGroupExpr() Expr { return &groupExpr{} }
+func newGroupExpr() Expr { return &groupExpr{boolPrefix: true} }
 
 func readGroupExpr(expr *string) (grp Expr, subExpr *string) {
+	s := *expr
+	*expr = strings.TrimLeft(*expr, "!")
+	i := len(s) - len(*expr)
 	sptr := readPairedSymbol(expr, '(', ')')
 	if sptr == nil {
+		*expr = s
 		return nil, nil
 	}
 	e := &groupExpr{}
+	var boolPrefix = true
+	for ; i > 0; i-- {
+		boolPrefix = !boolPrefix
+	}
+	e.boolPrefix = boolPrefix
 	return e, sptr
 }
 
 func (ge *groupExpr) Calculate() interface{} {
-	return ge.rightOperand.Calculate()
+	v := ge.rightOperand.Calculate()
+	if r, ok := v.(bool); ok {
+		return ge.boolPrefix == r
+	}
+	return v
 }
 
 type boolExpr struct {

@@ -32,15 +32,15 @@ func (i *Interpreter) Run() interface{} {
 }
 
 func (*Interpreter) parseOperand(expr *string) (e Expr) {
+	e = readBoolExpr(expr)
+	if e != nil {
+		return e
+	}
 	e = readStringExpr(expr)
 	if e != nil {
 		return e
 	}
 	e = readDigitalExpr(expr)
-	if e != nil {
-		return e
-	}
-	e = readBoolExpr(expr)
 	if e != nil {
 		return e
 	}
@@ -80,7 +80,6 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	// case '&':
 	// case '|':
 	// case '^':
-	case '!':
 	case '+':
 		return newAdditionExpr()
 	case '-':
@@ -133,27 +132,6 @@ func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 	}
 	return i.parseExpr(expr, operator)
 }
-
-// func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
-// 	trimLeftSpace(expr)
-// 	operand, subExpr := readGroupExpr(expr)
-// 	if operand != nil {
-// 		_ = subExpr
-// 	}
-// 	trimLeftSpace(expr)
-// 	operand = i.parseOperand(expr)
-// 	trimLeftSpace(expr)
-// 	operator := i.parseOperator(expr)
-// 	if operator == nil {
-// 		e.SetRightOperand(operand)
-// 		operand.SetParent(e)
-// 		return operand, nil
-// 	}
-// 	operator.SetLeftOperand(operand)
-// 	e.SetRightOperand(operator)
-// 	operator.SetParent(e)
-// 	return i.parseExpr(expr, operator)
-// }
 
 func (i *Interpreter) checkSyntax() error {
 	return nil
