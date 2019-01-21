@@ -61,6 +61,11 @@ func TestInterpreter(t *testing.T) {
 		{expr: "'50' !='5' != true", val: false},
 		{expr: "50!= 50 == false", val: true},
 		{expr: "50== 50 != true ==true!=true", val: true},
+
+		{expr: "50 > 5", val: true},
+		{expr: "50.1 > 50.1", val: false},
+		{expr: "3 >12.11", val: false},
+		{expr: "3.2 > 2.1", val: true},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)

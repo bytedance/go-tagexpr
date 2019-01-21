@@ -137,7 +137,7 @@ type digitalExpr struct {
 	val float64
 }
 
-var digitalRegexp = regexp.MustCompile(`^[\+\-]?\d+(\.\d+)?([\+\-\*\/%\|&!=\^ \t\\]|$)`)
+var digitalRegexp = regexp.MustCompile(`^[\+\-]?\d+(\.\d+)?([\+\-\*\/%><\|&!=\^ \t\\]|$)`)
 
 func readDigitalExpr(expr *string) Expr {
 	s := digitalRegexp.FindString(*expr)
@@ -257,6 +257,27 @@ func newNotEqualExpr() Expr { return &notEqualExpr{} }
 
 func (ne *notEqualExpr) Calculate() interface{} {
 	return !ne.equalExpr.Calculate().(bool)
+}
+
+type greaterExpr struct{ exprBackground }
+
+func newGreaterExpr() Expr { return &greaterExpr{} }
+
+func (ge *greaterExpr) Calculate() interface{} {
+	v0 := ge.leftOperand.Calculate()
+	v1 := ge.rightOperand.Calculate()
+	switch r := v0.(type) {
+	case float64:
+		var r1 float64
+		r1, _ = v1.(float64)
+		return r > r1
+	case string:
+		var r1 string
+		r1, _ = v1.(string)
+		return r > r1
+	default:
+		return false
+	}
 }
 
 func readPairedSymbol(p *string, left, right rune) *string {

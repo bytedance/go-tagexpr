@@ -93,6 +93,7 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 		return newRemainderExpr()
 	case '<':
 	case '>':
+		return newGreaterExpr()
 	}
 	return nil
 }
