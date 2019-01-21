@@ -1,6 +1,7 @@
 package tagexpr
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 )
@@ -17,7 +18,7 @@ func New(expr string) (*Interpreter, error) {
 	s := expr
 	_, err := i.parseExpr(&s, e)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%q (syntax incorrect): %s", expr, err.Error())
 	}
 	err = i.checkSyntax()
 	if err != nil {
@@ -108,7 +109,9 @@ func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 		operand = i.parseOperand(expr)
 	}
 
-	// ?
+	if operand == nil {
+		return nil, fmt.Errorf("expect operand but got: %q", *expr)
+	}
 
 	trimLeftSpace(expr)
 	operator := i.parseOperator(expr)

@@ -77,3 +77,19 @@ func TestInterpreter(t *testing.T) {
 		}
 	}
 }
+
+func TestSyntaxIncorrect(t *testing.T) {
+	var cases = []struct {
+		incorrectExpr string
+	}{
+		{incorrectExpr: "1 + + 'a'"},
+	}
+	for _, c := range cases {
+		_, err := New(c.incorrectExpr)
+		if err == nil {
+			t.Fatalf("want syntax incorrect: %s", c.incorrectExpr)
+		} else {
+			t.Log(err)
+		}
+	}
+}
