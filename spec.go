@@ -66,8 +66,23 @@ func (eb *exprBackground) SetRightOperand(right Expr) {
 	eb.rightOperand = right
 }
 
-func (*exprBackground) Calculate() interface{} {
-	return nil
+func (*exprBackground) Calculate() interface{} { return nil }
+
+type groupExpr struct{ exprBackground }
+
+func newGroupExpr() Expr { return &groupExpr{} }
+
+func readGroupExpr(expr *string) (grp Expr, subExpr *string) {
+	sptr := readPairedSymbol(expr, '(', ')')
+	if sptr == nil {
+		return nil, nil
+	}
+	e := &groupExpr{}
+	return e, sptr
+}
+
+func (ge *groupExpr) Calculate() interface{} {
+	return ge.rightOperand.Calculate()
 }
 
 type boolExpr struct {
@@ -104,9 +119,7 @@ func readBoolExpr(expr *string) Expr {
 	return e
 }
 
-func (be *boolExpr) Calculate() interface{} {
-	return be.val
-}
+func (be *boolExpr) Calculate() interface{} { return be.val }
 
 type stringExpr struct {
 	exprBackground
@@ -122,9 +135,7 @@ func readStringExpr(expr *string) Expr {
 	return e
 }
 
-func (se *stringExpr) Calculate() interface{} {
-	return se.val
-}
+func (se *stringExpr) Calculate() interface{} { return se.val }
 
 type digitalExpr struct {
 	exprBackground
@@ -148,18 +159,11 @@ func readDigitalExpr(expr *string) Expr {
 	return e
 }
 
-func (de *digitalExpr) Calculate() interface{} {
-	return de.val
-}
+func (de *digitalExpr) Calculate() interface{} { return de.val }
 
-type additionExpr struct {
-	exprBackground
-}
+type additionExpr struct{ exprBackground }
 
-func newAdditionExpr() Expr {
-	e := &additionExpr{}
-	return e
-}
+func newAdditionExpr() Expr { return &additionExpr{} }
 
 func (ae *additionExpr) Calculate() interface{} {
 	// positive number or Addition
@@ -181,25 +185,14 @@ func (ae *additionExpr) Calculate() interface{} {
 	}
 }
 
-type groupExpr struct {
-	exprBackground
-}
+type multiplicationExpr struct{ exprBackground }
 
-func newGroupExpr() Expr {
-	return &groupExpr{}
-}
+func newMultiplicationExprExpr() Expr { return &multiplicationExpr{} }
 
-func readGroupExpr(expr *string) (grp Expr, subExpr *string) {
-	sptr := readPairedSymbol(expr, '(', ')')
-	if sptr == nil {
-		return nil, nil
-	}
-	e := &groupExpr{}
-	return e, sptr
-}
-
-func (ge *groupExpr) Calculate() interface{} {
-	return ge.rightOperand.Calculate()
+func (ae *multiplicationExpr) Calculate() interface{} {
+	v0, _ := ae.leftOperand.Calculate().(float64)
+	v1, _ := ae.rightOperand.Calculate().(float64)
+	return v0 * v1
 }
 
 func readPairedSymbol(p *string, left, right rune) *string {

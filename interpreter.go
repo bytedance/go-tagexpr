@@ -5,6 +5,7 @@ import (
 	"unicode"
 )
 
+// Interpreter expression VM
 type Interpreter struct {
 	expr Expr
 }
@@ -12,12 +13,17 @@ type Interpreter struct {
 // New parses the expression and creates an interpreter.
 func New(expr string) (*Interpreter, error) {
 	e := newGroupExpr()
+	i := &Interpreter{expr: e}
 	s := expr
-	_, err := parseExpr(&s, e)
+	_, err := i.parseExpr(&s, e)
 	if err != nil {
 		return nil, err
 	}
-	return &Interpreter{expr: e}, nil
+	err = i.checkSyntax()
+	if err != nil {
+		return nil, err
+	}
+	return i, nil
 }
 
 // Run calculates the value of expression.
@@ -25,7 +31,7 @@ func (i *Interpreter) Run() interface{} {
 	return i.expr.Calculate()
 }
 
-func parseOperand(expr *string) (e Expr) {
+func (*Interpreter) parseOperand(expr *string) (e Expr) {
 	e = readStringExpr(expr)
 	if e != nil {
 		return e
@@ -41,7 +47,7 @@ func parseOperand(expr *string) (e Expr) {
 	return e
 }
 
-func parseOperator(expr *string) (e Expr) {
+func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	s := *expr
 	if len(s) < 2 {
 		return nil
@@ -72,6 +78,7 @@ func parseOperator(expr *string) (e Expr) {
 		return newAdditionExpr()
 	case '-':
 	case '*':
+		return newMultiplicationExprExpr()
 	case '/':
 	case '%':
 	case '<':
@@ -82,25 +89,66 @@ func parseOperator(expr *string) (e Expr) {
 	return nil
 }
 
-func parseExpr(expr *string, e Expr) (Expr, error) {
+func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 	trimLeftSpace(expr)
 	operand, subExpr := readGroupExpr(expr)
 	if operand != nil {
-		_ = subExpr
+		_, err := i.parseExpr(subExpr, operand)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		operand = i.parseOperand(expr)
 	}
+
+	// ?
+
 	trimLeftSpace(expr)
-	operand = parseOperand(expr)
-	trimLeftSpace(expr)
-	operator := parseOperator(expr)
+	operator := i.parseOperator(expr)
 	if operator == nil {
 		e.SetRightOperand(operand)
 		operand.SetParent(e)
 		return operand, nil
 	}
-	operator.SetLeftOperand(operand)
-	e.SetRightOperand(operator)
-	operator.SetParent(e)
-	return parseExpr(expr, operator)
+	if _, ok := e.(*groupExpr); ok {
+		operator.SetLeftOperand(operand)
+		operand.SetParent(operator)
+		e.SetRightOperand(operator)
+		operator.SetParent(e)
+	} else {
+		e.SetRightOperand(operand)
+		operand.SetParent(e)
+		operator.SetLeftOperand(e)
+		operator.SetParent(e.Parent())
+		operator.Parent().SetRightOperand(operator)
+		e.SetParent(operator)
+	}
+	return i.parseExpr(expr, operator)
+}
+
+// func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
+// 	trimLeftSpace(expr)
+// 	operand, subExpr := readGroupExpr(expr)
+// 	if operand != nil {
+// 		_ = subExpr
+// 	}
+// 	trimLeftSpace(expr)
+// 	operand = i.parseOperand(expr)
+// 	trimLeftSpace(expr)
+// 	operator := i.parseOperator(expr)
+// 	if operator == nil {
+// 		e.SetRightOperand(operand)
+// 		operand.SetParent(e)
+// 		return operand, nil
+// 	}
+// 	operator.SetLeftOperand(operand)
+// 	e.SetRightOperand(operator)
+// 	operator.SetParent(e)
+// 	return i.parseExpr(expr, operator)
+// }
+
+func (i *Interpreter) checkSyntax() error {
+	return nil
 }
 
 func trimLeftSpace(p *string) *string {
