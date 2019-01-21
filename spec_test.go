@@ -57,6 +57,7 @@ func TestReadDigitalExpr(t *testing.T) {
 		{expr: "1a", val: 0, lastExpr: ""},
 		{expr: "1", val: 1, lastExpr: ""},
 		{expr: "1.1", val: 1.1, lastExpr: ""},
+		{expr: "1.1/", val: 1.1, lastExpr: "/"},
 	}
 	for _, c := range cases {
 		expr := c.expr

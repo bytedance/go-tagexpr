@@ -1,6 +1,7 @@
 package tagexpr
 
 import (
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -142,7 +143,7 @@ type digitalExpr struct {
 	val float64
 }
 
-var digitalRegexp = regexp.MustCompile(`^[\+\-]?\d+(\.\d+)?([\+\-\|&%!=\*\^ \t\\]|$)`)
+var digitalRegexp = regexp.MustCompile(`^[\+\-]?\d+(\.\d+)?([\+\-\*\/%\|&!=\^ \t\\]|$)`)
 
 func readDigitalExpr(expr *string) Expr {
 	s := digitalRegexp.FindString(*expr)
@@ -193,6 +194,19 @@ func (ae *multiplicationExpr) Calculate() interface{} {
 	v0, _ := ae.leftOperand.Calculate().(float64)
 	v1, _ := ae.rightOperand.Calculate().(float64)
 	return v0 * v1
+}
+
+type divisionExpr struct{ exprBackground }
+
+func newDivisionExpr() Expr { return &divisionExpr{} }
+
+func (de *divisionExpr) Calculate() interface{} {
+	v1, _ := de.rightOperand.Calculate().(float64)
+	if v1 == 0 {
+		return math.NaN()
+	}
+	v0, _ := de.leftOperand.Calculate().(float64)
+	return v0 / v1
 }
 
 func readPairedSymbol(p *string, left, right rune) *string {
