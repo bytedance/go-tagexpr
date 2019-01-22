@@ -145,7 +145,7 @@ func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 
 /**
  * Priority:
- * ()
+ * () bool string float64
  * * / %
  * + -
  * < <= > >=
