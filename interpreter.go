@@ -38,6 +38,9 @@ func (i *Interpreter) parseOperand(expr *string) (e Expr) {
 	if e = i.readRegexpFnExpr(expr); e != nil {
 		return e
 	}
+	if e = i.readSprintfFnExpr(expr); e != nil {
+		return e
+	}
 	if e = readStringExpr(expr); e != nil {
 		return e
 	}
@@ -121,7 +124,7 @@ func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 	}
 
 	if operand == nil {
-		return nil, fmt.Errorf("expect operand but got: %q", *expr)
+		return nil, fmt.Errorf("parsing pos: %q", *expr)
 	}
 
 	trimLeftSpace(expr)

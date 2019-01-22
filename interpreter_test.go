@@ -153,10 +153,16 @@ func TestBuiltInFunc(t *testing.T) {
 		{expr: "len('abc')+2*2/len('cd')", val: 5.0},
 		{expr: "len(0)", val: nil},
 		{expr: "len()", val: nil},
+
 		{expr: "regexp('a\\d','a0')", val: true},
 		{expr: "regexp('^a\\d$','a0')", val: true},
 		{expr: "regexp('a\\d','a')", val: false},
 		{expr: "regexp('^a\\d$','a')", val: false},
+
+		{expr: "sprintf('test string: %s','a')", val: "test string: a"},
+		{expr: "sprintf('test string: %s','a'+'b')", val: "test string: ab"},
+		{expr: "sprintf('test string: %s,%v','a',1)", val: "test string: a,1"},
+		{expr: "sprintf('')+'a'", val: "a"},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
@@ -182,6 +188,8 @@ func TestSyntaxIncorrect(t *testing.T) {
 		{incorrectExpr: "len"},
 		{incorrectExpr: "regexp"},
 		{incorrectExpr: "regexp()"},
+		{incorrectExpr: "sprintf()"},
+		{incorrectExpr: "sprintf(0)"},
 	}
 	for _, c := range cases {
 		_, err := New(c.incorrectExpr)

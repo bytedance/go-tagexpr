@@ -1,11 +1,13 @@
 package tagexpr
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Expr expression interface
@@ -415,12 +417,14 @@ func (i *Interpreter) readLenFnExpr(expr *string) Expr {
 		return nil
 	}
 	*expr = (*expr)[3:]
+	lastStr := *expr
 	operand, subExpr := readGroupExpr(expr)
 	if operand == nil {
 		return nil
 	}
 	_, err := i.parseExpr(subExpr, operand)
 	if err != nil {
+		*expr = lastStr
 		return nil
 	}
 	e := &lenFnExpr{}
@@ -451,16 +455,19 @@ func (i *Interpreter) readRegexpFnExpr(expr *string) Expr {
 		return nil
 	}
 	*expr = (*expr)[6:]
+	lastStr := *expr
 	subExpr := readPairedSymbol(expr, '(', ')')
 	if subExpr == nil {
 		return nil
 	}
 	p := readPairedSymbol(trimLeftSpace(subExpr), '\'', '\'')
 	if p == nil {
+		*expr = lastStr
 		return nil
 	}
 	rege, err := regexp.Compile(*p)
 	if err != nil {
+		*expr = lastStr
 		return nil
 	}
 	operand := newGroupExpr()
@@ -469,6 +476,7 @@ func (i *Interpreter) readRegexpFnExpr(expr *string) Expr {
 		*subExpr = (*subExpr)[1:]
 		_, err = i.parseExpr(trimLeftSpace(subExpr), operand)
 		if err != nil {
+			*expr = lastStr
 			return nil
 		}
 	}
@@ -490,6 +498,90 @@ func (re *regexpFnExpr) Calculate() interface{} {
 	v := reflect.ValueOf(param)
 	if v.Kind() == reflect.String {
 		return re.re.MatchString(v.String())
+	}
+	return nil
+}
+
+type sprintfFnExpr struct {
+	exprBackground
+	format string
+	args   []Expr
+}
+
+func (i *Interpreter) readSprintfFnExpr(expr *string) Expr {
+	if !strings.HasPrefix(*expr, "sprintf(") {
+		return nil
+	}
+	*expr = (*expr)[7:]
+	lastStr := *expr
+	subExpr := readPairedSymbol(expr, '(', ')')
+	if subExpr == nil {
+		return nil
+	}
+	format := readPairedSymbol(trimLeftSpace(subExpr), '\'', '\'')
+	if format == nil {
+		*expr = lastStr
+		return nil
+	}
+	e := &sprintfFnExpr{
+		format: *format,
+	}
+	for {
+		trimLeftSpace(subExpr)
+		if len(*subExpr) == 0 {
+			return e
+		}
+		if strings.HasPrefix(*subExpr, ",") {
+			*subExpr = (*subExpr)[1:]
+			operand := newGroupExpr()
+			_, err := i.parseExpr(trimLeftSpace(subExpr), operand)
+			if err != nil {
+				*expr = lastStr
+				return nil
+			}
+			e.args = append(e.args, operand)
+		} else {
+			*expr = lastStr
+			return nil
+		}
+	}
+}
+
+func (se *sprintfFnExpr) Calculate() interface{} {
+	var args = make([]interface{}, 0, len(se.args))
+	for _, e := range se.args {
+		args = append(args, e.Calculate())
+	}
+	return fmt.Sprintf(se.format, args...)
+}
+
+func trimLeftSpace(p *string) *string {
+	*p = strings.TrimLeftFunc(*p, unicode.IsSpace)
+	return p
+}
+
+func readPairedSymbol(p *string, left, right rune) *string {
+	s := *p
+	if len(s) == 0 || rune(s[0]) != left {
+		return nil
+	}
+	s = s[1:]
+	var last1 = left
+	var last2 rune
+	var leftLevel, rightLevel int
+	for i, r := range s {
+		if r == right && (last1 != '\\' || last2 == '\\') {
+			if leftLevel == rightLevel {
+				*p = s[i+1:]
+				sub := s[:i]
+				return &sub
+			}
+			rightLevel++
+		} else if r == left && (last1 != '\\' || last2 == '\\') {
+			leftLevel++
+		}
+		last2 = last1
+		last1 = r
 	}
 	return nil
 }
