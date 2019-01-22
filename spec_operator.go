@@ -8,10 +8,10 @@ type additionExprNode struct{ exprBackground }
 
 func newAdditionExprNode() ExprNode { return &additionExprNode{} }
 
-func (ae *additionExprNode) Eval() interface{} {
+func (ae *additionExprNode) Run() interface{} {
 	// positive number or Addition
-	v0 := ae.leftOperand.Eval()
-	v1 := ae.rightOperand.Eval()
+	v0 := ae.leftOperand.Run()
+	v1 := ae.rightOperand.Run()
 	switch r := v0.(type) {
 	case float64:
 		var v float64
@@ -32,9 +32,9 @@ type multiplicationExprNode struct{ exprBackground }
 
 func newMultiplicationExprNode() ExprNode { return &multiplicationExprNode{} }
 
-func (ae *multiplicationExprNode) Eval() interface{} {
-	v0, _ := ae.leftOperand.Eval().(float64)
-	v1, _ := ae.rightOperand.Eval().(float64)
+func (ae *multiplicationExprNode) Run() interface{} {
+	v0, _ := ae.leftOperand.Run().(float64)
+	v1, _ := ae.rightOperand.Run().(float64)
 	return v0 * v1
 }
 
@@ -42,12 +42,12 @@ type divisionExprNode struct{ exprBackground }
 
 func newDivisionExprNode() ExprNode { return &divisionExprNode{} }
 
-func (de *divisionExprNode) Eval() interface{} {
-	v1, _ := de.rightOperand.Eval().(float64)
+func (de *divisionExprNode) Run() interface{} {
+	v1, _ := de.rightOperand.Run().(float64)
 	if v1 == 0 {
 		return math.NaN()
 	}
-	v0, _ := de.leftOperand.Eval().(float64)
+	v0, _ := de.leftOperand.Run().(float64)
 	return v0 / v1
 }
 
@@ -55,9 +55,9 @@ type subtractionExprNode struct{ exprBackground }
 
 func newSubtractionExprNode() ExprNode { return &subtractionExprNode{} }
 
-func (de *subtractionExprNode) Eval() interface{} {
-	v0, _ := de.leftOperand.Eval().(float64)
-	v1, _ := de.rightOperand.Eval().(float64)
+func (de *subtractionExprNode) Run() interface{} {
+	v0, _ := de.leftOperand.Run().(float64)
+	v1, _ := de.rightOperand.Run().(float64)
 	return v0 - v1
 }
 
@@ -65,12 +65,12 @@ type remainderExprNode struct{ exprBackground }
 
 func newRemainderExprNode() ExprNode { return &remainderExprNode{} }
 
-func (re *remainderExprNode) Eval() interface{} {
-	v1, _ := re.rightOperand.Eval().(float64)
+func (re *remainderExprNode) Run() interface{} {
+	v1, _ := re.rightOperand.Run().(float64)
 	if v1 == 0 {
 		return math.NaN()
 	}
-	v0, _ := re.leftOperand.Eval().(float64)
+	v0, _ := re.leftOperand.Run().(float64)
 	return float64(int64(v0) % int64(v1))
 }
 
@@ -78,9 +78,9 @@ type equalExprNode struct{ exprBackground }
 
 func newEqualExprNode() ExprNode { return &equalExprNode{} }
 
-func (ee *equalExprNode) Eval() interface{} {
-	v0 := ee.leftOperand.Eval()
-	v1 := ee.rightOperand.Eval()
+func (ee *equalExprNode) Run() interface{} {
+	v0 := ee.leftOperand.Run()
+	v1 := ee.rightOperand.Run()
 	switch r := v0.(type) {
 	case float64:
 		var r1 float64
@@ -103,17 +103,17 @@ type notEqualExprNode struct{ equalExprNode }
 
 func newNotEqualExprNode() ExprNode { return &notEqualExprNode{} }
 
-func (ne *notEqualExprNode) Eval() interface{} {
-	return !ne.equalExprNode.Eval().(bool)
+func (ne *notEqualExprNode) Run() interface{} {
+	return !ne.equalExprNode.Run().(bool)
 }
 
 type greaterExprNode struct{ exprBackground }
 
 func newGreaterExprNode() ExprNode { return &greaterExprNode{} }
 
-func (ge *greaterExprNode) Eval() interface{} {
-	v0 := ge.leftOperand.Eval()
-	v1 := ge.rightOperand.Eval()
+func (ge *greaterExprNode) Run() interface{} {
+	v0 := ge.leftOperand.Run()
+	v1 := ge.rightOperand.Run()
 	switch r := v0.(type) {
 	case float64:
 		var r1 float64
@@ -132,9 +132,9 @@ type greaterEqualExprNode struct{ exprBackground }
 
 func newGreaterEqualExprNode() ExprNode { return &greaterEqualExprNode{} }
 
-func (ge *greaterEqualExprNode) Eval() interface{} {
-	v0 := ge.leftOperand.Eval()
-	v1 := ge.rightOperand.Eval()
+func (ge *greaterEqualExprNode) Run() interface{} {
+	v0 := ge.leftOperand.Run()
+	v1 := ge.rightOperand.Run()
 	switch r := v0.(type) {
 	case float64:
 		var r1 float64
@@ -153,9 +153,9 @@ type lessExprNode struct{ exprBackground }
 
 func newLessExprNode() ExprNode { return &lessExprNode{} }
 
-func (le *lessExprNode) Eval() interface{} {
-	v0 := le.leftOperand.Eval()
-	v1 := le.rightOperand.Eval()
+func (le *lessExprNode) Run() interface{} {
+	v0 := le.leftOperand.Run()
+	v1 := le.rightOperand.Run()
 	switch r := v0.(type) {
 	case float64:
 		var r1 float64
@@ -174,9 +174,9 @@ type lessEqualExprNode struct{ exprBackground }
 
 func newLessEqualExprNode() ExprNode { return &lessEqualExprNode{} }
 
-func (le *lessEqualExprNode) Eval() interface{} {
-	v0 := le.leftOperand.Eval()
-	v1 := le.rightOperand.Eval()
+func (le *lessEqualExprNode) Run() interface{} {
+	v0 := le.leftOperand.Run()
+	v1 := le.rightOperand.Run()
 	switch r := v0.(type) {
 	case float64:
 		var r1 float64
@@ -195,9 +195,9 @@ type andExprNode struct{ exprBackground }
 
 func newAndExprNode() ExprNode { return &andExprNode{} }
 
-func (ae *andExprNode) Eval() interface{} {
+func (ae *andExprNode) Run() interface{} {
 	for _, e := range []ExprNode{ae.leftOperand, ae.rightOperand} {
-		switch r := e.Eval().(type) {
+		switch r := e.Run().(type) {
 		case float64:
 			if r == 0 {
 				return false
@@ -223,9 +223,9 @@ type orExprNode struct{ exprBackground }
 
 func newOrExprNode() ExprNode { return &orExprNode{} }
 
-func (oe *orExprNode) Eval() interface{} {
+func (oe *orExprNode) Run() interface{} {
 	for _, e := range []ExprNode{oe.leftOperand, oe.rightOperand} {
-		switch r := e.Eval().(type) {
+		switch r := e.Run().(type) {
 		case float64:
 			if r != 0 {
 				return true

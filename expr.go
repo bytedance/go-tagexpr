@@ -18,7 +18,7 @@ type ExprNode interface {
 	RightOperand() ExprNode
 	SetLeftOperand(ExprNode)
 	SetRightOperand(ExprNode)
-	Eval() interface{}
+	Run() interface{}
 }
 
 // parseExpr parses the expression.
@@ -41,9 +41,9 @@ func parseExpr(expr string, varGetter func(string) interface{}) (*Expr, error) {
 	return p, nil
 }
 
-// Eval calculates the value of expression.
-func (p *Expr) Eval() interface{} {
-	return p.expr.Eval()
+// Run calculates the value of expression.
+func (p *Expr) Run() interface{} {
+	return p.expr.Run()
 }
 
 func (p *Expr) parseOperand(expr *string) (e ExprNode) {
@@ -264,4 +264,4 @@ func (eb *exprBackground) SetRightOperand(right ExprNode) {
 	eb.rightOperand = right
 }
 
-func (*exprBackground) Eval() interface{} { return nil }
+func (*exprBackground) Run() interface{} { return nil }

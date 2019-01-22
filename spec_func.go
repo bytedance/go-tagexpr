@@ -31,8 +31,8 @@ func (p *Expr) readLenFnExprNode(expr *string) ExprNode {
 	return e
 }
 
-func (le *lenFnExprNode) Eval() interface{} {
-	param := le.rightOperand.Eval()
+func (le *lenFnExprNode) Run() interface{} {
+	param := le.rightOperand.Run()
 	switch v := param.(type) {
 	case string:
 		return float64(len(v))
@@ -91,8 +91,8 @@ func (p *Expr) readRegexpFnExprNode(expr *string) ExprNode {
 	return e
 }
 
-func (re *regexpFnExprNode) Eval() interface{} {
-	param := re.rightOperand.Eval()
+func (re *regexpFnExprNode) Run() interface{} {
+	param := re.rightOperand.Run()
 	switch v := param.(type) {
 	case string:
 		return re.re.MatchString(v)
@@ -152,10 +152,10 @@ func (p *Expr) readSprintfFnExprNode(expr *string) ExprNode {
 	}
 }
 
-func (se *sprintfFnExprNode) Eval() interface{} {
+func (se *sprintfFnExprNode) Run() interface{} {
 	var args = make([]interface{}, 0, len(se.args))
 	for _, e := range se.args {
-		args = append(args, e.Eval())
+		args = append(args, e.Run())
 	}
 	return fmt.Sprintf(se.format, args...)
 }

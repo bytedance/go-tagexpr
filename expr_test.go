@@ -107,7 +107,7 @@ func TestExpr(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		val := vm.Eval()
+		val := vm.Run()
 		if !reflect.DeepEqual(val, c.val) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
@@ -134,7 +134,7 @@ func TestPriority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		val := vm.Eval()
+		val := vm.Run()
 		if !reflect.DeepEqual(val, c.val) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
@@ -171,7 +171,7 @@ func TestBuiltInFunc(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		val := vm.Eval()
+		val := vm.Run()
 		if !reflect.DeepEqual(val, c.val) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue

@@ -39,7 +39,7 @@ func TestReadBoolExprNode(t *testing.T) {
 		t.Log(c.expr)
 		expr := c.expr
 		e := readBoolExprNode(&expr)
-		got := e.Eval().(bool)
+		got := e.Run().(bool)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %v, %s, want: %v, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
@@ -64,11 +64,11 @@ func TestReadDigitalExprNode(t *testing.T) {
 		e := readDigitalExprNode(&expr)
 		if c.expr == "1a" {
 			if e != nil {
-				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Eval(), nil)
+				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Run(), nil)
 			}
 			continue
 		}
-		got := e.Eval().(float64)
+		got := e.Run().(float64)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %f, %s, want: %f, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
