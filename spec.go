@@ -341,10 +341,8 @@ type andExpr struct{ exprBackground }
 func newAndExpr() Expr { return &andExpr{} }
 
 func (ae *andExpr) Calculate() interface{} {
-	v0 := ae.leftOperand.Calculate()
-	v1 := ae.rightOperand.Calculate()
-	for _, v := range []interface{}{v0, v1} {
-		switch r := v.(type) {
+	for _, e := range []Expr{ae.leftOperand, ae.rightOperand} {
+		switch r := e.Calculate().(type) {
 		case float64:
 			if r == 0 {
 				return false
@@ -364,6 +362,30 @@ func (ae *andExpr) Calculate() interface{} {
 		}
 	}
 	return true
+}
+
+type orExpr struct{ exprBackground }
+
+func newOrExpr() Expr { return &orExpr{} }
+
+func (oe *orExpr) Calculate() interface{} {
+	for _, e := range []Expr{oe.leftOperand, oe.rightOperand} {
+		switch r := e.Calculate().(type) {
+		case float64:
+			if r != 0 {
+				return true
+			}
+		case string:
+			if r != "" {
+				return true
+			}
+		case bool:
+			if r {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func readPairedSymbol(p *string, left, right rune) *string {
