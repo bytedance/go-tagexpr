@@ -480,6 +480,11 @@ func (i *Interpreter) readRegexpFnExpr(expr *string) Expr {
 			return nil
 		}
 	}
+	trimLeftSpace(subExpr)
+	if *subExpr != "" {
+		*expr = lastStr
+		return nil
+	}
 	e := &regexpFnExpr{
 		re: rege,
 	}

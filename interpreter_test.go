@@ -188,8 +188,11 @@ func TestSyntaxIncorrect(t *testing.T) {
 		{incorrectExpr: "len"},
 		{incorrectExpr: "regexp"},
 		{incorrectExpr: "regexp()"},
+		{incorrectExpr: "regexp('^'+'a','a')"},
+		{incorrectExpr: "regexp('^a','a','b')"},
 		{incorrectExpr: "sprintf()"},
 		{incorrectExpr: "sprintf(0)"},
+		{incorrectExpr: "sprintf('a'+'b')"},
 	}
 	for _, c := range cases {
 		_, err := New(c.incorrectExpr)
