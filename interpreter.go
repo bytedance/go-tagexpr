@@ -6,13 +6,17 @@ import (
 
 // Interpreter expression VM
 type Interpreter struct {
-	expr Expr
+	expr      Expr
+	varGetter func(string) interface{}
 }
 
-// New parses the expression and creates an interpreter.
-func New(expr string) (*Interpreter, error) {
+// newInterpreter parses the expression and creates an interpreter.
+func newInterpreter(expr string, varGetter func(string) interface{}) (*Interpreter, error) {
 	e := newGroupExpr()
-	i := &Interpreter{expr: e}
+	i := &Interpreter{
+		expr:      e,
+		varGetter: varGetter,
+	}
 	s := expr
 	_, err := i.parseExpr(&s, e)
 	if err != nil {

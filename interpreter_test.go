@@ -103,7 +103,7 @@ func TestInterpreter(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
-		vm, err := New(c.expr)
+		vm, err := newInterpreter(c.expr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,7 +130,7 @@ func TestPriority(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
-		vm, err := New(c.expr)
+		vm, err := newInterpreter(c.expr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +167,7 @@ func TestBuiltInFunc(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
-		vm, err := New(c.expr)
+		vm, err := newInterpreter(c.expr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +196,7 @@ func TestSyntaxIncorrect(t *testing.T) {
 		{incorrectExpr: "sprintf('a'+'b')"},
 	}
 	for _, c := range cases {
-		_, err := New(c.incorrectExpr)
+		_, err := newInterpreter(c.incorrectExpr, nil)
 		if err == nil {
 			t.Fatalf("want syntax incorrect: %s", c.incorrectExpr)
 		} else {
