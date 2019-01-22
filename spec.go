@@ -440,3 +440,56 @@ func (le *lenFnExpr) Calculate() interface{} {
 	v := reflect.ValueOf(param)
 	return float64(v.Len())
 }
+
+type regexpFnExpr struct {
+	exprBackground
+	re *regexp.Regexp
+}
+
+func (i *Interpreter) readRegexpFnExpr(expr *string) Expr {
+	if !strings.HasPrefix(*expr, "regexp(") {
+		return nil
+	}
+	*expr = (*expr)[6:]
+	subExpr := readPairedSymbol(expr, '(', ')')
+	if subExpr == nil {
+		return nil
+	}
+	p := readPairedSymbol(trimLeftSpace(subExpr), '\'', '\'')
+	if p == nil {
+		return nil
+	}
+	rege, err := regexp.Compile(*p)
+	if err != nil {
+		return nil
+	}
+	operand := newGroupExpr()
+	trimLeftSpace(subExpr)
+	if strings.HasPrefix(*subExpr, ",") {
+		*subExpr = (*subExpr)[1:]
+		_, err = i.parseExpr(trimLeftSpace(subExpr), operand)
+		if err != nil {
+			return nil
+		}
+	}
+	e := &regexpFnExpr{
+		re: rege,
+	}
+	e.SetRightOperand(operand)
+	return e
+}
+
+func (re *regexpFnExpr) Calculate() interface{} {
+	param := re.rightOperand.Calculate()
+	switch v := param.(type) {
+	case string:
+		return re.re.MatchString(v)
+	case float64, bool:
+		return nil
+	}
+	v := reflect.ValueOf(param)
+	if v.Kind() == reflect.String {
+		return re.re.MatchString(v.String())
+	}
+	return nil
+}

@@ -35,6 +35,9 @@ func (i *Interpreter) parseOperand(expr *string) (e Expr) {
 	if e = i.readLenFnExpr(expr); e != nil {
 		return e
 	}
+	if e = i.readRegexpFnExpr(expr); e != nil {
+		return e
+	}
 	if e = readStringExpr(expr); e != nil {
 		return e
 	}

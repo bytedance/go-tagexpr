@@ -153,6 +153,10 @@ func TestBuiltInFunc(t *testing.T) {
 		{expr: "len('abc')+2*2/len('cd')", val: 5.0},
 		{expr: "len(0)", val: nil},
 		{expr: "len()", val: nil},
+		{expr: "regexp('a\\d','a0')", val: true},
+		{expr: "regexp('^a\\d$','a0')", val: true},
+		{expr: "regexp('a\\d','a')", val: false},
+		{expr: "regexp('^a\\d$','a')", val: false},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
@@ -176,6 +180,8 @@ func TestSyntaxIncorrect(t *testing.T) {
 	}{
 		{incorrectExpr: "1 + + 'a'"},
 		{incorrectExpr: "len"},
+		{incorrectExpr: "regexp"},
+		{incorrectExpr: "regexp()"},
 	}
 	for _, c := range cases {
 		_, err := New(c.incorrectExpr)
