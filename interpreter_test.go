@@ -179,6 +179,7 @@ func TestSyntaxIncorrect(t *testing.T) {
 		incorrectExpr string
 	}{
 		{incorrectExpr: "1 + + 'a'"},
+		{incorrectExpr: "len"},
 	}
 	for _, c := range cases {
 		_, err := New(c.incorrectExpr)
