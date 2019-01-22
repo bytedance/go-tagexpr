@@ -121,6 +121,33 @@ func TestInterpreter(t *testing.T) {
 	}
 }
 
+func TestPriority(t *testing.T) {
+	var cases = []struct {
+		expr string
+		val  interface{}
+	}{
+		{expr: "1+2>5-4", val: true},
+		{expr: "1+2*4/2", val: 5.0},
+		{expr: "(true||false)&&false||false", val: false},
+		{expr: "true||false&&false||false", val: true},
+		{expr: "true||1<0&&'a'!='a'||0!=0", val: true},
+	}
+	for _, c := range cases {
+		t.Log(c.expr)
+		vm, err := New(c.expr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		val := vm.Run()
+		if !reflect.DeepEqual(val, c.val) {
+			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
+				continue
+			}
+			t.Fatalf("expr: %q, got: %v, want: %v", c.expr, val, c.val)
+		}
+	}
+}
+
 func TestSyntaxIncorrect(t *testing.T) {
 	var cases = []struct {
 		incorrectExpr string

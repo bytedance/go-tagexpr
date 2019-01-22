@@ -11,6 +11,8 @@ import (
 type Expr interface {
 	SetParent(Expr)
 	Parent() Expr
+	LeftOperand() Expr
+	RightOperand() Expr
 	SetLeftOperand(Expr)
 	SetRightOperand(Expr)
 	Calculate() interface{}
@@ -28,6 +30,14 @@ func (eb *exprBackground) SetParent(e Expr) {
 
 func (eb *exprBackground) Parent() Expr {
 	return eb.parent
+}
+
+func (eb *exprBackground) LeftOperand() Expr {
+	return eb.leftOperand
+}
+
+func (eb *exprBackground) RightOperand() Expr {
+	return eb.rightOperand
 }
 
 func (eb *exprBackground) SetLeftOperand(left Expr) {

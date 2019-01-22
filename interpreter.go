@@ -20,6 +20,7 @@ func New(expr string) (*Interpreter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%q (syntax incorrect): %s", expr, err.Error())
 	}
+	sortPriority(e.RightOperand())
 	err = i.checkSyntax()
 	if err != nil {
 		return nil, err
@@ -142,7 +143,72 @@ func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 	return i.parseExpr(expr, operator)
 }
 
+/**
+ * Priority:
+ * ()
+ * * / %
+ * + -
+ * < <= > >=
+ * == !=
+ * &&
+ * ||
+**/
+
+func sortPriority(e Expr) {
+	if e == nil {
+		return
+	}
+	sortPriority(e.LeftOperand())
+	sortPriority(e.RightOperand())
+	if getPriority(e) > getPriority(e.LeftOperand()) {
+		leftOperandToParent(e)
+	}
+}
+
+func getPriority(e Expr) (i int) {
+	// defer func() {
+	// 	fmt.Printf("expr:%T %d\n", e, i)
+	// }()
+	switch e.(type) {
+	default: // () bool string float64
+		return 7
+	case *multiplicationExpr, *divisionExpr, *remainderExpr: // * / %
+		return 6
+	case *additionExpr, *subtractionExpr: // + -
+		return 5
+	case *lessExpr, *lessEqualExpr, *greaterExpr, *greaterEqualExpr: // < <= > >=
+		return 4
+	case *equalExpr, *notEqualExpr: // == !=
+		return 3
+	case *andExpr: // &&
+		return 2
+	case *orExpr: // ||
+		return 1
+	}
+}
+
+func leftOperandToParent(e Expr) {
+	le := e.LeftOperand()
+	if le == nil {
+		return
+	}
+	e.SetLeftOperand(le.RightOperand())
+	le.SetRightOperand(e)
+	p := e.Parent()
+	// if p == nil {
+	// 	return
+	// }
+	if p.LeftOperand() == e {
+		p.SetLeftOperand(le)
+	} else {
+		p.SetRightOperand(le)
+	}
+	le.SetParent(p)
+	e.SetParent(le)
+}
+
 func (i *Interpreter) checkSyntax() error {
+
 	return nil
 }
 
