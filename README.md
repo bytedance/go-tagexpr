@@ -36,6 +36,8 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 
 |Operator or Expression example|Explain|
 |-----|---------|
+|`true`|bool "true"|
+|`false`|bool "false"|
 |`1`|float64 "1"|
 |`1.0`|float64 "1.0"|
 |`'S'`|String "S"|

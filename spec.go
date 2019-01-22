@@ -16,13 +16,6 @@ type Expr interface {
 	Calculate() interface{}
 }
 
-// 	Greater                           // >
-// 	GreaterEqual                      // >=
-// 	Less                              // <
-// 	LessEqual                         // <=
-// 	And                               // &&
-// 	Or                                // ||
-
 type exprBackground struct {
 	parent       Expr
 	leftOperand  Expr
@@ -341,6 +334,36 @@ func (le *lessEqualExpr) Calculate() interface{} {
 	default:
 		return false
 	}
+}
+
+type andExpr struct{ exprBackground }
+
+func newAndExpr() Expr { return &andExpr{} }
+
+func (ae *andExpr) Calculate() interface{} {
+	v0 := ae.leftOperand.Calculate()
+	v1 := ae.rightOperand.Calculate()
+	for _, v := range []interface{}{v0, v1} {
+		switch r := v.(type) {
+		case float64:
+			if r == 0 {
+				return false
+			}
+		case string:
+			if r == "" {
+				return false
+			}
+		case bool:
+			if !r {
+				return false
+			}
+		case nil:
+			return false
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func readPairedSymbol(p *string, left, right rune) *string {
