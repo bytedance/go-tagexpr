@@ -4,73 +4,73 @@ import "testing"
 
 func TestReadPairedSymbol(t *testing.T) {
 	var cases = []struct {
-		expr        string
-		val         string
-		lastExpr    string
-		left, right rune
+		expr         string
+		val          string
+		lastExprNode string
+		left, right  rune
 	}{
-		{expr: "'true '+'a'", val: "true ", lastExpr: "+'a'", left: '\'', right: '\''},
-		{expr: "((0+1)/(2-1)*9)%2", val: "(0+1)/(2-1)*9", lastExpr: "%2", left: '(', right: ')'},
+		{expr: "'true '+'a'", val: "true ", lastExprNode: "+'a'", left: '\'', right: '\''},
+		{expr: "((0+1)/(2-1)*9)%2", val: "(0+1)/(2-1)*9", lastExprNode: "%2", left: '(', right: ')'},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
 		expr := c.expr
 		got := readPairedSymbol(&expr, c.left, c.right)
-		if *got != c.val || expr != c.lastExpr {
-			t.Fatalf("expr: %q, got: %q, %q, want: %q, %q", c.expr, *got, expr, c.val, c.lastExpr)
+		if *got != c.val || expr != c.lastExprNode {
+			t.Fatalf("expr: %q, got: %q, %q, want: %q, %q", c.expr, *got, expr, c.val, c.lastExprNode)
 		}
 	}
 }
 
-func TestReadBoolExpr(t *testing.T) {
+func TestReadBoolExprNode(t *testing.T) {
 	var cases = []struct {
-		expr     string
-		val      bool
-		lastExpr string
+		expr         string
+		val          bool
+		lastExprNode string
 	}{
-		{expr: "false", val: false, lastExpr: ""},
-		{expr: "true", val: true, lastExpr: ""},
-		{expr: "true ", val: true, lastExpr: " "},
-		{expr: "!true&", val: false, lastExpr: "&"},
-		{expr: "!false|", val: true, lastExpr: "|"},
-		{expr: "!!!!false =", val: !!!!false, lastExpr: " ="},
+		{expr: "false", val: false, lastExprNode: ""},
+		{expr: "true", val: true, lastExprNode: ""},
+		{expr: "true ", val: true, lastExprNode: " "},
+		{expr: "!true&", val: false, lastExprNode: "&"},
+		{expr: "!false|", val: true, lastExprNode: "|"},
+		{expr: "!!!!false =", val: !!!!false, lastExprNode: " ="},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
 		expr := c.expr
-		e := readBoolExpr(&expr)
-		got := e.Calculate().(bool)
-		if got != c.val || expr != c.lastExpr {
-			t.Fatalf("expr: %s, got: %v, %s, want: %v, %s", c.expr, got, expr, c.val, c.lastExpr)
+		e := readBoolExprNode(&expr)
+		got := e.Eval().(bool)
+		if got != c.val || expr != c.lastExprNode {
+			t.Fatalf("expr: %s, got: %v, %s, want: %v, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
 	}
 }
 
-func TestReadDigitalExpr(t *testing.T) {
+func TestReadDigitalExprNode(t *testing.T) {
 	var cases = []struct {
-		expr     string
-		val      float64
-		lastExpr string
+		expr         string
+		val          float64
+		lastExprNode string
 	}{
-		{expr: "0.1 +1", val: 0.1, lastExpr: " +1"},
-		{expr: "-1\\1", val: -1, lastExpr: "\\1"},
-		{expr: "1a", val: 0, lastExpr: ""},
-		{expr: "1", val: 1, lastExpr: ""},
-		{expr: "1.1", val: 1.1, lastExpr: ""},
-		{expr: "1.1/", val: 1.1, lastExpr: "/"},
+		{expr: "0.1 +1", val: 0.1, lastExprNode: " +1"},
+		{expr: "-1\\1", val: -1, lastExprNode: "\\1"},
+		{expr: "1a", val: 0, lastExprNode: ""},
+		{expr: "1", val: 1, lastExprNode: ""},
+		{expr: "1.1", val: 1.1, lastExprNode: ""},
+		{expr: "1.1/", val: 1.1, lastExprNode: "/"},
 	}
 	for _, c := range cases {
 		expr := c.expr
-		e := readDigitalExpr(&expr)
+		e := readDigitalExprNode(&expr)
 		if c.expr == "1a" {
 			if e != nil {
-				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Calculate(), nil)
+				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Eval(), nil)
 			}
 			continue
 		}
-		got := e.Calculate().(float64)
-		if got != c.val || expr != c.lastExpr {
-			t.Fatalf("expr: %s, got: %f, %s, want: %f, %s", c.expr, got, expr, c.val, c.lastExpr)
+		got := e.Eval().(float64)
+		if got != c.val || expr != c.lastExprNode {
+			t.Fatalf("expr: %s, got: %f, %s, want: %f, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
 	}
 }

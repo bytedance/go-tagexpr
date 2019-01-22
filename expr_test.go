@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestInterpreter(t *testing.T) {
+func TestExpr(t *testing.T) {
 	var cases = []struct {
 		expr string
 		val  interface{}
@@ -103,11 +103,11 @@ func TestInterpreter(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
-		vm, err := newInterpreter(c.expr, nil)
+		vm, err := parseExpr(c.expr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		val := vm.Run()
+		val := vm.Eval()
 		if !reflect.DeepEqual(val, c.val) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
@@ -130,11 +130,11 @@ func TestPriority(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
-		vm, err := newInterpreter(c.expr, nil)
+		vm, err := parseExpr(c.expr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		val := vm.Run()
+		val := vm.Eval()
 		if !reflect.DeepEqual(val, c.val) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
@@ -167,11 +167,11 @@ func TestBuiltInFunc(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
-		vm, err := newInterpreter(c.expr, nil)
+		vm, err := parseExpr(c.expr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		val := vm.Run()
+		val := vm.Eval()
 		if !reflect.DeepEqual(val, c.val) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
@@ -196,7 +196,7 @@ func TestSyntaxIncorrect(t *testing.T) {
 		{incorrectExpr: "sprintf('a'+'b')"},
 	}
 	for _, c := range cases {
-		_, err := newInterpreter(c.incorrectExpr, nil)
+		_, err := parseExpr(c.incorrectExpr, nil)
 		if err == nil {
 			t.Fatalf("want syntax incorrect: %s", c.incorrectExpr)
 		} else {
