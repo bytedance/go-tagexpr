@@ -33,15 +33,15 @@ func (i *Interpreter) Run() interface{} {
 }
 
 func (*Interpreter) parseOperand(expr *string) (e Expr) {
-	e = readBoolExpr(expr)
-	if e != nil {
-		return e
-	}
 	e = readStringExpr(expr)
 	if e != nil {
 		return e
 	}
 	e = readDigitalExpr(expr)
+	if e != nil {
+		return e
+	}
+	e = readBoolExpr(expr)
 	if e != nil {
 		return e
 	}

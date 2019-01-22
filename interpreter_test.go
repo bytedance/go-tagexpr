@@ -93,20 +93,17 @@ func TestInterpreter(t *testing.T) {
 		{expr: "true&&(2.1<=2.1)", val: true},
 		{expr: "(2.05<=2.1)&&false", val: false},
 		{expr: "true&&!true&&false", val: false},
-		{expr: "1.0&&true&&'a'", val: true},
-		{expr: "1.0&&true&&''", val: false},
-		{expr: "0.0&&true&&'a'", val: false},
-		{expr: "1&&false&&'a'", val: false},
+		{expr: "true&&true&&true", val: true},
+		{expr: "true&&true&&false", val: false},
+		{expr: "false&&true&&true", val: false},
+		{expr: "true && false && true", val: false},
 
 		{expr: "true||false", val: true},
-		{expr: "true ||false", val: true},
-		{expr: "true || false", val: true},
-		{expr: "'a' || 0.0", val: true},
-		{expr: "'' || 0.0", val: false},
+		{expr: "false ||true", val: true},
 
-		{expr: "true&&1.0 || ''", val: true},
-		{expr: "true&&0 || ''", val: false},
-		{expr: "true && 0 || 'a' ", val: true},
+		{expr: "true&&true || false", val: true},
+		{expr: "true&&false || false", val: false},
+		{expr: "true && false || true ", val: true},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
