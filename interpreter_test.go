@@ -66,10 +66,20 @@ func TestInterpreter(t *testing.T) {
 		{expr: "50.1 > 50.1", val: false},
 		{expr: "3 >12.11", val: false},
 		{expr: "3.2 > 2.1", val: true},
+		{expr: "'3.2' > '2.1'", val: true},
+		{expr: "'13.2' > '2.1'", val: false},
 
 		{expr: "3.2 >= 2.1", val: true},
 		{expr: "2.1 >= 2.1", val: true},
 		{expr: "2.05 >= 2.1", val: false},
+		{expr: "'2.05'>='2.1'", val: false},
+		{expr: "'12.05'>='2.1'", val: false},
+
+		{expr: "3.2 <= 2.1", val: false},
+		{expr: "2.1 <= 2.1", val: true},
+		{expr: "2.05 <= 2.1", val: true},
+		{expr: "'2.05'<='2.1'", val: true},
+		{expr: "'12.05'<='2.1'", val: true},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)

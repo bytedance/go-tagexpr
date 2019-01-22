@@ -70,6 +70,7 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	case ">=":
 		return newGreaterEqualExpr()
 	case "<=":
+		return newLessEqualExpr()
 	case "!=":
 		return newNotEqualExpr()
 	}
