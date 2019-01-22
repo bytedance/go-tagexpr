@@ -301,6 +301,27 @@ func (ge *greaterEqualExpr) Calculate() interface{} {
 	}
 }
 
+type lessExpr struct{ exprBackground }
+
+func newLessExpr() Expr { return &lessExpr{} }
+
+func (le *lessExpr) Calculate() interface{} {
+	v0 := le.leftOperand.Calculate()
+	v1 := le.rightOperand.Calculate()
+	switch r := v0.(type) {
+	case float64:
+		var r1 float64
+		r1, _ = v1.(float64)
+		return r < r1
+	case string:
+		var r1 string
+		r1, _ = v1.(string)
+		return r < r1
+	default:
+		return false
+	}
+}
+
 type lessEqualExpr struct{ exprBackground }
 
 func newLessEqualExpr() Expr { return &lessEqualExpr{} }
