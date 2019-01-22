@@ -544,6 +544,7 @@ func (i *Interpreter) readSprintfFnExpr(expr *string) Expr {
 				*expr = lastStr
 				return nil
 			}
+			sortPriority(operand.RightOperand())
 			e.args = append(e.args, operand)
 		} else {
 			*expr = lastStr

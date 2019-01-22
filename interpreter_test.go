@@ -163,6 +163,7 @@ func TestBuiltInFunc(t *testing.T) {
 		{expr: "sprintf('test string: %s','a'+'b')", val: "test string: ab"},
 		{expr: "sprintf('test string: %s,%v','a',1)", val: "test string: a,1"},
 		{expr: "sprintf('')+'a'", val: "a"},
+		{expr: "sprintf('%v',10+2*2)", val: "14"},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
