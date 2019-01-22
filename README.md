@@ -74,3 +74,12 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`&^`|Integer bitwise `clean`|
 |`<<`|Integer bitwise `shift left`|
 |`>>`|Integer bitwise `shift right`| -->
+
+Operator priority(high -> low):
+* `()` `bool` `string` `float64`
+* `*` `/` `%`
+* `+` `-`
+* `<` `<=` `>` `>=`
+* `==` `!=`
+* `&&`
+* `||`
