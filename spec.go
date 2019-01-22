@@ -280,6 +280,27 @@ func (ge *greaterExpr) Calculate() interface{} {
 	}
 }
 
+type greaterEqualExpr struct{ exprBackground }
+
+func newGreaterEqualExpr() Expr { return &greaterEqualExpr{} }
+
+func (ge *greaterEqualExpr) Calculate() interface{} {
+	v0 := ge.leftOperand.Calculate()
+	v1 := ge.rightOperand.Calculate()
+	switch r := v0.(type) {
+	case float64:
+		var r1 float64
+		r1, _ = v1.(float64)
+		return r >= r1
+	case string:
+		var r1 string
+		r1, _ = v1.(string)
+		return r >= r1
+	default:
+		return false
+	}
+}
+
 func readPairedSymbol(p *string, left, right rune) *string {
 	s := *p
 	if len(s) == 0 || rune(s[0]) != left {

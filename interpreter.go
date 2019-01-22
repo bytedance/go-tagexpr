@@ -68,6 +68,7 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 	case "==":
 		return newEqualExpr()
 	case ">=":
+		return newGreaterEqualExpr()
 	case "<=":
 	case "!=":
 		return newNotEqualExpr()
