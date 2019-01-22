@@ -11,84 +11,82 @@ func TestInterpreter(t *testing.T) {
 		expr string
 		val  interface{}
 	}{
+		// Simple string
 		{expr: "'a'", val: "a"},
 		{expr: "('a')", val: "a"},
-
-		{expr: " 10", val: 10.0},
+		// Simple digital
+		{expr: " 10 ", val: 10.0},
 		{expr: "(10)", val: 10.0},
-
+		// Simple bool
 		{expr: "true", val: true},
 		{expr: "!true", val: false},
 		{expr: "!!true", val: true},
 		{expr: "false", val: false},
 		{expr: "!false", val: true},
+		{expr: "!!false", val: false},
 		{expr: "(false)", val: false},
 		{expr: "(!false)", val: true},
 		{expr: "(!!false)", val: false},
 		{expr: "!!(!false)", val: true},
 		{expr: "!(!false)", val: false},
-		{expr: "!!(!false)", val: true},
-		{expr: "!(false)", val: true},
-
+		// Join string
 		{expr: "'true '+('a')", val: "true a"},
 		{expr: "'a'+('b'+'c')+'d'", val: "abcd"},
-
+		// Arithmetic operator
+		{expr: "1+7+2", val: 10.0},
 		{expr: "1+(7)+(2)", val: 10.0},
+		{expr: "1.1+ 2", val: 3.1},
+		{expr: "-1.1+4", val: 2.9},
+		{expr: "10-7-2", val: 1.0},
+		{expr: "20/2", val: 10.0},
+		{expr: "1/0", val: math.NaN()},
+		{expr: "20%2", val: 0.0},
+		{expr: "6 % 5", val: 1.0},
+		{expr: "20%7 %5", val: 1.0},
 		{expr: "1*2+7+2.2", val: 11.2},
-		{expr: "(2*3)+(4*2)", val: 14.0},
-		{expr: "1+(2*(3+4))", val: 15.0},
-
-		{expr: "20/2+1+2", val: 13.0},
 		{expr: "-20/2+1+2", val: -7.0},
 		{expr: "20/2+1-2-1", val: 8.0},
 		{expr: "30/(2+1)/5-2-1", val: -1.0},
 		{expr: "100/(( 2+8)*5 )-(1 +1- 0)", val: 0.0},
-		{expr: "1/0", val: math.NaN()},
-
-		{expr: "20%2", val: 0.0},
-		{expr: "6 % 5", val: 1.0},
+		{expr: "(2*3)+(4*2)", val: 14.0},
+		{expr: "1+(2*(3+4))", val: 15.0},
 		{expr: "20%(7%5)", val: 0.0},
-		{expr: "20%7 %5", val: 1.0},
-
+		// Relational operator
 		{expr: "50 == 5", val: false},
-		{expr: "'50'== '50'", val: true},
+		{expr: "'50'==50", val: false},
+		{expr: "'50'=='50'", val: true},
 		{expr: "'50' =='5' == true", val: false},
 		{expr: "50== 50 == false", val: false},
 		{expr: "50== 50 == true ==true==true", val: true},
-
 		{expr: "50 != 5", val: true},
+		{expr: "'50'!=50", val: true},
 		{expr: "'50'!= '50'", val: false},
 		{expr: "'50' !='5' != true", val: false},
 		{expr: "50!= 50 == false", val: true},
 		{expr: "50== 50 != true ==true!=true", val: true},
-
 		{expr: "50 > 5", val: true},
 		{expr: "50.1 > 50.1", val: false},
-		{expr: "3 >12.11", val: false},
 		{expr: "3.2 > 2.1", val: true},
 		{expr: "'3.2' > '2.1'", val: true},
-		{expr: "'13.2' > '2.1'", val: false},
-
+		{expr: "'13.2'>'2.1'", val: false},
 		{expr: "3.2 >= 2.1", val: true},
 		{expr: "2.1 >= 2.1", val: true},
 		{expr: "2.05 >= 2.1", val: false},
 		{expr: "'2.05'>='2.1'", val: false},
 		{expr: "'12.05'>='2.1'", val: false},
-
 		{expr: "50 < 5", val: false},
 		{expr: "50.1 < 50.1", val: false},
 		{expr: "3 <12.11", val: true},
 		{expr: "3.2 < 2.1", val: false},
 		{expr: "'3.2' < '2.1'", val: false},
 		{expr: "'13.2' < '2.1'", val: true},
-		{expr: "!('13.2' < '2.1')", val: false},
-
 		{expr: "3.2 <= 2.1", val: false},
 		{expr: "2.1 <= 2.1", val: true},
 		{expr: "2.05 <= 2.1", val: true},
 		{expr: "'2.05'<='2.1'", val: true},
 		{expr: "'12.05'<='2.1'", val: true},
-
+		// Logical operator
+		{expr: "!('13.2' < '2.1')", val: false},
 		{expr: "(3.2 <= 2.1) &&true", val: false},
 		{expr: "true&&(2.1<=2.1)", val: true},
 		{expr: "(2.05<=2.1)&&false", val: false},
@@ -97,10 +95,8 @@ func TestInterpreter(t *testing.T) {
 		{expr: "true&&true&&false", val: false},
 		{expr: "false&&true&&true", val: false},
 		{expr: "true && false && true", val: false},
-
 		{expr: "true||false", val: true},
 		{expr: "false ||true", val: true},
-
 		{expr: "true&&true || false", val: true},
 		{expr: "true&&false || false", val: false},
 		{expr: "true && false || true ", val: true},
