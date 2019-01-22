@@ -148,6 +148,32 @@ func TestPriority(t *testing.T) {
 	}
 }
 
+func TestBuiltInFunc(t *testing.T) {
+	var cases = []struct {
+		expr string
+		val  interface{}
+	}{
+		{expr: "len('abc')", val: 3.0},
+		{expr: "len('abc')+2*2/len('cd')", val: 5.0},
+		{expr: "len(0)", val: nil},
+		{expr: "len()", val: nil},
+	}
+	for _, c := range cases {
+		t.Log(c.expr)
+		vm, err := New(c.expr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		val := vm.Run()
+		if !reflect.DeepEqual(val, c.val) {
+			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
+				continue
+			}
+			t.Fatalf("expr: %q, got: %v, want: %v", c.expr, val, c.val)
+		}
+	}
+}
+
 func TestSyntaxIncorrect(t *testing.T) {
 	var cases = []struct {
 		incorrectExpr string

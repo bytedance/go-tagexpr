@@ -2,6 +2,7 @@ package tagexpr
 
 import (
 	"math"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -50,6 +51,8 @@ func (eb *exprBackground) SetRightOperand(right Expr) {
 
 func (*exprBackground) Calculate() interface{} { return nil }
 
+// --------------------------- Operand ---------------------------
+
 type groupExpr struct {
 	exprBackground
 	boolPrefix bool
@@ -76,6 +79,9 @@ func readGroupExpr(expr *string) (grp Expr, subExpr *string) {
 }
 
 func (ge *groupExpr) Calculate() interface{} {
+	if ge.rightOperand == nil {
+		return nil
+	}
 	v := ge.rightOperand.Calculate()
 	if r, ok := v.(bool); ok {
 		return ge.boolPrefix == r
@@ -158,6 +164,8 @@ func readDigitalExpr(expr *string) Expr {
 }
 
 func (de *digitalExpr) Calculate() interface{} { return de.val }
+
+// --------------------------- Operator ---------------------------
 
 type additionExpr struct{ exprBackground }
 
@@ -398,28 +406,37 @@ func (oe *orExpr) Calculate() interface{} {
 	return false
 }
 
-func readPairedSymbol(p *string, left, right rune) *string {
-	s := *p
-	if len(s) == 0 || rune(s[0]) != left {
+// --------------------------- Built-in function ---------------------------
+
+type lenFnExpr struct{ exprBackground }
+
+func (i *Interpreter) readLenFnExpr(expr *string) Expr {
+	if !strings.HasPrefix(*expr, "len(") {
 		return nil
 	}
-	s = s[1:]
-	var last1 = left
-	var last2 rune
-	var leftLevel, rightLevel int
-	for i, r := range s {
-		if r == right && (last1 != '\\' || last2 == '\\') {
-			if leftLevel == rightLevel {
-				*p = s[i+1:]
-				sub := s[:i]
-				return &sub
-			}
-			rightLevel++
-		} else if r == left && (last1 != '\\' || last2 == '\\') {
-			leftLevel++
-		}
-		last2 = last1
-		last1 = r
+	*expr = (*expr)[3:]
+	operand, subExpr := readGroupExpr(expr)
+	if operand == nil {
+		return nil
 	}
-	return nil
+	_, err := i.parseExpr(subExpr, operand)
+	if err != nil {
+		return nil
+	}
+	e := &lenFnExpr{}
+	e.SetRightOperand(operand)
+	return e
+}
+
+func (le *lenFnExpr) Calculate() interface{} {
+	param := le.rightOperand.Calculate()
+	switch v := param.(type) {
+	case string:
+		return float64(len(v))
+	case float64, bool:
+		return nil
+	}
+	defer func() { recover() }()
+	v := reflect.ValueOf(param)
+	return float64(v.Len())
 }

@@ -2,8 +2,6 @@ package tagexpr
 
 import (
 	"fmt"
-	"strings"
-	"unicode"
 )
 
 // Interpreter expression VM
@@ -33,20 +31,20 @@ func (i *Interpreter) Run() interface{} {
 	return i.expr.Calculate()
 }
 
-func (*Interpreter) parseOperand(expr *string) (e Expr) {
-	e = readStringExpr(expr)
-	if e != nil {
+func (i *Interpreter) parseOperand(expr *string) (e Expr) {
+	if e = i.readLenFnExpr(expr); e != nil {
 		return e
 	}
-	e = readDigitalExpr(expr)
-	if e != nil {
+	if e = readStringExpr(expr); e != nil {
 		return e
 	}
-	e = readBoolExpr(expr)
-	if e != nil {
+	if e = readDigitalExpr(expr); e != nil {
 		return e
 	}
-	return e
+	if e = readBoolExpr(expr); e != nil {
+		return e
+	}
+	return nil
 }
 
 func (*Interpreter) parseOperator(expr *string) (e Expr) {
@@ -106,6 +104,9 @@ func (*Interpreter) parseOperator(expr *string) (e Expr) {
 
 func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 	trimLeftSpace(expr)
+	if *expr == "" {
+		return nil, nil
+	}
 	operand, subExpr := readGroupExpr(expr)
 	if operand != nil {
 		_, err := i.parseExpr(subExpr, operand)
@@ -141,6 +142,11 @@ func (i *Interpreter) parseExpr(expr *string, e Expr) (Expr, error) {
 		e.SetParent(operator)
 	}
 	return i.parseExpr(expr, operator)
+}
+
+func (i *Interpreter) checkSyntax() error {
+
+	return nil
 }
 
 /**
@@ -205,14 +211,4 @@ func leftOperandToParent(e Expr) {
 	}
 	le.SetParent(p)
 	e.SetParent(le)
-}
-
-func (i *Interpreter) checkSyntax() error {
-
-	return nil
-}
-
-func trimLeftSpace(p *string) *string {
-	*p = strings.TrimLeftFunc(*p, unicode.IsSpace)
-	return p
 }
