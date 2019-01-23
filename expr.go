@@ -6,27 +6,14 @@ import (
 
 // Expr expression
 type Expr struct {
-	expr      ExprNode
-	varGetter func(string) interface{}
-}
-
-// ExprNode expression interface
-type ExprNode interface {
-	SetParent(ExprNode)
-	Parent() ExprNode
-	LeftOperand() ExprNode
-	RightOperand() ExprNode
-	SetLeftOperand(ExprNode)
-	SetRightOperand(ExprNode)
-	Run() interface{}
+	expr ExprNode
 }
 
 // parseExpr parses the expression.
-func parseExpr(expr string, varGetter func(string) interface{}) (*Expr, error) {
+func parseExpr(expr string) (*Expr, error) {
 	e := newGroupExprNode()
 	p := &Expr{
-		expr:      e,
-		varGetter: varGetter,
+		expr: e,
 	}
 	s := expr
 	_, err := p.parseExprNode(&s, e)
@@ -41,9 +28,9 @@ func parseExpr(expr string, varGetter func(string) interface{}) (*Expr, error) {
 	return p, nil
 }
 
-// Run calculates the value of expression.
-func (p *Expr) Run() interface{} {
-	return p.expr.Run()
+// run calculates the value of expression.
+func (p *Expr) run(field *Field) interface{} {
+	return p.expr.Run(field)
 }
 
 func (p *Expr) parseOperand(expr *string) (e ExprNode) {
@@ -234,6 +221,19 @@ func leftOperandToParent(e ExprNode) {
 	e.SetParent(le)
 }
 
+// ExprNode expression interface
+type ExprNode interface {
+	SetParent(ExprNode)
+	Parent() ExprNode
+	LeftOperand() ExprNode
+	RightOperand() ExprNode
+	SetLeftOperand(ExprNode)
+	SetRightOperand(ExprNode)
+	Run(*Field) interface{}
+}
+
+var _ ExprNode = new(exprBackground)
+
 type exprBackground struct {
 	parent       ExprNode
 	leftOperand  ExprNode
@@ -264,4 +264,4 @@ func (eb *exprBackground) SetRightOperand(right ExprNode) {
 	eb.rightOperand = right
 }
 
-func (*exprBackground) Run() interface{} { return nil }
+func (*exprBackground) Run(*Field) interface{} { return nil }

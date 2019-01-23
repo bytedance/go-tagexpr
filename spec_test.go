@@ -1,6 +1,9 @@
 package tagexpr
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestReadPairedSymbol(t *testing.T) {
 	var cases = []struct {
@@ -39,7 +42,7 @@ func TestReadBoolExprNode(t *testing.T) {
 		t.Log(c.expr)
 		expr := c.expr
 		e := readBoolExprNode(&expr)
-		got := e.Run().(bool)
+		got := e.Run(nil).(bool)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %v, %s, want: %v, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
@@ -64,13 +67,56 @@ func TestReadDigitalExprNode(t *testing.T) {
 		e := readDigitalExprNode(&expr)
 		if c.expr == "1a" {
 			if e != nil {
-				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Run(), nil)
+				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Run(nil), nil)
 			}
 			continue
 		}
-		got := e.Run().(float64)
+		got := e.Run(nil).(float64)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %f, %s, want: %f, %s", c.expr, got, expr, c.val, c.lastExprNode)
+		}
+	}
+}
+
+func TestFindSelector(t *testing.T) {
+	var cases = []struct {
+		expr        string
+		field       string
+		name        string
+		subSelector []string
+		found       bool
+		last        string
+	}{
+		{expr: "$", field: "", name: "$", subSelector: nil, found: true, last: ""},
+		{expr: "()$", field: "", name: "", subSelector: nil, found: false, last: "()$"},
+		{expr: "(0)$", field: "", name: "", subSelector: nil, found: false, last: "(0)$"},
+		{expr: "(A0)$", field: "A0", name: "$", subSelector: nil, found: true, last: ""},
+		{expr: "(A0)$(A1)$", field: "", name: "", subSelector: nil, found: false, last: "(A0)$(A1)$"},
+		{expr: "(A0)$ $(A1)$", field: "A0", name: "$", subSelector: nil, found: true, last: " $(A1)$"},
+		{expr: "$a", field: "", name: "", subSelector: nil, found: false, last: "$a"},
+		{expr: "$[1]['a']", field: "", name: "$", subSelector: []string{"1", "'a'"}, found: true, last: ""},
+		{expr: "$[1][]", field: "", name: "", subSelector: nil, found: false, last: "$[1][]"},
+		{expr: "$[[]]", field: "", name: "", subSelector: nil, found: false, last: "$[[]]"},
+		{expr: "$[[[]]]", field: "", name: "", subSelector: nil, found: false, last: "$[[[]]]"},
+		{expr: "$[(A)$[1]]", field: "", name: "$", subSelector: []string{"(A)$[1]"}, found: true, last: ""},
+	}
+	for _, c := range cases {
+		last := c.expr
+		field, name, subSelector, found := findSelector(&last)
+		if found != c.found {
+			t.Fatalf("%q found: got: %v, want: %v", c.expr, found, c.found)
+		}
+		if field != c.field {
+			t.Fatalf("%q field: got: %q, want: %q", c.expr, field, c.field)
+		}
+		if name != c.name {
+			t.Fatalf("%q name: got: %q, want: %q", c.expr, name, c.name)
+		}
+		if !reflect.DeepEqual(subSelector, c.subSelector) {
+			t.Fatalf("%q subSelector: got: %v, want: %v", c.expr, subSelector, c.subSelector)
+		}
+		if last != c.last {
+			t.Fatalf("%q last: got: %q, want: %q", c.expr, last, c.last)
 		}
 	}
 }

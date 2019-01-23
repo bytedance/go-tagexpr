@@ -34,11 +34,11 @@ func readGroupExprNode(expr *string) (grp ExprNode, subExprNode *string) {
 	return e, sptr
 }
 
-func (ge *groupExprNode) Run() interface{} {
+func (ge *groupExprNode) Run(field *Field) interface{} {
 	if ge.rightOperand == nil {
 		return nil
 	}
-	v := ge.rightOperand.Run()
+	v := ge.rightOperand.Run(field)
 	if r, ok := v.(bool); ok {
 		return ge.boolPrefix == r
 	}
@@ -79,7 +79,7 @@ func readBoolExprNode(expr *string) ExprNode {
 	return e
 }
 
-func (be *boolExprNode) Run() interface{} { return be.val }
+func (be *boolExprNode) Run(field *Field) interface{} { return be.val }
 
 type stringExprNode struct {
 	exprBackground
@@ -95,7 +95,7 @@ func readStringExprNode(expr *string) ExprNode {
 	return e
 }
 
-func (se *stringExprNode) Run() interface{} { return se.val }
+func (se *stringExprNode) Run(field *Field) interface{} { return se.val }
 
 type digitalExprNode struct {
 	exprBackground
@@ -119,7 +119,7 @@ func readDigitalExprNode(expr *string) ExprNode {
 	return e
 }
 
-func (de *digitalExprNode) Run() interface{} { return de.val }
+func (de *digitalExprNode) Run(field *Field) interface{} { return de.val }
 
 func trimLeftSpace(p *string) *string {
 	*p = strings.TrimLeftFunc(*p, unicode.IsSpace)
