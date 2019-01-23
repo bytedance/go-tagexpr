@@ -59,7 +59,6 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`$`|Shorthand for `(X)$`, omit `(X)` to indicate current struct field value|
 |`(X)$['A']`|Map or struct field value with name A in the struct field X|
 |`(X)$[0]`|The 0th element of the struct field X(type: map, slice, array)|
-|`(X)$$`|Traverse each element of the struct field X(type: map, slice, array)|
 |`(X)$k`|Traverse each element key of the struct field X(type: map, slice, array)|
 |`(X)$v`|Traverse each element value of the struct field X(type: map, slice, array)|
 |`len((X)$)`|Built-in function `len`, the length of struct field X|
