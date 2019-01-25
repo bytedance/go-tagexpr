@@ -155,12 +155,11 @@ func (s *Struct) newField(structField reflect.StructField) (*Field, error) {
 }
 
 func (f *Field) newFrom(ptr uintptr, ptrDeep int) reflect.Value {
-	fieldPtr := unsafe.Pointer(ptr + f.Offset)
-	v := reflect.NewAt(f.Type, fieldPtr)
+	v := reflect.NewAt(f.Type, unsafe.Pointer(ptr+f.Offset)).Elem()
 	for i := 0; i < ptrDeep; i++ {
 		v = v.Elem()
 	}
-	return v.Elem()
+	return v
 }
 
 func (f *Field) setFloatGetter(ptrDeep int) {
