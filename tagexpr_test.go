@@ -14,9 +14,9 @@ func TestVMFunc(t *testing.T) {
 		{
 			tagName: "tagexpr",
 			structure: &struct {
-				A int    `tagexpr:"$>0&&$<10"`
-				b string `tagexpr:"{is:$=='test'}{msg:sprintf('want: test, but got: %s',$)}"`
-				c int64  `tagexpr:"(A)$+$"`
+				A int     `tagexpr:"$>0&&$<10"`
+				b string  `tagexpr:"{is:$=='test'}{msg:sprintf('want: test, but got: %s',$)}"`
+				c float32 `tagexpr:"(A)$+$"`
 			}{
 				A: 5.0,
 				b: "x",
@@ -43,5 +43,13 @@ func TestVMFunc(t *testing.T) {
 				t.Fatalf("NO: %d, selector: %q, got: %v, want: %v", i, selector, val, value)
 			}
 		}
+		tagExpr.Range(func(selector string, eval func() interface{}) {
+			t.Logf("selector: %s", selector)
+			value := c.tests[selector]
+			val := eval()
+			if !reflect.DeepEqual(val, value) {
+				t.Fatalf("NO: %d, selector: %q, got: %v, want: %v", i, selector, val, value)
+			}
+		})
 	}
 }

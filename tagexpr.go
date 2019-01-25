@@ -253,22 +253,28 @@ type TagExpr struct {
 // Eval evaluate the value of the struct tag expression by the selector expression.
 // format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
 func (t *TagExpr) Eval(selector string) interface{} {
-	a := strings.Split(selector, ".")
-	switch len(a) {
-	default:
+	expr, ok := t.s.exprs[selector]
+	if !ok {
 		return nil
-	case 1, 2:
-		expr, ok := t.s.exprs[selector]
-		if !ok {
-			return nil
-		}
-		return expr.run(a[0], t)
 	}
+	return expr.run(getFieldSelector(selector), t)
+}
+
+func getFieldSelector(selector string) string {
+	idx := strings.LastIndex(selector, ".")
+	if idx == -1 {
+		return selector
+	}
+	return selector[:idx]
 }
 
 // Range loop through each tag expression
-func (t *TagExpr) Range(func(selector string, eval func() interface{})) {
-	// TODO
+func (t *TagExpr) Range(fn func(selector string, eval func() interface{})) {
+	for selector, expr := range t.s.exprs {
+		fn(selector, func() interface{} {
+			return expr.run(getFieldSelector(selector), t)
+		})
+	}
 }
 
 func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}) {
