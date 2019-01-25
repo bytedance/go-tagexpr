@@ -33,34 +33,31 @@ func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
 	return operand
 }
 
-var selectorRegexp = regexp.MustCompile(`^(\([ \t]*[a-zA-Z_]{1}\w*[ \t]*\))?(\$[kv]?)(\[[ \t]*\S+[ \t]*\])*([\+\-\*\/%><\|&!=\^ \t\\]|$)`)
+var selectorRegexp = regexp.MustCompile(`^(\([ \t]*[A-Za-z_]+[A-Za-z0-9_\.]*[ \t]*\))?(\$)([\[\+\-\*\/%><\|&!=\^ \t\\]|$)`)
 
 func findSelector(expr *string) (field string, name string, subSelector []string, found bool) {
-	a := selectorRegexp.FindAllStringSubmatch(*expr, -1)
+	raw := *expr
+	a := selectorRegexp.FindAllStringSubmatch(raw, -1)
 	if len(a) != 1 {
 		return
 	}
-	length := len(a[0][0])
 	r := a[0]
 	if s0 := r[1]; len(s0) > 0 {
 		field = strings.TrimSpace(s0[1 : len(s0)-1])
 	}
 	name = r[2]
-	s := r[3]
+	*expr = (*expr)[len(a[0][0])-len(r[3]):]
 	for {
-		sub := readPairedSymbol(&s, '[', ']')
+		sub := readPairedSymbol(expr, '[', ']')
 		if sub == nil {
 			break
 		}
 		if *sub == "" || (*sub)[0] == '[' {
+			*expr = raw
 			return "", "", nil, false
 		}
 		subSelector = append(subSelector, strings.TrimSpace(*sub))
 	}
-	if len(r[4]) == 1 {
-		length--
-	}
-	*expr = (*expr)[length:]
 	found = true
 	return
 }

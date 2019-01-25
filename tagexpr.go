@@ -306,6 +306,11 @@ type TagExpr struct {
 // Eval evaluate the value of the struct tag expression by the selector expression.
 // format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
 func (t *TagExpr) Eval(selector string) interface{} {
+	defer func() {
+		if recover() != nil {
+			// fmt.Println(goutil.BytesToString(goutil.PanicTrace(1)))
+		}
+	}()
 	expr, ok := t.s.exprs[selector]
 	if !ok {
 		return nil
@@ -315,6 +320,11 @@ func (t *TagExpr) Eval(selector string) interface{} {
 
 // Range loop through each tag expression
 func (t *TagExpr) Range(fn func(selector string, eval func() interface{})) {
+	defer func() {
+		if recover() != nil {
+			// fmt.Println(goutil.BytesToString(goutil.PanicTrace(1)))
+		}
+	}()
 	for selector, expr := range t.s.exprs {
 		fn(selector, func() interface{} {
 			return expr.run(getFieldSelector(selector), t)
@@ -327,12 +337,61 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 	if !ok {
 		return nil
 	}
-	_ = subFields // TODO
 	if f.valueGetter == nil {
 		return nil
 	}
-	return f.valueGetter(t.ptr)
+	v = f.valueGetter(t.ptr)
+	if len(subFields) == 0 {
+		return v
+	}
+	vv := reflect.ValueOf(v)
+	fmt.Println("=======", subFields, vv.Kind(), vv.Interface())
+	// if len(subFields) == 0 {
+	// 	return v
+	// }
+	for _, k := range subFields {
+		for vv.Kind() == reflect.Ptr {
+			vv = vv.Elem()
+		}
+		switch vv.Kind() {
+		case reflect.Slice, reflect.Array, reflect.String:
+			if float, ok := k.(float64); ok {
+				idx := int(float)
+				if idx >= vv.Len() {
+					return nil
+				}
+				vv = vv.Index(idx)
+			} else {
+				return nil
+			}
+		case reflect.Map:
+			vv = vv.MapIndex(reflect.ValueOf(k).Convert(vv.Type().Key()))
+		default:
+			return nil
+		}
+	}
+	for vv.Kind() == reflect.Ptr {
+		vv = vv.Elem()
+	}
+	switch vv.Kind() {
+	default:
+		if vv.CanInterface() {
+			return vv.Interface()
+		}
+		return nil
+	case reflect.String:
+		return vv.String()
+	case reflect.Bool:
+		return vv.Bool()
+	case reflect.Float32, reflect.Float64:
+		return vv.Float()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return vv.Convert(float64Type).Float()
+	}
 }
+
+var float64Type = reflect.TypeOf(float64(0))
 
 func getFieldSelector(selector string) string {
 	idx := strings.LastIndex(selector, ".")
