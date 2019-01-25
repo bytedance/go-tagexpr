@@ -1,6 +1,7 @@
 package tagexpr
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -79,34 +80,45 @@ func TestReadDigitalExprNode(t *testing.T) {
 }
 
 func TestFindSelector(t *testing.T) {
+	var falsePtr = new(bool)
+	var truePtr = new(bool)
+	*truePtr = true
 	var cases = []struct {
 		expr        string
 		field       string
 		name        string
 		subSelector []string
+		boolPrefix  *bool
 		found       bool
 		last        string
 	}{
 		{expr: "$", field: "", name: "$", subSelector: nil, found: true, last: ""},
-		{expr: "()$", field: "", name: "", subSelector: nil, found: false, last: "()$"},
-		{expr: "(0)$", field: "", name: "", subSelector: nil, found: false, last: "(0)$"},
+		{expr: "!!$", field: "", name: "$", subSelector: nil, boolPrefix: truePtr, found: true, last: ""},
+		{expr: "!$", field: "", name: "$", subSelector: nil, boolPrefix: falsePtr, found: true, last: ""},
+		{expr: "()$", field: "", name: "", subSelector: nil, last: "()$"},
+		{expr: "(0)$", field: "", name: "", subSelector: nil, last: "(0)$"},
 		{expr: "(A)$", field: "A", name: "$", subSelector: nil, found: true, last: ""},
+		{expr: "!(A)$", field: "A", name: "$", subSelector: nil, boolPrefix: falsePtr, found: true, last: ""},
 		{expr: "(A0)$", field: "A0", name: "$", subSelector: nil, found: true, last: ""},
-		{expr: "(A0)$(A1)$", field: "", name: "", subSelector: nil, found: false, last: "(A0)$(A1)$"},
+		{expr: "!!(A0)$", field: "A0", name: "$", subSelector: nil, boolPrefix: truePtr, found: true, last: ""},
+		{expr: "(A0)$(A1)$", field: "", name: "", subSelector: nil, last: "(A0)$(A1)$"},
 		{expr: "(A0)$ $(A1)$", field: "A0", name: "$", subSelector: nil, found: true, last: " $(A1)$"},
-		{expr: "$a", field: "", name: "", subSelector: nil, found: false, last: "$a"},
+		{expr: "$a", field: "", name: "", subSelector: nil, last: "$a"},
 		{expr: "$[1]['a']", field: "", name: "$", subSelector: []string{"1", "'a'"}, found: true, last: ""},
-		{expr: "$[1][]", field: "", name: "", subSelector: nil, found: false, last: "$[1][]"},
-		{expr: "$[[]]", field: "", name: "", subSelector: nil, found: false, last: "$[[]]"},
-		{expr: "$[[[]]]", field: "", name: "", subSelector: nil, found: false, last: "$[[[]]]"},
+		{expr: "$[1][]", field: "", name: "", subSelector: nil, last: "$[1][]"},
+		{expr: "$[[]]", field: "", name: "", subSelector: nil, last: "$[[]]"},
+		{expr: "$[[[]]]", field: "", name: "", subSelector: nil, last: "$[[[]]]"},
 		{expr: "$[(A)$[1]]", field: "", name: "$", subSelector: []string{"(A)$[1]"}, found: true, last: ""},
 		{expr: "$>0&&$<10", field: "", name: "$", subSelector: nil, found: true, last: ">0&&$<10"},
 	}
 	for _, c := range cases {
 		last := c.expr
-		field, name, subSelector, found := findSelector(&last)
+		field, name, subSelector, boolPrefix, found := findSelector(&last)
 		if found != c.found {
 			t.Fatalf("%q found: got: %v, want: %v", c.expr, found, c.found)
+		}
+		if printBoolPtr(boolPrefix) != printBoolPtr(c.boolPrefix) {
+			t.Fatalf("%q boolPrefix: got: %v, want: %v", c.expr, printBoolPtr(boolPrefix), printBoolPtr(c.boolPrefix))
 		}
 		if field != c.field {
 			t.Fatalf("%q field: got: %q, want: %q", c.expr, field, c.field)
@@ -121,4 +133,11 @@ func TestFindSelector(t *testing.T) {
 			t.Fatalf("%q last: got: %q, want: %q", c.expr, last, c.last)
 		}
 	}
+}
+func printBoolPtr(b *bool) string {
+	var v interface{} = b
+	if b != nil {
+		v = *b
+	}
+	return fmt.Sprint(v)
 }

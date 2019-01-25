@@ -1,9 +1,59 @@
 package tagexpr
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
+
+func ExampleVMFunc() {
+	type T struct {
+		A int            `tagexpr:"$<0||$>=100"`
+		B string         `tagexpr:"len($)>1 && regexp('^\\w*$')"`
+		C bool           `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
+		d []string       `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+		e map[string]int `tagexpr:"len($)==$['len']"`
+		f struct {
+			g int `tagexpr:"$"`
+		}
+	}
+	vm := New("tagexpr")
+	err := vm.WarmUp(new(T))
+	if err != nil {
+		panic(err)
+	}
+	t := &T{
+		A: 107,
+		B: "abc",
+		C: true,
+		d: []string{"x", "y"},
+		e: map[string]int{"len": 1},
+		f: struct {
+			g int `tagexpr:"$"`
+		}{1},
+	}
+	tagExpr, err := vm.Run(t)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tagExpr.Eval("A.$"))
+	fmt.Println(tagExpr.Eval("B.$"))
+	fmt.Println(tagExpr.Eval("C.expr1"))
+	fmt.Println(tagExpr.Eval("C.expr2"))
+	if !tagExpr.Eval("d.match").(bool) {
+		fmt.Println(tagExpr.Eval("d.msg"))
+	}
+	fmt.Println(tagExpr.Eval("e.$"))
+	fmt.Println(tagExpr.Eval("f.g.$"))
+	// Output:
+	// true
+	// true
+	// true
+	// C must be true when T.f.g>0
+	// Invalid d: [x y]
+	// true
+	// 1
+}
 
 func TestVMFunc(t *testing.T) {
 	g := &struct {
@@ -84,6 +134,8 @@ func TestVMFunc(t *testing.T) {
 					m map[string][]string
 				} `tagexpr:"$['h']"`
 				i string `tagexpr:"(g.s)$[0]+(g.m)$['0'][0]==$"`
+				j bool   `tagexpr:"!$"`
+				k int    `tagexpr:"!$"`
 			}{
 				A: 5.0,
 				b: "x",
@@ -106,6 +158,8 @@ func TestVMFunc(t *testing.T) {
 				"e.f.$": true,
 				"g.h.$": "haha",
 				"i.$":   true,
+				"j.$":   true,
+				"k.$":   nil,
 			},
 		},
 	}

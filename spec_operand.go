@@ -11,10 +11,10 @@ import (
 
 type groupExprNode struct {
 	exprBackground
-	boolPrefix bool
+	boolPrefix *bool
 }
 
-func newGroupExprNode() ExprNode { return &groupExprNode{boolPrefix: true} }
+func newGroupExprNode() ExprNode { return &groupExprNode{} }
 
 func readGroupExprNode(expr *string) (grp ExprNode, subExprNode *string) {
 	s := *expr
@@ -26,11 +26,13 @@ func readGroupExprNode(expr *string) (grp ExprNode, subExprNode *string) {
 		return nil, nil
 	}
 	e := &groupExprNode{}
-	var boolPrefix = true
-	for ; i > 0; i-- {
-		boolPrefix = !boolPrefix
+	if i > 0 {
+		var bol = true
+		for ; i > 0; i-- {
+			bol = !bol
+		}
+		e.boolPrefix = &bol
 	}
-	e.boolPrefix = boolPrefix
 	return e, sptr
 }
 
@@ -39,10 +41,13 @@ func (ge *groupExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 		return nil
 	}
 	v := ge.rightOperand.Run(currField, tagExpr)
-	if r, ok := v.(bool); ok {
-		return ge.boolPrefix == r
+	if ge.boolPrefix == nil {
+		return v
 	}
-	return v
+	if r, ok := v.(bool); ok {
+		return *ge.boolPrefix == r
+	}
+	return nil
 }
 
 type boolExprNode struct {

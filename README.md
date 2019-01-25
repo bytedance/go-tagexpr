@@ -10,13 +10,51 @@ In development
 
 ```go
 type T struct {
-	A int              `tagexpr:"$<0||$>=100"`
-	B string           `tagexpr:"len($)>1 || regexp('^\\w*$')"`
-	C bool             `tagexpr:"{expr1:(F.G)$>0 && $}{expr2:'C must be true when T.F.G>0'}"`
-	D []string         `tagexpr:"{expr1:len($)>0 && $[0]=='D'} {expr2:sprintf('Invalid D:%s',$)}"`
-	E map[string]int   `tagexpr:"len($)"`
-	F struct{ G int }
+	A int            `tagexpr:"$<0||$>=100"`
+	B string         `tagexpr:"len($)>1 && regexp('^\\w*$')"`
+	C bool           `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
+	d []string       `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+	e map[string]int `tagexpr:"len($)==$['len']"`
+	f struct {
+		g int `tagexpr:"$"`
+	}
 }
+vm := New("tagexpr")
+err := vm.WarmUp(new(T))
+if err != nil {
+	panic(err)
+}
+t := &T{
+	A: 107,
+	B: "abc",
+	C: true,
+	d: []string{"x", "y"},
+	e: map[string]int{"len": 1},
+	f: struct {
+		g int `tagexpr:"$"`
+	}{1},
+}
+tagExpr, err := vm.Run(t)
+if err != nil {
+	panic(err)
+}
+fmt.Println(tagExpr.Eval("A.$"))
+fmt.Println(tagExpr.Eval("B.$"))
+fmt.Println(tagExpr.Eval("C.expr1"))
+fmt.Println(tagExpr.Eval("C.expr2"))
+if !tagExpr.Eval("d.match").(bool) {
+	fmt.Println(tagExpr.Eval("d.msg"))
+}
+fmt.Println(tagExpr.Eval("e.$"))
+fmt.Println(tagExpr.Eval("f.g.$"))
+// Output:
+// true
+// true
+// true
+// C must be true when T.f.g>0
+// Invalid d: [x y]
+// true
+// 1
 ```
 
 ## Syntax

@@ -9,16 +9,18 @@ type selectorExprNode struct {
 	exprBackground
 	field, name string
 	subExprs    []ExprNode
+	boolPrefix  *bool
 }
 
 func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
-	field, name, subSelector, found := findSelector(expr)
+	field, name, subSelector, boolPrefix, found := findSelector(expr)
 	if !found {
 		return nil
 	}
 	operand := &selectorExprNode{
-		field: field,
-		name:  name,
+		field:      field,
+		name:       name,
+		boolPrefix: boolPrefix,
 	}
 	operand.subExprs = make([]ExprNode, 0, len(subSelector))
 	for _, s := range subSelector {
@@ -33,20 +35,20 @@ func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
 	return operand
 }
 
-var selectorRegexp = regexp.MustCompile(`^(\([ \t]*[A-Za-z_]+[A-Za-z0-9_\.]*[ \t]*\))?(\$)([\[\+\-\*\/%><\|&!=\^ \t\\]|$)`)
+var selectorRegexp = regexp.MustCompile(`^(\!*)(\([ \t]*[A-Za-z_]+[A-Za-z0-9_\.]*[ \t]*\))?(\$)([\[\+\-\*\/%><\|&!=\^ \t\\]|$)`)
 
-func findSelector(expr *string) (field string, name string, subSelector []string, found bool) {
+func findSelector(expr *string) (field string, name string, subSelector []string, boolPrefix *bool, found bool) {
 	raw := *expr
 	a := selectorRegexp.FindAllStringSubmatch(raw, -1)
 	if len(a) != 1 {
 		return
 	}
 	r := a[0]
-	if s0 := r[1]; len(s0) > 0 {
+	if s0 := r[2]; len(s0) > 0 {
 		field = strings.TrimSpace(s0[1 : len(s0)-1])
 	}
-	name = r[2]
-	*expr = (*expr)[len(a[0][0])-len(r[3]):]
+	name = r[3]
+	*expr = (*expr)[len(a[0][0])-len(r[4]):]
 	for {
 		sub := readPairedSymbol(expr, '[', ']')
 		if sub == nil {
@@ -54,9 +56,16 @@ func findSelector(expr *string) (field string, name string, subSelector []string
 		}
 		if *sub == "" || (*sub)[0] == '[' {
 			*expr = raw
-			return "", "", nil, false
+			return "", "", nil, nil, false
 		}
 		subSelector = append(subSelector, strings.TrimSpace(*sub))
+	}
+	if boolNum := len(r[1]); boolNum > 0 {
+		bol := true
+		for i := len(r[1]); i > 0; i-- {
+			bol = !bol
+		}
+		boolPrefix = &bol
 	}
 	found = true
 	return
@@ -67,8 +76,16 @@ func (ve *selectorExprNode) Run(currField string, tagExpr *TagExpr) interface{} 
 	for _, e := range ve.subExprs {
 		subFields = append(subFields, e.Run(currField, tagExpr))
 	}
-	if ve.field != "" {
-		return tagExpr.getValue(ve.field, subFields)
+	field := ve.field
+	if field == "" {
+		field = currField
 	}
-	return tagExpr.getValue(currField, subFields)
+	v := tagExpr.getValue(field, subFields)
+	if ve.boolPrefix == nil {
+		return v
+	}
+	if r, ok := v.(bool); ok {
+		return *ve.boolPrefix == r
+	}
+	return nil
 }

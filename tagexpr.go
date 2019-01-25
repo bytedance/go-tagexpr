@@ -345,10 +345,6 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 		return v
 	}
 	vv := reflect.ValueOf(v)
-	fmt.Println("=======", subFields, vv.Kind(), vv.Interface())
-	// if len(subFields) == 0 {
-	// 	return v
-	// }
 	for _, k := range subFields {
 		for vv.Kind() == reflect.Ptr {
 			vv = vv.Elem()
