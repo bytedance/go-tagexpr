@@ -103,32 +103,31 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*Struct, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch structField.Type.Kind() {
+		t := structField.Type
+		var ptrDeep int
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+			ptrDeep++
+		}
+		switch t.Kind() {
 		default:
 			field.valueGetter = func(ptr uintptr) interface{} { return nil }
-		case reflect.Ptr:
-			sub, err = vm.registerStructLocked(field.Type)
-			if err != nil {
-				field.valueGetter = func(ptr uintptr) interface{} { return nil }
-			} else {
-				s.copySubFields(field, sub)
-			}
 		case reflect.Struct:
 			sub, err = vm.registerStructLocked(field.Type)
 			if err != nil {
 				return nil, err
 			}
-			s.copySubFields(field, sub)
+			s.copySubFields(field, sub, ptrDeep)
 		case reflect.Float32, reflect.Float64:
-			field.setFloatGetter()
+			field.setFloatGetter(ptrDeep)
 		case reflect.String:
-			field.setStringGetter()
+			field.setStringGetter(ptrDeep)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			field.setIntGetter()
+			field.setIntGetter(ptrDeep)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			field.setUintGetter()
+			field.setUintGetter(ptrDeep)
 		case reflect.Bool:
-			field.setBoolGetter()
+			field.setBoolGetter(ptrDeep)
 		}
 	}
 	return s, nil
@@ -155,38 +154,42 @@ func (s *Struct) newField(structField reflect.StructField) (*Field, error) {
 	return f, nil
 }
 
-func (f *Field) newFrom(ptr uintptr) reflect.Value {
+func (f *Field) newFrom(ptr uintptr, ptrDeep int) reflect.Value {
 	fieldPtr := unsafe.Pointer(ptr + f.Offset)
-	return reflect.NewAt(f.Type, fieldPtr).Elem()
+	v := reflect.NewAt(f.Type, fieldPtr)
+	for i := 0; i < ptrDeep; i++ {
+		v = v.Elem()
+	}
+	return v.Elem()
 }
 
-func (f *Field) setFloatGetter() {
+func (f *Field) setFloatGetter(ptrDeep int) {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		return f.newFrom(ptr).Float()
+		return f.newFrom(ptr, ptrDeep).Float()
 	}
 }
 
-func (f *Field) setIntGetter() {
+func (f *Field) setIntGetter(ptrDeep int) {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		return float64(f.newFrom(ptr).Int())
+		return float64(f.newFrom(ptr, ptrDeep).Int())
 	}
 }
 
-func (f *Field) setUintGetter() {
+func (f *Field) setUintGetter(ptrDeep int) {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		return float64(f.newFrom(ptr).Uint())
+		return float64(f.newFrom(ptr, ptrDeep).Uint())
 	}
 }
 
-func (f *Field) setBoolGetter() {
+func (f *Field) setBoolGetter(ptrDeep int) {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		return f.newFrom(ptr).Bool()
+		return f.newFrom(ptr, ptrDeep).Bool()
 	}
 }
 
-func (f *Field) setStringGetter() {
+func (f *Field) setStringGetter(ptrDeep int) {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		return f.newFrom(ptr).String()
+		return f.newFrom(ptr, ptrDeep).String()
 	}
 }
 
@@ -238,12 +241,8 @@ func (f *Field) parseExprs(tag string) error {
 	}
 }
 
-func (s *Struct) copySubFields(field *Field, sub *Struct) {
+func (s *Struct) copySubFields(field *Field, sub *Struct, ptrDeep int) {
 	nameSpace := field.Name
-	var ptrDeep int
-	for t := field.Type; t.Kind() == reflect.Ptr; t = t.Elem() {
-		ptrDeep++
-	}
 	for k, v := range sub.fields {
 		valueGetter := v.valueGetter
 		f := &Field{

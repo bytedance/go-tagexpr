@@ -10,6 +10,8 @@ func TestVMFunc(t *testing.T) {
 		_ int
 		h bool `tagexpr:"$"`
 	}{h: true}
+	d := "ddd"
+
 	var cases = []struct {
 		tagName   string
 		structure interface{}
@@ -21,16 +23,19 @@ func TestVMFunc(t *testing.T) {
 				A int     `tagexpr:"$>0&&$<10"`
 				b string  `tagexpr:"{is:$=='test'}{msg:sprintf('want: test, but got: %s',$)}"`
 				c float32 `tagexpr:"(A)$+$"`
+				d *string `tagexpr:"$"`
 			}{
 				A: 5.0,
 				b: "x",
 				c: 1,
+				d: &d,
 			},
 			tests: map[string]interface{}{
 				"A.$":   true,
 				"b.is":  false,
 				"b.msg": "want: test, but got: x",
 				"c.$":   6.0,
+				"d.$":   d,
 			},
 		},
 		{
