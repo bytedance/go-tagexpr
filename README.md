@@ -2,10 +2,6 @@
 
 An interesting go struct tag expression syntax for field validation, etc.
 
-## Status
-
-In development
-
 ## Example
 
 ```go
