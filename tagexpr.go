@@ -28,7 +28,6 @@ type Struct struct {
 type Field struct {
 	reflect.StructField
 	host        *Struct
-	sub         *Struct // struct field
 	valueGetter func(uintptr) interface{}
 }
 
@@ -46,7 +45,8 @@ func (vm *VM) WarmUp(structOrStructPtr interface{}) error {
 	}
 	vm.rw.Lock()
 	defer vm.rw.Unlock()
-	return vm.registerStructLocked(reflect.TypeOf(structOrStructPtr))
+	_, err := vm.registerStructLocked(reflect.TypeOf(structOrStructPtr))
+	return err
 }
 
 func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
@@ -71,43 +71,54 @@ func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
 		vm.rw.Lock()
 		s, ok = vm.structJar[tname]
 		if !ok {
-			err = vm.registerStructLocked(t)
+			s, err = vm.registerStructLocked(t)
 			if err != nil {
 				vm.rw.Unlock()
 				return nil, err
 			}
-			s = vm.structJar[tname]
 		}
 		vm.rw.Unlock()
 	}
 	return s.newTagExpr(v.Pointer()), nil
 }
 
-func (vm *VM) registerStructLocked(structType reflect.Type) error {
+func (vm *VM) registerStructLocked(structType reflect.Type) (*Struct, error) {
 	structType, err := vm.getStructType(structType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	structTypeName := structType.String()
 	s, had := vm.structJar[structTypeName]
 	if had {
-		return nil
+		return s, nil
 	}
 	s = vm.newStruct()
 	vm.structJar[structTypeName] = s
 	var numField = structType.NumField()
 	var structField reflect.StructField
+	var sub *Struct
 	for i := 0; i < numField; i++ {
 		structField = structType.Field(i)
 		field, err := s.newField(structField)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		switch structField.Type.Kind() {
 		default:
 			field.valueGetter = func(ptr uintptr) interface{} { return nil }
+		case reflect.Ptr:
+			sub, err = vm.registerStructLocked(field.Type)
+			if err != nil {
+				field.valueGetter = func(ptr uintptr) interface{} { return nil }
+			} else {
+				s.copySubFields(field, sub)
+			}
 		case reflect.Struct:
-			vm.registerStructLocked(field.Type)
+			sub, err = vm.registerStructLocked(field.Type)
+			if err != nil {
+				return nil, err
+			}
+			s.copySubFields(field, sub)
 		case reflect.Float32, reflect.Float64:
 			field.setFloatGetter()
 		case reflect.String:
@@ -116,9 +127,32 @@ func (vm *VM) registerStructLocked(structType reflect.Type) error {
 			field.setIntGetter()
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			field.setUintGetter()
+		case reflect.Bool:
+			field.setBoolGetter()
 		}
 	}
-	return nil
+	return s, nil
+}
+
+func (vm *VM) newStruct() *Struct {
+	return &Struct{
+		vm:     vm,
+		fields: make(map[string]*Field, 10),
+		exprs:  make(map[string]*Expr, 40),
+	}
+}
+
+func (s *Struct) newField(structField reflect.StructField) (*Field, error) {
+	f := &Field{
+		StructField: structField,
+		host:        s,
+	}
+	err := f.parseExprs(structField.Tag.Get(s.vm.tagName))
+	if err != nil {
+		return nil, err
+	}
+	s.fields[f.Name] = f
+	return f, nil
 }
 
 func (f *Field) newFrom(ptr uintptr) reflect.Value {
@@ -156,27 +190,6 @@ func (f *Field) setStringGetter() {
 	}
 }
 
-func (vm *VM) newStruct() *Struct {
-	return &Struct{
-		vm:     vm,
-		fields: make(map[string]*Field, 10),
-		exprs:  make(map[string]*Expr, 40),
-	}
-}
-
-func (s *Struct) newField(structField reflect.StructField) (*Field, error) {
-	f := &Field{
-		StructField: structField,
-		host:        s,
-	}
-	err := f.parseExprs(structField.Tag.Get(s.vm.tagName))
-	if err != nil {
-		return nil, err
-	}
-	s.fields[f.Name] = f
-	return f, nil
-}
-
 func (f *Field) parseExprs(tag string) error {
 	raw := tag
 	tag = strings.TrimSpace(tag)
@@ -188,7 +201,7 @@ func (f *Field) parseExprs(tag string) error {
 		if err != nil {
 			return err
 		}
-		f.host.exprs[f.Name] = expr
+		f.host.exprs[f.Name+".$"] = expr
 		return nil
 	}
 	var subtag *string
@@ -222,6 +235,40 @@ func (f *Field) parseExprs(tag string) error {
 			}
 		}
 		return fmt.Errorf("syntax incorrect: %q", raw)
+	}
+}
+
+func (s *Struct) copySubFields(field *Field, sub *Struct) {
+	nameSpace := field.Name
+	var ptrDeep int
+	for t := field.Type; t.Kind() == reflect.Ptr; t = t.Elem() {
+		ptrDeep++
+	}
+	for k, v := range sub.fields {
+		valueGetter := v.valueGetter
+		f := &Field{
+			StructField: v.StructField,
+			host:        v.host,
+		}
+		if valueGetter != nil {
+			if ptrDeep == 0 {
+				f.valueGetter = func(ptr uintptr) interface{} {
+					return valueGetter(ptr + field.Offset)
+				}
+			} else {
+				f.valueGetter = func(ptr uintptr) interface{} {
+					newField := reflect.NewAt(field.Type, unsafe.Pointer(ptr+field.Offset))
+					for i := 0; i < ptrDeep; i++ {
+						newField = newField.Elem()
+					}
+					return valueGetter(uintptr(newField.Pointer()))
+				}
+			}
+		}
+		s.fields[nameSpace+"."+k] = f
+	}
+	for k, v := range sub.exprs {
+		s.exprs[nameSpace+"."+k] = v
 	}
 }
 
@@ -260,14 +307,6 @@ func (t *TagExpr) Eval(selector string) interface{} {
 	return expr.run(getFieldSelector(selector), t)
 }
 
-func getFieldSelector(selector string) string {
-	idx := strings.LastIndex(selector, ".")
-	if idx == -1 {
-		return selector
-	}
-	return selector[:idx]
-}
-
 // Range loop through each tag expression
 func (t *TagExpr) Range(fn func(selector string, eval func() interface{})) {
 	for selector, expr := range t.s.exprs {
@@ -283,5 +322,16 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 		return nil
 	}
 	_ = subFields // TODO
+	if f.valueGetter == nil {
+		return nil
+	}
 	return f.valueGetter(t.ptr)
+}
+
+func getFieldSelector(selector string) string {
+	idx := strings.LastIndex(selector, ".")
+	if idx == -1 {
+		return selector
+	}
+	return selector[:idx]
 }
