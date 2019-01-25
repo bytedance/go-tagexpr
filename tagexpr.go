@@ -128,6 +128,8 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*Struct, error) {
 			field.setUintGetter(ptrDeep)
 		case reflect.Bool:
 			field.setBoolGetter(ptrDeep)
+		case reflect.Map, reflect.Array, reflect.Slice:
+			field.setLengthGetter(ptrDeep)
 		}
 	}
 	return s, nil
@@ -189,6 +191,12 @@ func (f *Field) setBoolGetter(ptrDeep int) {
 func (f *Field) setStringGetter(ptrDeep int) {
 	f.valueGetter = func(ptr uintptr) interface{} {
 		return f.newFrom(ptr, ptrDeep).String()
+	}
+}
+
+func (f *Field) setLengthGetter(ptrDeep int) {
+	f.valueGetter = func(ptr uintptr) interface{} {
+		return f.newFrom(ptr, ptrDeep).Interface()
 	}
 }
 

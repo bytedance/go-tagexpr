@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // --------------------------- Built-in function ---------------------------
@@ -17,6 +18,10 @@ func (p *Expr) readLenFnExprNode(expr *string) ExprNode {
 	}
 	*expr = (*expr)[3:]
 	lastStr := *expr
+	s := strings.TrimLeftFunc((*expr)[1:], unicode.IsSpace)
+	if strings.HasPrefix(s, ")") {
+		*expr = "($" + s
+	}
 	operand, subExprNode := readGroupExprNode(expr)
 	if operand == nil {
 		return nil
@@ -78,6 +83,9 @@ func (p *Expr) readRegexpFnExprNode(expr *string) ExprNode {
 			*expr = lastStr
 			return nil
 		}
+	} else {
+		var currFieldVal = "$"
+		p.parseExprNode(&currFieldVal, operand)
 	}
 	trimLeftSpace(subExprNode)
 	if *subExprNode != "" {

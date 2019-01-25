@@ -26,12 +26,16 @@ func TestVMFunc(t *testing.T) {
 				c float32 `tagexpr:"(A)$+$"`
 				d *string `tagexpr:"$"`
 				e **int   `tagexpr:"$"`
+				f *[3]int `tagexpr:"{x:len($)}{y:len()}"`
+				g string  `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
 			}{
 				A: 5.0,
 				b: "x",
 				c: 1,
 				d: &d,
 				e: &e,
+				f: new([3]int),
+				g: "g123",
 			},
 			tests: map[string]interface{}{
 				"A.$":   true,
@@ -40,6 +44,10 @@ func TestVMFunc(t *testing.T) {
 				"c.$":   6.0,
 				"d.$":   d,
 				"e.$":   float64(*e),
+				"f.x":   float64(3),
+				"f.y":   float64(3),
+				"g.x":   true,
+				"g.y":   true,
 			},
 		},
 		{
