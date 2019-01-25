@@ -42,7 +42,7 @@ func TestReadBoolExprNode(t *testing.T) {
 		t.Log(c.expr)
 		expr := c.expr
 		e := readBoolExprNode(&expr)
-		got := e.Run(nil).(bool)
+		got := e.Run("", nil).(bool)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %v, %s, want: %v, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
@@ -67,11 +67,11 @@ func TestReadDigitalExprNode(t *testing.T) {
 		e := readDigitalExprNode(&expr)
 		if c.expr == "1a" {
 			if e != nil {
-				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Run(nil), nil)
+				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Run("", nil), nil)
 			}
 			continue
 		}
-		got := e.Run(nil).(float64)
+		got := e.Run("", nil).(float64)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %f, %s, want: %f, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
@@ -90,6 +90,7 @@ func TestFindSelector(t *testing.T) {
 		{expr: "$", field: "", name: "$", subSelector: nil, found: true, last: ""},
 		{expr: "()$", field: "", name: "", subSelector: nil, found: false, last: "()$"},
 		{expr: "(0)$", field: "", name: "", subSelector: nil, found: false, last: "(0)$"},
+		{expr: "(A)$", field: "A", name: "$", subSelector: nil, found: true, last: ""},
 		{expr: "(A0)$", field: "A0", name: "$", subSelector: nil, found: true, last: ""},
 		{expr: "(A0)$(A1)$", field: "", name: "", subSelector: nil, found: false, last: "(A0)$(A1)$"},
 		{expr: "(A0)$ $(A1)$", field: "A0", name: "$", subSelector: nil, found: true, last: " $(A1)$"},
@@ -99,6 +100,7 @@ func TestFindSelector(t *testing.T) {
 		{expr: "$[[]]", field: "", name: "", subSelector: nil, found: false, last: "$[[]]"},
 		{expr: "$[[[]]]", field: "", name: "", subSelector: nil, found: false, last: "$[[[]]]"},
 		{expr: "$[(A)$[1]]", field: "", name: "$", subSelector: []string{"(A)$[1]"}, found: true, last: ""},
+		{expr: "$>0&&$<10", field: "", name: "$", subSelector: nil, found: true, last: ">0&&$<10"},
 	}
 	for _, c := range cases {
 		last := c.expr

@@ -29,8 +29,8 @@ func parseExpr(expr string) (*Expr, error) {
 }
 
 // run calculates the value of expression.
-func (p *Expr) run(field *Field) interface{} {
-	return p.expr.Run(field)
+func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
+	return p.expr.Run(field, tagExpr)
 }
 
 func (p *Expr) parseOperand(expr *string) (e ExprNode) {
@@ -115,16 +115,19 @@ func (p *Expr) parseExprNode(expr *string, e ExprNode) (ExprNode, error) {
 	if *expr == "" {
 		return nil, nil
 	}
-	operand, subExprNode := readGroupExprNode(expr)
-	if operand != nil {
-		_, err := p.parseExprNode(subExprNode, operand)
-		if err != nil {
-			return nil, err
+	operand := p.readSelectorExprNode(expr)
+	if operand == nil {
+		var subExprNode *string
+		operand, subExprNode = readGroupExprNode(expr)
+		if operand != nil {
+			_, err := p.parseExprNode(subExprNode, operand)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			operand = p.parseOperand(expr)
 		}
-	} else {
-		operand = p.parseOperand(expr)
 	}
-
 	if operand == nil {
 		return nil, fmt.Errorf("parsing pos: %q", *expr)
 	}
@@ -229,7 +232,7 @@ type ExprNode interface {
 	RightOperand() ExprNode
 	SetLeftOperand(ExprNode)
 	SetRightOperand(ExprNode)
-	Run(*Field) interface{}
+	Run(string, *TagExpr) interface{}
 }
 
 var _ ExprNode = new(exprBackground)
@@ -264,4 +267,4 @@ func (eb *exprBackground) SetRightOperand(right ExprNode) {
 	eb.rightOperand = right
 }
 
-func (*exprBackground) Run(*Field) interface{} { return nil }
+func (*exprBackground) Run(string, *TagExpr) interface{} { return nil }

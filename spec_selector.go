@@ -1,7 +1,6 @@
 package tagexpr
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 )
@@ -31,14 +30,13 @@ func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
 		sortPriority(grp.RightOperand())
 		operand.subExprs = append(operand.subExprs, grp)
 	}
-	return nil
+	return operand
 }
 
 var selectorRegexp = regexp.MustCompile(`^(\([ \t]*[a-zA-Z_]{1}\w*[ \t]*\))?(\$[kv]?)(\[[ \t]*\S+[ \t]*\])*([\+\-\*\/%><\|&!=\^ \t\\]|$)`)
 
 func findSelector(expr *string) (field string, name string, subSelector []string, found bool) {
 	a := selectorRegexp.FindAllStringSubmatch(*expr, -1)
-	// fmt.Printf("%#v\n", a)
 	if len(a) != 1 {
 		return
 	}
@@ -67,10 +65,13 @@ func findSelector(expr *string) (field string, name string, subSelector []string
 	return
 }
 
-func (ve *selectorExprNode) Run(field *Field) interface{} {
-	fmt.Printf("field:%s, name:%s\n", ve.field, ve.name)
+func (ve *selectorExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+	subFields := make([]interface{}, 0, len(ve.subExprs))
 	for _, e := range ve.subExprs {
-		fmt.Printf("subExpr:%v\n", e.Run(field))
+		subFields = append(subFields, e.Run(currField, tagExpr))
 	}
-	return nil
+	if ve.field != "" {
+		return tagExpr.getValue(ve.field, subFields)
+	}
+	return tagExpr.getValue(currField, subFields)
 }

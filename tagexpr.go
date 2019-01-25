@@ -4,17 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
+	"unsafe"
 )
-
-// TagExpr struct tag expression evaluator
-type TagExpr interface {
-	// Eval evaluate the value of the struct tag expression by the selector expression.
-	// format: fieldName.exprName, fieldName1.fieldName2.exprName1
-	Eval(selector string) interface{}
-	// Range loop through each tag expression
-	Range(func(selector string, eval func() interface{}))
-}
 
 // VM struct tag expression interpreter
 type VM struct {
@@ -25,17 +18,18 @@ type VM struct {
 
 // Struct tag expression set of struct
 type Struct struct {
-	name    string
-	fields  map[string]*Field
-	exprSet Set
+	vm     *VM
+	name   string
+	fields map[string]*Field
+	exprs  map[string]*Expr
 }
 
 // Field tag expression set of struct field
 type Field struct {
-	name   string
-	host   *Struct
-	sub    *Struct // struct field
-	offset uintptr
+	reflect.StructField
+	host        *Struct
+	sub         *Struct // struct field
+	valueGetter func(uintptr) interface{}
 }
 
 // New creates a tag expression interpreter that uses @tagName as the tag name.
@@ -50,66 +44,185 @@ func (vm *VM) WarmUp(structOrStructPtr interface{}) error {
 	if structOrStructPtr == nil {
 		return errors.New("cannot warn up nil interface")
 	}
-	t, err := vm.getStructType(reflect.TypeOf(structOrStructPtr))
-	if err == nil {
-		vm.rw.Lock()
-		defer vm.rw.Unlock()
-		_, err = vm.warmUpLocked(t)
-	}
-	return err
+	vm.rw.Lock()
+	defer vm.rw.Unlock()
+	return vm.registerStructLocked(reflect.TypeOf(structOrStructPtr))
 }
 
-func (vm *VM) warmUpLocked(structType reflect.Type) (*Struct, error) {
-	err := vm.registerStruct(structType)
-	if err != nil {
-		return nil, err
-	}
-	return vm.structJar[structType.String()], nil
-}
-
-func (vm *VM) Run(structOrStructPtr interface{}) (TagExpr, error) {
-	if structOrStructPtr == nil {
+func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
+	if structPtr == nil {
 		return nil, errors.New("cannot run nil interface")
 	}
-	v, err := vm.getStructValue(reflect.ValueOf(structOrStructPtr))
-	if err != nil {
-		return nil, err
+	v := reflect.ValueOf(structPtr)
+	if v.Kind() != reflect.Ptr {
+		return nil, fmt.Errorf("not structure pointer: %s", v.Type().String())
 	}
-	t := v.Type()
-
+	elem := v.Elem()
+	if elem.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("not structure pointer: %s", v.Type().String())
+	}
+	t := elem.Type()
+	tname := t.String()
+	var err error
 	vm.rw.RLock()
-	s, ok := vm.structJar[t.String()]
+	s, ok := vm.structJar[tname]
 	vm.rw.RUnlock()
 	if !ok {
 		vm.rw.Lock()
-		s, ok = vm.structJar[t.String()]
+		s, ok = vm.structJar[tname]
 		if !ok {
-			s, err = vm.warmUpLocked(t)
+			err = vm.registerStructLocked(t)
 			if err != nil {
 				vm.rw.Unlock()
 				return nil, err
 			}
+			s = vm.structJar[tname]
 		}
 		vm.rw.Unlock()
 	}
-	_ = s
-	return nil, nil
+	return s.newTagExpr(v.Pointer()), nil
 }
 
-func (vm *VM) registerStruct(structType reflect.Type) error {
-
+func (vm *VM) registerStructLocked(structType reflect.Type) error {
+	structType, err := vm.getStructType(structType)
+	if err != nil {
+		return err
+	}
+	structTypeName := structType.String()
+	s, had := vm.structJar[structTypeName]
+	if had {
+		return nil
+	}
+	s = vm.newStruct()
+	vm.structJar[structTypeName] = s
+	var numField = structType.NumField()
+	var structField reflect.StructField
+	for i := 0; i < numField; i++ {
+		structField = structType.Field(i)
+		field, err := s.newField(structField)
+		if err != nil {
+			return err
+		}
+		switch structField.Type.Kind() {
+		default:
+			field.valueGetter = func(ptr uintptr) interface{} { return nil }
+		case reflect.Struct:
+			vm.registerStructLocked(field.Type)
+		case reflect.Float32, reflect.Float64:
+			field.setFloatGetter()
+		case reflect.String:
+			field.setStringGetter()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			field.setIntGetter()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			field.setUintGetter()
+		}
+	}
 	return nil
 }
 
-func (vm *VM) getStructValue(v reflect.Value) (reflect.Value, error) {
-	structValue := v
-	for structValue.Kind() == reflect.Ptr {
-		structValue = structValue.Elem()
+func (f *Field) newFrom(ptr uintptr) reflect.Value {
+	fieldPtr := unsafe.Pointer(ptr + f.Offset)
+	return reflect.NewAt(f.Type, fieldPtr).Elem()
+}
+
+func (f *Field) setFloatGetter() {
+	f.valueGetter = func(ptr uintptr) interface{} {
+		return f.newFrom(ptr).Float()
 	}
-	if structValue.Kind() != reflect.Struct {
-		return v, fmt.Errorf("not structure pointer or structure: %s", v.Type().String())
+}
+
+func (f *Field) setIntGetter() {
+	f.valueGetter = func(ptr uintptr) interface{} {
+		return float64(f.newFrom(ptr).Int())
 	}
-	return structValue, nil
+}
+
+func (f *Field) setUintGetter() {
+	f.valueGetter = func(ptr uintptr) interface{} {
+		return float64(f.newFrom(ptr).Uint())
+	}
+}
+
+func (f *Field) setBoolGetter() {
+	f.valueGetter = func(ptr uintptr) interface{} {
+		return f.newFrom(ptr).Bool()
+	}
+}
+
+func (f *Field) setStringGetter() {
+	f.valueGetter = func(ptr uintptr) interface{} {
+		return f.newFrom(ptr).String()
+	}
+}
+
+func (vm *VM) newStruct() *Struct {
+	return &Struct{
+		vm:     vm,
+		fields: make(map[string]*Field, 10),
+		exprs:  make(map[string]*Expr, 40),
+	}
+}
+
+func (s *Struct) newField(structField reflect.StructField) (*Field, error) {
+	f := &Field{
+		StructField: structField,
+		host:        s,
+	}
+	err := f.parseExprs(structField.Tag.Get(s.vm.tagName))
+	if err != nil {
+		return nil, err
+	}
+	s.fields[f.Name] = f
+	return f, nil
+}
+
+func (f *Field) parseExprs(tag string) error {
+	raw := tag
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		return nil
+	}
+	if tag[0] != '{' {
+		expr, err := parseExpr(tag)
+		if err != nil {
+			return err
+		}
+		f.host.exprs[f.Name] = expr
+		return nil
+	}
+	var subtag *string
+	var idx int
+	var exprName, exprStr string
+	for {
+		subtag = readPairedSymbol(&tag, '{', '}')
+		if subtag != nil {
+			idx = strings.Index(*subtag, ":")
+			if idx > 0 {
+				exprName = strings.TrimSpace((*subtag)[:idx])
+				if exprName != "" {
+					exprName = f.Name + "." + exprName
+					if _, had := f.host.exprs[exprName]; had {
+						return fmt.Errorf("duplicate expression name: %s", exprName)
+					}
+					exprStr = strings.TrimSpace((*subtag)[idx+1:])
+					if exprStr != "" {
+						if expr, err := parseExpr(exprStr); err == nil {
+							f.host.exprs[exprName] = expr
+						} else {
+							return err
+						}
+						trimLeftSpace(&tag)
+						if tag == "" {
+							return nil
+						}
+						continue
+					}
+				}
+			}
+		}
+		return fmt.Errorf("syntax incorrect: %q", raw)
+	}
 }
 
 func (vm *VM) getStructType(t reflect.Type) (reflect.Type, error) {
@@ -123,17 +236,46 @@ func (vm *VM) getStructType(t reflect.Type) (reflect.Type, error) {
 	return structType, nil
 }
 
-// Set tag expression set
-// key format: fieldName.exprName, fieldName1.fieldName2.exprName1
-type Set map[string]*Expr
+func (s *Struct) newTagExpr(ptr uintptr) *TagExpr {
+	te := &TagExpr{
+		s:   s,
+		ptr: ptr,
+	}
+	return te
+}
+
+// TagExpr struct tag expression evaluator
+type TagExpr struct {
+	s   *Struct
+	ptr uintptr
+}
 
 // Eval evaluate the value of the struct tag expression by the selector expression.
-// format: fieldName.exprName, fieldName1.fieldName2.exprName1
-func (t Set) Eval(selector string) interface{} {
-	return nil
+// format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
+func (t *TagExpr) Eval(selector string) interface{} {
+	a := strings.Split(selector, ".")
+	switch len(a) {
+	default:
+		return nil
+	case 1, 2:
+		expr, ok := t.s.exprs[selector]
+		if !ok {
+			return nil
+		}
+		return expr.run(a[0], t)
+	}
 }
 
 // Range loop through each tag expression
-func (t Set) Range(func(selector string, eval func() interface{})) {
+func (t *TagExpr) Range(func(selector string, eval func() interface{})) {
+	// TODO
+}
 
+func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}) {
+	f, ok := t.s.fields[field]
+	if !ok {
+		return nil
+	}
+	_ = subFields // TODO
+	return f.valueGetter(t.ptr)
 }
