@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func ExampleVMFunc() {
+func Example() {
 	type T struct {
 		A int            `tagexpr:"$<0||$>=100"`
 		B string         `tagexpr:"len($)>1 && regexp('^\\w*$')"`

@@ -39,6 +39,8 @@ func New(tagName string) *VM {
 	}
 }
 
+// WarmUp warms up the interpreter of the struct type to
+// improve the performance of the vm.Run .
 func (vm *VM) WarmUp(structOrStructPtr interface{}) error {
 	if structOrStructPtr == nil {
 		return errors.New("cannot warn up nil interface")
@@ -49,6 +51,10 @@ func (vm *VM) WarmUp(structOrStructPtr interface{}) error {
 	return err
 }
 
+// Run returns the tag expression handler of the @structPtr.
+// NOTE:
+//  If the structure type has not been warmed up,
+//  it will be slower when it is first called.
 func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
 	if structPtr == nil {
 		return nil, errors.New("cannot run nil interface")
