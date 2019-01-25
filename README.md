@@ -116,7 +116,7 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`>>`|Integer bitwise `shift right`| -->
 
 Operator priority(high -> low):
-* `()` `bool` `string` `float64`
+* `()` `bool` `string` `float64` `!`
 * `*` `/` `%`
 * `+` `-`
 * `<` `<=` `>` `>=`
