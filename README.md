@@ -9,6 +9,10 @@ In development
 ## Example
 
 ```go
+import (
+	"github.com/bytedance/go-tagexpr"
+)
+
 type T struct {
 	A int            `tagexpr:"$<0||$>=100"`
 	B string         `tagexpr:"len($)>1 && regexp('^\\w*$')"`
@@ -19,11 +23,13 @@ type T struct {
 		g int `tagexpr:"$"`
 	}
 }
-vm := New("tagexpr")
+
+vm := tagexpr.New("tagexpr")
 err := vm.WarmUp(new(T))
 if err != nil {
 	panic(err)
 }
+
 t := &T{
 	A: 107,
 	B: "abc",
