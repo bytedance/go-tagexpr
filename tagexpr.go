@@ -313,16 +313,35 @@ type TagExpr struct {
 	ptr uintptr
 }
 
+// EvalFloat evaluate the value of the struct tag expression by the selector expression.
+// NOTE:
+//  If the expression value type is not float64, return 0.
+func (t *TagExpr) EvalFloat(selector string) float64 {
+	r, _ := t.Eval(selector).(float64)
+	return r
+}
+
+// EvalString evaluate the value of the struct tag expression by the selector expression.
+// NOTE:
+//  If the expression value type is not string, return "".
+func (t *TagExpr) EvalString(selector string) string {
+	r, _ := t.Eval(selector).(string)
+	return r
+}
+
+// EvalBool evaluate the value of the struct tag expression by the selector expression.
+// NOTE:
+//  If the expression value type is not bool, return false.
+func (t *TagExpr) EvalBool(selector string) bool {
+	r, _ := t.Eval(selector).(bool)
+	return r
+}
+
 // Eval evaluate the value of the struct tag expression by the selector expression.
 // NOTE:
 //  format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
 //  result types: float64, string, bool, nil
 func (t *TagExpr) Eval(selector string) interface{} {
-	defer func() {
-		if recover() != nil {
-			// fmt.Println(goutil.BytesToString(goutil.PanicTrace(1)))
-		}
-	}()
 	expr, ok := t.s.exprs[selector]
 	if !ok {
 		return nil
@@ -331,13 +350,9 @@ func (t *TagExpr) Eval(selector string) interface{} {
 }
 
 // Range loop through each tag expression
-// NOTE: eval result types: float64, string, bool, nil
+// NOTE:
+//  eval result types: float64, string, bool, nil
 func (t *TagExpr) Range(fn func(selector string, eval func() interface{})) {
-	defer func() {
-		if recover() != nil {
-			// fmt.Println(goutil.BytesToString(goutil.PanicTrace(1)))
-		}
-	}()
 	for selector, expr := range t.s.exprs {
 		fn(selector, func() interface{} {
 			return expr.run(getFieldSelector(selector), t)
@@ -374,7 +389,11 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 				return nil
 			}
 		case reflect.Map:
-			vv = vv.MapIndex(reflect.ValueOf(k).Convert(vv.Type().Key()))
+			k := safeConvert(reflect.ValueOf(k), vv.Type().Key())
+			if !k.IsValid() {
+				return nil
+			}
+			vv = vv.MapIndex(k)
 		default:
 			return nil
 		}
@@ -400,6 +419,11 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 		}
 		return vv.Convert(float64Type).Float()
 	}
+}
+
+func safeConvert(v reflect.Value, t reflect.Type) reflect.Value {
+	defer func() { recover() }()
+	return v.Convert(t)
 }
 
 var float64Type = reflect.TypeOf(float64(0))
