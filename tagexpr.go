@@ -221,7 +221,7 @@ func (f *Field) parseExprs(tag string) error {
 		if err != nil {
 			return err
 		}
-		f.host.exprs[f.Name+".$"] = expr
+		f.host.exprs[f.Name+"@"] = expr
 		return nil
 	}
 	var subtag *string
@@ -234,7 +234,7 @@ func (f *Field) parseExprs(tag string) error {
 			if idx > 0 {
 				exprName = strings.TrimSpace((*subtag)[:idx])
 				if exprName != "" {
-					exprName = f.Name + "." + exprName
+					exprName = f.Name + "@" + exprName
 					if _, had := f.host.exprs[exprName]; had {
 						return fmt.Errorf("duplicate expression name: %s", exprName)
 					}
@@ -429,7 +429,7 @@ func safeConvert(v reflect.Value, t reflect.Type) reflect.Value {
 var float64Type = reflect.TypeOf(float64(0))
 
 func getFieldSelector(selector string) string {
-	idx := strings.LastIndex(selector, ".")
+	idx := strings.Index(selector, "@")
 	if idx == -1 {
 		return selector
 	}

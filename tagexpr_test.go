@@ -19,11 +19,13 @@ func Example() {
 			g int `tagexpr:"$"`
 		}
 	}
+
 	vm := New("tagexpr")
 	err := vm.WarmUp(new(T))
 	if err != nil {
 		panic(err)
 	}
+
 	t := &T{
 		A:  107,
 		B:  "abc",
@@ -35,20 +37,23 @@ func Example() {
 			g int `tagexpr:"$"`
 		}{1},
 	}
+
 	tagExpr, err := vm.Run(t)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(tagExpr.Eval("A.$"))
-	fmt.Println(tagExpr.Eval("B.$"))
-	fmt.Println(tagExpr.Eval("C.expr1"))
-	fmt.Println(tagExpr.Eval("C.expr2"))
-	if !tagExpr.Eval("d.match").(bool) {
-		fmt.Println(tagExpr.Eval("d.msg"))
+
+	fmt.Println(tagExpr.Eval("A@"))
+	fmt.Println(tagExpr.Eval("B@"))
+	fmt.Println(tagExpr.Eval("C@expr1"))
+	fmt.Println(tagExpr.Eval("C@expr2"))
+	if !tagExpr.Eval("d@match").(bool) {
+		fmt.Println(tagExpr.Eval("d@msg"))
 	}
-	fmt.Println(tagExpr.Eval("e.$"))
-	fmt.Println(tagExpr.Eval("e2.$"))
-	fmt.Println(tagExpr.Eval("f.g.$"))
+	fmt.Println(tagExpr.Eval("e@"))
+	fmt.Println(tagExpr.Eval("e2@"))
+	fmt.Println(tagExpr.Eval("f.g@"))
+
 	// Output:
 	// true
 	// true
@@ -78,7 +83,7 @@ func BenchmarkTagExpr(b *testing.B) {
 		if err != nil {
 			b.FailNow()
 		}
-		if tagExpr.EvalFloat("a.$") != 1 {
+		if tagExpr.EvalFloat("a@") != 1 {
 			b.FailNow()
 		}
 	}
@@ -152,20 +157,20 @@ func Test(t *testing.T) {
 				i: map[string]int{"a": 7},
 			},
 			tests: map[string]interface{}{
-				"A.$":   true,
-				"b.is":  false,
-				"b.msg": "want: test, but got: x",
-				"c.$":   6.0,
-				"d.$":   d,
-				"e.$":   float64(*e),
-				"f.x":   float64(3),
-				"f.y":   float64(3),
-				"g.x":   true,
-				"g.y":   true,
-				"h.x":   "hehe",
-				"h.y":   nil,
-				"i.x":   7.0,
-				"i.y":   nil,
+				"A@":    true,
+				"b@is":  false,
+				"b@msg": "want: test, but got: x",
+				"c@":    6.0,
+				"d@":    d,
+				"e@":    float64(*e),
+				"f@x":   float64(3),
+				"f@y":   float64(3),
+				"g@x":   true,
+				"g@y":   true,
+				"h@x":   "hehe",
+				"h@y":   nil,
+				"i@x":   7.0,
+				"i@y":   nil,
 			},
 		},
 		{
@@ -205,15 +210,15 @@ func Test(t *testing.T) {
 				i: "12",
 			},
 			tests: map[string]interface{}{
-				"A.$":   true,
-				"b.is":  false,
-				"b.msg": "want: test, but got: x",
-				"c.d.$": true,
-				"e.f.$": true,
-				"g.h.$": "haha",
-				"i.$":   true,
-				"j.$":   true,
-				"k.$":   nil,
+				"A@":    true,
+				"b@is":  false,
+				"b@msg": "want: test, but got: x",
+				"c.d@":  true,
+				"e.f@":  true,
+				"g.h@":  "haha",
+				"i@":    true,
+				"j@":    true,
+				"k@":    nil,
 			},
 		},
 	}

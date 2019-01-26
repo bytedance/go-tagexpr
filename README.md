@@ -9,54 +9,63 @@ import (
 	"github.com/bytedance/go-tagexpr"
 )
 
-type T struct {
-	A int            `tagexpr:"$<0||$>=100"`
-	B string         `tagexpr:"len($)>1 && regexp('^\\w*$')"`
-	C bool           `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
-	d []string       `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
-	e map[string]int `tagexpr:"len($)==$['len']"`
-	f struct {
-		g int `tagexpr:"$"`
+func Example() {
+	type T struct {
+		A  int             `tagexpr:"$<0||$>=100"`
+		B  string          `tagexpr:"len($)>1 && regexp('^\\w*$')"`
+		C  bool            `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
+		d  []string        `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+		e  map[string]int  `tagexpr:"len($)==$['len']"`
+		e2 map[string]*int `tagexpr:"len($)==$['len']"`
+		f  struct {
+			g int `tagexpr:"$"`
+		}
 	}
-}
 
-vm := tagexpr.New("tagexpr")
-err := vm.WarmUp(new(T))
-if err != nil {
-	panic(err)
-}
+	vm := New("tagexpr")
+	err := vm.WarmUp(new(T))
+	if err != nil {
+		panic(err)
+	}
 
-t := &T{
-	A: 107,
-	B: "abc",
-	C: true,
-	d: []string{"x", "y"},
-	e: map[string]int{"len": 1},
-	f: struct {
-		g int `tagexpr:"$"`
-	}{1},
+	t := &T{
+		A:  107,
+		B:  "abc",
+		C:  true,
+		d:  []string{"x", "y"},
+		e:  map[string]int{"len": 1},
+		e2: map[string]*int{"len": new(int)},
+		f: struct {
+			g int `tagexpr:"$"`
+		}{1},
+	}
+
+	tagExpr, err := vm.Run(t)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(tagExpr.Eval("A@"))
+	fmt.Println(tagExpr.Eval("B@"))
+	fmt.Println(tagExpr.Eval("C@expr1"))
+	fmt.Println(tagExpr.Eval("C@expr2"))
+	if !tagExpr.Eval("d@match").(bool) {
+		fmt.Println(tagExpr.Eval("d@msg"))
+	}
+	fmt.Println(tagExpr.Eval("e@"))
+	fmt.Println(tagExpr.Eval("e2@"))
+	fmt.Println(tagExpr.Eval("f.g@"))
+
+	// Output:
+	// true
+	// true
+	// true
+	// C must be true when T.f.g>0
+	// Invalid d: [x y]
+	// true
+	// false
+	// 1
 }
-tagExpr, err := vm.Run(t)
-if err != nil {
-	panic(err)
-}
-fmt.Println(tagExpr.Eval("A.$"))
-fmt.Println(tagExpr.Eval("B.$"))
-fmt.Println(tagExpr.Eval("C.expr1"))
-fmt.Println(tagExpr.Eval("C.expr2"))
-if !tagExpr.Eval("d.match").(bool) {
-	fmt.Println(tagExpr.Eval("d.msg"))
-}
-fmt.Println(tagExpr.Eval("e.$"))
-fmt.Println(tagExpr.Eval("f.g.$"))
-// Output:
-// true
-// true
-// true
-// C must be true when T.f.g>0
-// Invalid d: [x y]
-// true
-// 1
 ```
 
 ## Syntax
@@ -135,4 +144,4 @@ BenchmarkReflect-4   	10000000	       208 ns/op	      16 B/op	       2 allocs/op
 PASS
 ```
 
-[Go to test code](https://github.com/bytedance/go-tagexpr/blob/master/tagexpr_test.go#L63-L110)
+[Go to test code](https://github.com/bytedance/go-tagexpr/blob/master/tagexpr_test.go#L68-L115)
