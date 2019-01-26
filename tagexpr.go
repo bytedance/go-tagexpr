@@ -314,7 +314,9 @@ type TagExpr struct {
 }
 
 // Eval evaluate the value of the struct tag expression by the selector expression.
-// format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
+// NOTE:
+//  format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
+//  result types: float64, string, bool, nil
 func (t *TagExpr) Eval(selector string) interface{} {
 	defer func() {
 		if recover() != nil {
@@ -329,6 +331,7 @@ func (t *TagExpr) Eval(selector string) interface{} {
 }
 
 // Range loop through each tag expression
+// NOTE: eval result types: float64, string, bool, nil
 func (t *TagExpr) Range(fn func(selector string, eval func() interface{})) {
 	defer func() {
 		if recover() != nil {
