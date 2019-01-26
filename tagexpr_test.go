@@ -238,13 +238,14 @@ func Test(t *testing.T) {
 				t.Fatalf("Eval NO: %d, selector: %q, got: %v, want: %v", i, selector, val, value)
 			}
 		}
-		tagExpr.Range(func(selector string, eval func() interface{}) {
-			t.Logf("selector: %s", selector)
+		tagExpr.Range(func(selector string, eval func() interface{}) bool {
+			t.Logf("Range selector: %s", selector)
 			value := c.tests[selector]
 			val := eval()
 			if !reflect.DeepEqual(val, value) {
 				t.Fatalf("Range NO: %d, selector: %q, got: %v, want: %v", i, selector, val, value)
 			}
+			return true
 		})
 	}
 }

@@ -357,11 +357,13 @@ func (t *TagExpr) Eval(selector string) interface{} {
 // Range loop through each tag expression
 // NOTE:
 //  eval result types: float64, string, bool, nil
-func (t *TagExpr) Range(fn func(selector string, eval func() interface{})) {
+func (t *TagExpr) Range(fn func(selector string, eval func() interface{}) bool) {
 	for selector, expr := range t.s.exprs {
-		fn(selector, func() interface{} {
+		if !fn(selector, func() interface{} {
 			return expr.run(getFieldSelector(selector), t)
-		})
+		}) {
+			return
+		}
 	}
 }
 
