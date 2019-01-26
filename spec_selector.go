@@ -72,9 +72,12 @@ func findSelector(expr *string) (field string, name string, subSelector []string
 }
 
 func (ve *selectorExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	subFields := make([]interface{}, 0, len(ve.subExprs))
-	for _, e := range ve.subExprs {
-		subFields = append(subFields, e.Run(currField, tagExpr))
+	var subFields []interface{}
+	if n := len(ve.subExprs); n > 0 {
+		subFields = make([]interface{}, n)
+		for i, e := range ve.subExprs {
+			subFields[i] = e.Run(currField, tagExpr)
+		}
 	}
 	field := ve.field
 	if field == "" {
