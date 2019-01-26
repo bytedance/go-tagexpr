@@ -5,8 +5,12 @@ An interesting go struct tag expression syntax for field validation, etc.
 ## Example
 
 ```go
+package tagexpr_test
+
 import (
-	"github.com/bytedance/go-tagexpr"
+	"fmt"
+
+	tagexpr "github.com/bytedance/go-tagexpr"
 )
 
 func Example() {
@@ -22,7 +26,7 @@ func Example() {
 		}
 	}
 
-	vm := New("tagexpr")
+	vm := tagexpr.New("tagexpr")
 	err := vm.WarmUp(new(T))
 	if err != nil {
 		panic(err)
@@ -160,4 +164,4 @@ BenchmarkReflect-4   	10000000	       208 ns/op	      16 B/op	       2 allocs/op
 PASS
 ```
 
-[Go to test code](https://github.com/bytedance/go-tagexpr/blob/master/tagexpr_test.go#L68-L115)
+[Go to test code](https://github.com/bytedance/go-tagexpr/blob/master/tagexpr_test.go#L9-L56)
