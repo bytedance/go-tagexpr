@@ -161,9 +161,12 @@ func (p *Expr) readSprintfFnExprNode(expr *string) ExprNode {
 }
 
 func (se *sprintfFnExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	var args = make([]interface{}, 0, len(se.args))
-	for _, e := range se.args {
-		args = append(args, e.Run(currField, tagExpr))
+	var args []interface{}
+	if n := len(se.args); n > 0 {
+		args = make([]interface{}, n)
+		for i, e := range se.args {
+			args[i] = e.Run(currField, tagExpr)
+		}
 	}
 	return fmt.Sprintf(se.format, args...)
 }
