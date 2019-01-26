@@ -233,24 +233,29 @@ func (f *Field) parseExprs(tag string) error {
 			idx = strings.Index(*subtag, ":")
 			if idx > 0 {
 				exprName = strings.TrimSpace((*subtag)[:idx])
-				if exprName != "" {
+				switch exprName {
+				case "":
+					continue
+				case "@":
+					exprName = f.Name + exprName
+				default:
 					exprName = f.Name + "@" + exprName
-					if _, had := f.host.exprs[exprName]; had {
-						return fmt.Errorf("duplicate expression name: %s", exprName)
+				}
+				if _, had := f.host.exprs[exprName]; had {
+					return fmt.Errorf("duplicate expression name: %s", exprName)
+				}
+				exprStr = strings.TrimSpace((*subtag)[idx+1:])
+				if exprStr != "" {
+					if expr, err := parseExpr(exprStr); err == nil {
+						f.host.exprs[exprName] = expr
+					} else {
+						return err
 					}
-					exprStr = strings.TrimSpace((*subtag)[idx+1:])
-					if exprStr != "" {
-						if expr, err := parseExpr(exprStr); err == nil {
-							f.host.exprs[exprName] = expr
-						} else {
-							return err
-						}
-						trimLeftSpace(&tag)
-						if tag == "" {
-							return nil
-						}
-						continue
+					trimLeftSpace(&tag)
+					if tag == "" {
+						return nil
 					}
+					continue
 				}
 			}
 		}

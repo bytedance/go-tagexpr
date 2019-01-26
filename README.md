@@ -14,7 +14,7 @@ func Example() {
 		A  int             `tagexpr:"$<0||$>=100"`
 		B  string          `tagexpr:"len($)>1 && regexp('^\\w*$')"`
 		C  bool            `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
-		d  []string        `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+		d  []string        `tagexpr:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
 		e  map[string]int  `tagexpr:"len($)==$['len']"`
 		e2 map[string]*int `tagexpr:"len($)==$['len']"`
 		f  struct {
@@ -49,7 +49,7 @@ func Example() {
 	fmt.Println(tagExpr.Eval("B@"))
 	fmt.Println(tagExpr.Eval("C@expr1"))
 	fmt.Println(tagExpr.Eval("C@expr2"))
-	if !tagExpr.Eval("d@match").(bool) {
+	if !tagExpr.Eval("d@").(bool) {
 		fmt.Println(tagExpr.Eval("d@msg"))
 	}
 	fmt.Println(tagExpr.Eval("e@"))

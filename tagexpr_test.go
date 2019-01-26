@@ -12,7 +12,7 @@ func Example() {
 		A  int             `tagexpr:"$<0||$>=100"`
 		B  string          `tagexpr:"len($)>1 && regexp('^\\w*$')"`
 		C  bool            `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
-		d  []string        `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+		d  []string        `tagexpr:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
 		e  map[string]int  `tagexpr:"len($)==$['len']"`
 		e2 map[string]*int `tagexpr:"len($)==$['len']"`
 		f  struct {
@@ -47,7 +47,7 @@ func Example() {
 	fmt.Println(tagExpr.Eval("B@"))
 	fmt.Println(tagExpr.Eval("C@expr1"))
 	fmt.Println(tagExpr.Eval("C@expr2"))
-	if !tagExpr.Eval("d@match").(bool) {
+	if !tagExpr.Eval("d@").(bool) {
 		fmt.Println(tagExpr.Eval("d@msg"))
 	}
 	fmt.Println(tagExpr.Eval("e@"))
@@ -136,28 +136,31 @@ func Test(t *testing.T) {
 		{
 			tagName: "tagexpr",
 			structure: &struct {
-				A int            `tagexpr:"$>0&&$<10"`
-				b string         `tagexpr:"{is:$=='test'}{msg:sprintf('want: test, but got: %s',$)}"`
-				c float32        `tagexpr:"(A)$+$"`
-				d *string        `tagexpr:"$"`
-				e **int          `tagexpr:"$"`
-				f *[3]int        `tagexpr:"{x:len($)}{y:len()}"`
-				g string         `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
-				h []string       `tagexpr:"{x:$[1]}{y:$[10]}"`
-				i map[string]int `tagexpr:"{x:$['a']}{y:$[0]}"`
+				A  int            `tagexpr:"$>0&&$<10"`
+				A2 int            `tagexpr:"{@:$>0&&$<10}"`
+				b  string         `tagexpr:"{is:$=='test'}{msg:sprintf('want: test, but got: %s',$)}"`
+				c  float32        `tagexpr:"(A)$+$"`
+				d  *string        `tagexpr:"$"`
+				e  **int          `tagexpr:"$"`
+				f  *[3]int        `tagexpr:"{x:len($)}{y:len()}"`
+				g  string         `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
+				h  []string       `tagexpr:"{x:$[1]}{y:$[10]}"`
+				i  map[string]int `tagexpr:"{x:$['a']}{y:$[0]}"`
 			}{
-				A: 5.0,
-				b: "x",
-				c: 1,
-				d: &d,
-				e: &e,
-				f: new([3]int),
-				g: "g123",
-				h: []string{"", "hehe"},
-				i: map[string]int{"a": 7},
+				A:  5.0,
+				A2: 5.0,
+				b:  "x",
+				c:  1,
+				d:  &d,
+				e:  &e,
+				f:  new([3]int),
+				g:  "g123",
+				h:  []string{"", "hehe"},
+				i:  map[string]int{"a": 7},
 			},
 			tests: map[string]interface{}{
 				"A@":    true,
+				"A2@":   true,
 				"b@is":  false,
 				"b@msg": "want: test, but got: x",
 				"c@":    6.0,
