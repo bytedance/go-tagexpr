@@ -18,10 +18,11 @@ type VM struct {
 
 // Struct tag expression set of struct
 type Struct struct {
-	vm     *VM
-	name   string
-	fields map[string]*Field
-	exprs  map[string]*Expr
+	vm           *VM
+	name         string
+	fields       map[string]*Field
+	exprs        map[string]*Expr
+	selectorList []string
 }
 
 // Field tag expression set of struct field
@@ -141,9 +142,10 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*Struct, error) {
 
 func (vm *VM) newStruct() *Struct {
 	return &Struct{
-		vm:     vm,
-		fields: make(map[string]*Field, 10),
-		exprs:  make(map[string]*Expr, 40),
+		vm:           vm,
+		fields:       make(map[string]*Field, 16),
+		exprs:        make(map[string]*Expr, 64),
+		selectorList: make([]string, 0, 64),
 	}
 }
 
@@ -221,33 +223,36 @@ func (f *Field) parseExprs(tag string) error {
 		if err != nil {
 			return err
 		}
-		f.host.exprs[f.Name+"@"] = expr
+		selector := f.Name + "@"
+		f.host.exprs[selector] = expr
+		f.host.selectorList = append(f.host.selectorList, selector)
 		return nil
 	}
 	var subtag *string
 	var idx int
-	var exprName, exprStr string
+	var selector, exprStr string
 	for {
 		subtag = readPairedSymbol(&tag, '{', '}')
 		if subtag != nil {
 			idx = strings.Index(*subtag, ":")
 			if idx > 0 {
-				exprName = strings.TrimSpace((*subtag)[:idx])
-				switch exprName {
+				selector = strings.TrimSpace((*subtag)[:idx])
+				switch selector {
 				case "":
 					continue
 				case "@":
-					exprName = f.Name + exprName
+					selector = f.Name + selector
 				default:
-					exprName = f.Name + "@" + exprName
+					selector = f.Name + "@" + selector
 				}
-				if _, had := f.host.exprs[exprName]; had {
-					return fmt.Errorf("duplicate expression name: %s", exprName)
+				if _, had := f.host.exprs[selector]; had {
+					return fmt.Errorf("duplicate expression name: %s", selector)
 				}
 				exprStr = strings.TrimSpace((*subtag)[idx+1:])
 				if exprStr != "" {
 					if expr, err := parseExpr(exprStr); err == nil {
-						f.host.exprs[exprName] = expr
+						f.host.exprs[selector] = expr
+						f.host.selectorList = append(f.host.selectorList, selector)
 					} else {
 						return err
 					}
@@ -288,8 +293,11 @@ func (s *Struct) copySubFields(field *Field, sub *Struct, ptrDeep int) {
 		}
 		s.fields[nameSpace+"."+k] = f
 	}
+	var selector string
 	for k, v := range sub.exprs {
-		s.exprs[nameSpace+"."+k] = v
+		selector = nameSpace + "." + k
+		s.exprs[selector] = v
+		s.selectorList = append(s.selectorList, selector)
 	}
 }
 
@@ -358,9 +366,10 @@ func (t *TagExpr) Eval(selector string) interface{} {
 // NOTE:
 //  eval result types: float64, string, bool, nil
 func (t *TagExpr) Range(fn func(selector string, eval func() interface{}) bool) {
-	for selector, expr := range t.s.exprs {
+	exprs := t.s.exprs
+	for _, selector := range t.s.selectorList {
 		if !fn(selector, func() interface{} {
-			return expr.run(getFieldSelector(selector), t)
+			return exprs[selector].run(getFieldSelector(selector), t)
 		}) {
 			return
 		}
