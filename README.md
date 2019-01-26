@@ -123,3 +123,14 @@ Operator priority(high -> low):
 * `==` `!=`
 * `&&`
 * `||`
+
+## Benchmark
+
+```
+goos: darwin
+goarch: amd64
+pkg: github.com/bytedance/go-tagexpr
+BenchmarkTagExpr-4   	10000000	       195 ns/op	      40 B/op	       4 allocs/op
+BenchmarkReflect-4   	10000000	       208 ns/op	      16 B/op	       2 allocs/op
+PASS
+```

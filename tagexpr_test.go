@@ -3,6 +3,7 @@ package tagexpr
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -59,7 +60,56 @@ func Example() {
 	// 1
 }
 
-func TestVMFunc(t *testing.T) {
+func BenchmarkTagExpr(b *testing.B) {
+	b.StopTimer()
+	type T struct {
+		a int `bench:"$%3"`
+	}
+	vm := New("bench")
+	err := vm.WarmUp(new(T))
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.StartTimer()
+	var t = &T{10}
+	for i := 0; i < b.N; i++ {
+		tagExpr, err := vm.Run(t)
+		if err != nil {
+			b.FailNow()
+		}
+		if tagExpr.EvalFloat("a.$") != 1 {
+			b.FailNow()
+		}
+	}
+}
+
+func BenchmarkReflect(b *testing.B) {
+	b.StopTimer()
+	type T struct {
+		a int `remainder:"3"`
+	}
+	b.ReportAllocs()
+	b.StartTimer()
+	var t = &T{1}
+	for i := 0; i < b.N; i++ {
+		v := reflect.ValueOf(t).Elem()
+		ft, ok := v.Type().FieldByName("a")
+		if !ok {
+			b.FailNow()
+		}
+		x, err := strconv.ParseInt(ft.Tag.Get("remainder"), 10, 64)
+		if err != nil {
+			b.FailNow()
+		}
+		fv := v.FieldByName("a")
+		if fv.Int()%x != 1 {
+			b.FailNow()
+		}
+	}
+}
+
+func Test(t *testing.T) {
 	g := &struct {
 		_ int
 		h string `tagexpr:"$"`
