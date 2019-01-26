@@ -1,10 +1,3 @@
-# validator
-
-A powerful validator that supports struct tag expression.
-
-## Example
-
-```go
 package validator_test
 
 import (
@@ -64,4 +57,3 @@ func Example() {
 	// Invalid parameter: e
 	// true
 }
-```
