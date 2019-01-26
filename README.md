@@ -1,4 +1,4 @@
-# go-tagexpr
+# go-tagexpr [![report card](https://goreportcard.com/badge/github.com/bytedance/go-tagexpr?style=flat-square)](http://goreportcard.com/report/bytedance/go-tagexpr) [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/bytedance/go-tagexpr)
 
 An interesting go struct tag expression syntax for field validation, etc.
 
