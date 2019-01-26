@@ -134,3 +134,5 @@ BenchmarkTagExpr-4   	10000000	       195 ns/op	      40 B/op	       4 allocs/op
 BenchmarkReflect-4   	10000000	       208 ns/op	      16 B/op	       2 allocs/op
 PASS
 ```
+
+[Go to test code](https://github.com/bytedance/go-tagexpr/blob/master/tagexpr_test.go#L63-L110)
