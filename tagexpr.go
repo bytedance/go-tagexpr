@@ -124,14 +124,12 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*Struct, error) {
 				return nil, err
 			}
 			s.copySubFields(field, sub, ptrDeep)
-		case reflect.Float32, reflect.Float64:
-			field.setFloatGetter(ptrDeep)
+		case reflect.Float32, reflect.Float64,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			field.setFloatGetter(t.Kind(), ptrDeep)
 		case reflect.String:
 			field.setStringGetter(ptrDeep)
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			field.setIntGetter(ptrDeep)
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			field.setUintGetter(ptrDeep)
 		case reflect.Bool:
 			field.setBoolGetter(ptrDeep)
 		case reflect.Map, reflect.Array, reflect.Slice:
@@ -170,33 +168,67 @@ func (f *Field) newFrom(ptr uintptr, ptrDeep int) reflect.Value {
 	return v
 }
 
-func (f *Field) setFloatGetter(ptrDeep int) {
+func (f *Field) setFloatGetter(kind reflect.Kind, ptrDeep int) {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		return f.newFrom(ptr, ptrDeep).Float()
-	}
-}
-
-func (f *Field) setIntGetter(ptrDeep int) {
-	f.valueGetter = func(ptr uintptr) interface{} {
-		return float64(f.newFrom(ptr, ptrDeep).Int())
-	}
-}
-
-func (f *Field) setUintGetter(ptrDeep int) {
-	f.valueGetter = func(ptr uintptr) interface{} {
-		return float64(f.newFrom(ptr, ptrDeep).Uint())
+		var p unsafe.Pointer
+		if ptrDeep == 0 {
+			p = unsafe.Pointer(ptr + f.Offset)
+		} else {
+			p = unsafe.Pointer(f.newFrom(ptr, ptrDeep).UnsafeAddr())
+		}
+		switch kind {
+		case reflect.Float32:
+			return float64(*(*float32)(p))
+		case reflect.Float64:
+			return *(*float64)(p)
+		case reflect.Int:
+			return float64(*(*int)(p))
+		case reflect.Int8:
+			return float64(*(*int8)(p))
+		case reflect.Int16:
+			return float64(*(*int16)(p))
+		case reflect.Int32:
+			return float64(*(*int32)(p))
+		case reflect.Int64:
+			return float64(*(*int64)(p))
+		case reflect.Uint:
+			return float64(*(*uint)(p))
+		case reflect.Uint8:
+			return float64(*(*uint8)(p))
+		case reflect.Uint16:
+			return float64(*(*uint16)(p))
+		case reflect.Uint32:
+			return float64(*(*uint32)(p))
+		case reflect.Uint64:
+			return float64(*(*uint64)(p))
+		case reflect.Uintptr:
+			return float64(*(*uintptr)(p))
+		}
+		return nil
 	}
 }
 
 func (f *Field) setBoolGetter(ptrDeep int) {
-	f.valueGetter = func(ptr uintptr) interface{} {
-		return f.newFrom(ptr, ptrDeep).Bool()
+	if ptrDeep == 0 {
+		f.valueGetter = func(ptr uintptr) interface{} {
+			return *(*bool)(unsafe.Pointer(ptr + f.Offset))
+		}
+	} else {
+		f.valueGetter = func(ptr uintptr) interface{} {
+			return f.newFrom(ptr, ptrDeep).Bool()
+		}
 	}
 }
 
 func (f *Field) setStringGetter(ptrDeep int) {
-	f.valueGetter = func(ptr uintptr) interface{} {
-		return f.newFrom(ptr, ptrDeep).String()
+	if ptrDeep == 0 {
+		f.valueGetter = func(ptr uintptr) interface{} {
+			return *(*string)(unsafe.Pointer(ptr + f.Offset))
+		}
+	} else {
+		f.valueGetter = func(ptr uintptr) interface{} {
+			return f.newFrom(ptr, ptrDeep).String()
+		}
 	}
 }
 
