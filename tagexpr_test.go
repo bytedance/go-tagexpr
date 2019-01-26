@@ -8,12 +8,13 @@ import (
 
 func Example() {
 	type T struct {
-		A int            `tagexpr:"$<0||$>=100"`
-		B string         `tagexpr:"len($)>1 && regexp('^\\w*$')"`
-		C bool           `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
-		d []string       `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
-		e map[string]int `tagexpr:"len($)==$['len']"`
-		f struct {
+		A  int             `tagexpr:"$<0||$>=100"`
+		B  string          `tagexpr:"len($)>1 && regexp('^\\w*$')"`
+		C  bool            `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
+		d  []string        `tagexpr:"{match:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+		e  map[string]int  `tagexpr:"len($)==$['len']"`
+		e2 map[string]*int `tagexpr:"len($)==$['len']"`
+		f  struct {
 			g int `tagexpr:"$"`
 		}
 	}
@@ -23,11 +24,12 @@ func Example() {
 		panic(err)
 	}
 	t := &T{
-		A: 107,
-		B: "abc",
-		C: true,
-		d: []string{"x", "y"},
-		e: map[string]int{"len": 1},
+		A:  107,
+		B:  "abc",
+		C:  true,
+		d:  []string{"x", "y"},
+		e:  map[string]int{"len": 1},
+		e2: map[string]*int{"len": new(int)},
 		f: struct {
 			g int `tagexpr:"$"`
 		}{1},
@@ -44,6 +46,7 @@ func Example() {
 		fmt.Println(tagExpr.Eval("d.msg"))
 	}
 	fmt.Println(tagExpr.Eval("e.$"))
+	fmt.Println(tagExpr.Eval("e2.$"))
 	fmt.Println(tagExpr.Eval("f.g.$"))
 	// Output:
 	// true
@@ -52,6 +55,7 @@ func Example() {
 	// C must be true when T.f.g>0
 	// Invalid d: [x y]
 	// true
+	// false
 	// 1
 }
 

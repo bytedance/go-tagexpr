@@ -169,42 +169,14 @@ func (f *Field) newFrom(ptr uintptr, ptrDeep int) reflect.Value {
 }
 
 func (f *Field) setFloatGetter(kind reflect.Kind, ptrDeep int) {
-	f.valueGetter = func(ptr uintptr) interface{} {
-		var p unsafe.Pointer
-		if ptrDeep == 0 {
-			p = unsafe.Pointer(ptr + f.Offset)
-		} else {
-			p = unsafe.Pointer(f.newFrom(ptr, ptrDeep).UnsafeAddr())
+	if ptrDeep == 0 {
+		f.valueGetter = func(ptr uintptr) interface{} {
+			return getFloat64(kind, ptr+f.Offset)
 		}
-		switch kind {
-		case reflect.Float32:
-			return float64(*(*float32)(p))
-		case reflect.Float64:
-			return *(*float64)(p)
-		case reflect.Int:
-			return float64(*(*int)(p))
-		case reflect.Int8:
-			return float64(*(*int8)(p))
-		case reflect.Int16:
-			return float64(*(*int16)(p))
-		case reflect.Int32:
-			return float64(*(*int32)(p))
-		case reflect.Int64:
-			return float64(*(*int64)(p))
-		case reflect.Uint:
-			return float64(*(*uint)(p))
-		case reflect.Uint8:
-			return float64(*(*uint8)(p))
-		case reflect.Uint16:
-			return float64(*(*uint16)(p))
-		case reflect.Uint32:
-			return float64(*(*uint32)(p))
-		case reflect.Uint64:
-			return float64(*(*uint64)(p))
-		case reflect.Uintptr:
-			return float64(*(*uintptr)(p))
+	} else {
+		f.valueGetter = func(ptr uintptr) interface{} {
+			return getFloat64(kind, f.newFrom(ptr, ptrDeep).UnsafeAddr())
 		}
-		return nil
 	}
 }
 
@@ -417,10 +389,12 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 		return vv.String()
 	case reflect.Bool:
 		return vv.Bool()
-	case reflect.Float32, reflect.Float64:
-		return vv.Float()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Float32, reflect.Float64,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		if vv.CanAddr() {
+			return getFloat64(vv.Kind(), vv.UnsafeAddr())
+		}
 		return vv.Convert(float64Type).Float()
 	}
 }
@@ -433,4 +407,37 @@ func getFieldSelector(selector string) string {
 		return selector
 	}
 	return selector[:idx]
+}
+
+func getFloat64(kind reflect.Kind, ptr uintptr) interface{} {
+	p := unsafe.Pointer(ptr)
+	switch kind {
+	case reflect.Float32:
+		return float64(*(*float32)(p))
+	case reflect.Float64:
+		return *(*float64)(p)
+	case reflect.Int:
+		return float64(*(*int)(p))
+	case reflect.Int8:
+		return float64(*(*int8)(p))
+	case reflect.Int16:
+		return float64(*(*int16)(p))
+	case reflect.Int32:
+		return float64(*(*int32)(p))
+	case reflect.Int64:
+		return float64(*(*int64)(p))
+	case reflect.Uint:
+		return float64(*(*uint)(p))
+	case reflect.Uint8:
+		return float64(*(*uint8)(p))
+	case reflect.Uint16:
+		return float64(*(*uint16)(p))
+	case reflect.Uint32:
+		return float64(*(*uint32)(p))
+	case reflect.Uint64:
+		return float64(*(*uint64)(p))
+	case reflect.Uintptr:
+		return float64(*(*uintptr)(p))
+	}
+	return nil
 }
