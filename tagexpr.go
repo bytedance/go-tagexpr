@@ -1,4 +1,5 @@
 // Package tagexpr is an interesting go struct tag expression syntax for field validation, etc.
+//
 // Copyright 2019 Bytedance Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
