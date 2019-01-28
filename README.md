@@ -4,7 +4,7 @@ An interesting go struct tag expression syntax for field validation, etc.
 
 ## Usage
 
-**[validator](https://github.com/bytedance/go-tagexpr/tree/master/validator)**: A powerful validator that supports struct tag expression
+**[Validator](https://github.com/bytedance/go-tagexpr/tree/master/validator)**: A powerful validator that supports struct tag expression
 
 
 ## Example
