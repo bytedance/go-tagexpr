@@ -67,8 +67,9 @@ func (v *Validator) Validate(structPtr interface{}) error {
 }
 
 // SetErrorFactory customizes the factory of validation error.
-func (v *Validator) SetErrorFactory(errFactory func(fieldSelector string) error) {
+func (v *Validator) SetErrorFactory(errFactory func(fieldSelector string) error) *Validator {
 	v.errFactory = errFactory
+	return v
 }
 
 func defaultErrorFactory(fieldSelector string) error {

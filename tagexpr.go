@@ -55,16 +55,21 @@ func New(tagName string) *VM {
 	}
 }
 
-// WarmUp warms up the interpreter of the struct type to
-// improve the performance of the vm.Run .
-func (vm *VM) WarmUp(structOrStructPtr interface{}) error {
-	if structOrStructPtr == nil {
-		return errors.New("cannot warn up nil interface")
-	}
+// WarmUp preheating some interpreters of the struct type in batches,
+// to improve the performance of the vm.Run.
+func (vm *VM) WarmUp(structOrStructPtr ...interface{}) error {
 	vm.rw.Lock()
 	defer vm.rw.Unlock()
-	_, err := vm.registerStructLocked(reflect.TypeOf(structOrStructPtr))
-	return err
+	for _, v := range structOrStructPtr {
+		if v == nil {
+			return errors.New("cannot warn up nil interface")
+		}
+		_, err := vm.registerStructLocked(reflect.TypeOf(v))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Run returns the tag expression handler of the @structPtr.
