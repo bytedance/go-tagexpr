@@ -14,52 +14,52 @@ import (
 )
 
 func Example() {
-	var vdr = validator.New("vdr")
+	var vd = validator.New("vd")
 
 	type A struct {
-		A int `vdr:"$<0||$>=100"`
+		A int `vd:"$<0||$>=100"`
 	}
 	a := &A{107}
-	fmt.Println(vdr.Validate(a) == nil)
+	fmt.Println(vd.Validate(a) == nil)
 
 	type B struct {
-		B string `vdr:"len($)>1 && regexp('^\\w*$')"`
+		B string `vd:"len($)>1 && regexp('^\\w*$')"`
 	}
 	b := &B{"abc"}
-	fmt.Println(vdr.Validate(b) == nil)
+	fmt.Println(vd.Validate(b) == nil)
 
 	type C struct {
-		C bool `vdr:"{@:(S.A)$>0 && !$}{msg:'C must be false when S.A>0'}"`
+		C bool `vd:"{@:(S.A)$>0 && !$}{msg:'C must be false when S.A>0'}"`
 		S *A
 	}
 	c := &C{C: true, S: a}
-	fmt.Println(vdr.Validate(c))
+	fmt.Println(vd.Validate(c))
 
 	type D struct {
-		d []string `vdr:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+		d []string `vd:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
 	}
 	d := &D{d: []string{"x", "y"}}
-	fmt.Println(vdr.Validate(d))
+	fmt.Println(vd.Validate(d))
 
 	type E struct {
-		e map[string]int `vdr:"len($)==$['len']"`
+		e map[string]int `vd:"len($)==$['len']"`
 	}
 	e := &E{map[string]int{"len": 2}}
-	fmt.Println(vdr.Validate(e))
+	fmt.Println(vd.Validate(e))
 
 	// Customizes the factory of validation error.
-	vdr.SetErrorFactory(func(fieldSelector string) error {
+	vd.SetErrorFactory(func(fieldSelector string) error {
 		return fmt.Errorf(`{"succ":false, "error":"invalid parameter: %s"}`, fieldSelector)
 	})
 
 	type F struct {
 		f struct {
-			g int `vdr:"$%3==0"`
+			g int `vd:"$%3==0"`
 		}
 	}
 	f := &F{}
 	f.f.g = 10
-	fmt.Println(vdr.Validate(f))
+	fmt.Println(vd.Validate(f))
 
 	// Output:
 	// true
