@@ -40,14 +40,19 @@ func Example() {
 	e := &E{map[string]int{"len": 2}}
 	fmt.Println(vdr.Validate(e))
 
+	// Customizes the factory of validation error.
+	vdr.SetErrorFactory(func(fieldSelector string) error {
+		return fmt.Errorf(`{"succ":false, "error":"invalid parameter: %s"}`, fieldSelector)
+	})
+
 	type F struct {
 		f struct {
 			g int `vdr:"$%3==0"`
 		}
 	}
 	f := &F{}
-	f.f.g = 9
-	fmt.Println(vdr.Validate(f) == nil)
+	f.f.g = 10
+	fmt.Println(vdr.Validate(f))
 
 	// Output:
 	// true
@@ -55,5 +60,5 @@ func Example() {
 	// C must be false when S.A>0
 	// Invalid d: [x y]
 	// Invalid parameter: e
-	// true
+	// {"succ":false, "error":"invalid parameter: f.g"}
 }

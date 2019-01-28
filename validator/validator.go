@@ -26,13 +26,15 @@ const errMsgExprName = "msg"
 
 // Validator struct fields validator
 type Validator struct {
-	vm *tagexpr.VM
+	vm         *tagexpr.VM
+	errFactory func(fieldSelector string) error
 }
 
 // New creates a struct fields validator.
 func New(tagName string) *Validator {
 	v := &Validator{
-		vm: tagexpr.New(tagName),
+		vm:         tagexpr.New(tagName),
+		errFactory: defaultErrorFactory,
 	}
 	return v
 }
@@ -61,7 +63,16 @@ func (v *Validator) Validate(structPtr interface{}) error {
 	if errMsg != "" {
 		return errors.New(errMsg)
 	}
-	return errors.New("Invalid parameter: " + errSelector[:len(errSelector)-1])
+	return v.errFactory(errSelector[:len(errSelector)-1])
+}
+
+// SetErrorFactory customizes the factory of validation error.
+func (v *Validator) SetErrorFactory(errFactory func(fieldSelector string) error) {
+	v.errFactory = errFactory
+}
+
+func defaultErrorFactory(fieldSelector string) error {
+	return errors.New("Invalid parameter: " + fieldSelector)
 }
 
 func isMatchSelector(selector string) bool {
