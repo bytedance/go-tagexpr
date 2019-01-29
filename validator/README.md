@@ -16,6 +16,13 @@ import (
 func Example() {
 	var vd = validator.New("vd")
 
+	type InfoRequest struct {
+		Name string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
+		Age  int    `vd:"$>0"`
+	}
+	info := &InfoRequest{Name: "Alice", Age: 18}
+	fmt.Println(vd.Validate(info) == nil)
+
 	type A struct {
 		A int `vd:"$<0||$>=100"`
 	}
@@ -62,6 +69,7 @@ func Example() {
 	fmt.Println(vd.Validate(f))
 
 	// Output:
+	// true
 	// true
 	// true
 	// C must be false when S.A>0
