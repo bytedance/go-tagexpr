@@ -2,6 +2,16 @@
 
 A powerful validator that supports struct tag expression.
 
+## Feature
+
+- Support for a variety of common operator
+- Support for accessing arrays, slices, members of the dictionary
+- Support access to any field in the current structure
+- Support access to nested fields, non-exported fields, etc.
+- Built-in len, sprintf, regexp functions
+- Support simple mode, or specify error message mode
+- Use offset pointers to directly take values, better performance
+
 ## Example
 
 ```go

@@ -6,6 +6,16 @@ An interesting go struct tag expression syntax for field validation, etc.
 
 **[Validator](https://github.com/bytedance/go-tagexpr/tree/master/validator)**: A powerful validator that supports struct tag expression
 
+## Feature
+
+- Support for a variety of common operator
+- Support for accessing arrays, slices, members of the dictionary
+- Support access to any field in the current structure
+- Support access to nested fields, non-exported fields, etc.
+- Built-in len, sprintf, regexp functions
+- Support single mode and multiple mode to define expression
+- Parameter check subpackage
+- Use offset pointers to directly take values, better performance
 
 ## Example
 
