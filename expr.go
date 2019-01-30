@@ -66,6 +66,9 @@ func (p *Expr) parseOperand(expr *string) (e ExprNode) {
 	if e = readBoolExprNode(expr); e != nil {
 		return e
 	}
+	if e = readNilExprNode(expr); e != nil {
+		return e
+	}
 	return nil
 }
 
@@ -176,7 +179,7 @@ func (p *Expr) checkSyntax() error {
 
 /**
  * Priority:
- * () bool string float64 !
+ * () bool string float64 nil !
  * * / %
  * + -
  * < <= > >=

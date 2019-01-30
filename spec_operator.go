@@ -108,6 +108,8 @@ func (ee *equalExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 		var r1 bool
 		r1, _ = v1.(bool)
 		return r == r1
+	case nil:
+		return v1 == nil
 	default:
 		return false
 	}

@@ -83,6 +83,7 @@ func Test(t *testing.T) {
 	d := "ddd"
 	e := new(int)
 	*e = 3
+	type iface interface{}
 	var cases = []struct {
 		tagName   string
 		structure interface{}
@@ -101,6 +102,8 @@ func Test(t *testing.T) {
 				g  string         `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
 				h  []string       `tagexpr:"{x:$[1]}{y:$[10]}"`
 				i  map[string]int `tagexpr:"{x:$['a']}{y:$[0]}"`
+				j  iface          `tagexpr:"$==1"`
+				k  *iface         `tagexpr:"$"`
 			}{
 				A:  5.0,
 				A2: 5.0,
@@ -129,6 +132,8 @@ func Test(t *testing.T) {
 				"h@y":   nil,
 				"i@x":   7.0,
 				"i@y":   nil,
+				"j@":    false,
+				"k@":    nil,
 			},
 		},
 		{
@@ -150,9 +155,12 @@ func Test(t *testing.T) {
 					s []string
 					m map[string][]string
 				} `tagexpr:"$['h']"`
-				i string `tagexpr:"(g.s)$[0]+(g.m)$['0'][0]==$"`
-				j bool   `tagexpr:"!$"`
-				k int    `tagexpr:"!$"`
+				i string  `tagexpr:"(g.s)$[0]+(g.m)$['0'][0]==$"`
+				j bool    `tagexpr:"!$"`
+				k int     `tagexpr:"!$"`
+				m *int    `tagexpr:"$==nil"`
+				n *bool   `tagexpr:"$==nil"`
+				p *string `tagexpr:"$"`
 			}{
 				A: 5.0,
 				b: "x",
@@ -177,6 +185,9 @@ func Test(t *testing.T) {
 				"i@":    true,
 				"j@":    true,
 				"k@":    nil,
+				"m@":    true,
+				"n@":    true,
+				"p@":    nil,
 			},
 		},
 	}

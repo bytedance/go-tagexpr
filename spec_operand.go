@@ -69,7 +69,7 @@ type boolExprNode struct {
 	val bool
 }
 
-var boolRegexp = regexp.MustCompile(`^!*(true|false)([\|&!= \t]{1}|$)`)
+var boolRegexp = regexp.MustCompile(`^!*(true|false)([\)\],\|&!= \t]{1}|$)`)
 
 func readBoolExprNode(expr *string) ExprNode {
 	s := boolRegexp.FindString(*expr)
@@ -121,7 +121,7 @@ type digitalExprNode struct {
 	val float64
 }
 
-var digitalRegexp = regexp.MustCompile(`^[\+\-]?\d+(\.\d+)?([\+\-\*\/%><\|&!=\^ \t\\]|$)`)
+var digitalRegexp = regexp.MustCompile(`^[\+\-]?\d+(\.\d+)?([\)\],\+\-\*\/%><\|&!=\^ \t\\]|$)`)
 
 func readDigitalExprNode(expr *string) ExprNode {
 	s := digitalRegexp.FindString(*expr)
@@ -170,3 +170,21 @@ func readPairedSymbol(p *string, left, right rune) *string {
 	}
 	return nil
 }
+
+type nilExprNode struct {
+	exprBackground
+}
+
+var nilRegexp = regexp.MustCompile(`^nil([\)\],\|&!= \t]{1}|$)`)
+
+func readNilExprNode(expr *string) ExprNode {
+	s := nilRegexp.FindString(*expr)
+	if s == "" {
+		return nil
+	}
+	*expr = (*expr)[3:]
+	e := &nilExprNode{}
+	return e
+}
+
+func (*nilExprNode) Run(currField string, tagExpr *TagExpr) interface{} { return nil }

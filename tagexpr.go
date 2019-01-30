@@ -197,7 +197,11 @@ func (f *Field) setFloatGetter(kind reflect.Kind, ptrDeep int) {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			return getFloat64(kind, f.newFrom(ptr, ptrDeep).UnsafeAddr())
+			v := f.newFrom(ptr, ptrDeep)
+			if v.CanAddr() {
+				return getFloat64(kind, v.UnsafeAddr())
+			}
+			return nil
 		}
 	}
 }
@@ -209,7 +213,11 @@ func (f *Field) setBoolGetter(ptrDeep int) {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			return f.newFrom(ptr, ptrDeep).Bool()
+			v := f.newFrom(ptr, ptrDeep)
+			if v.IsValid() {
+				return v.Bool()
+			}
+			return nil
 		}
 	}
 }
@@ -221,7 +229,11 @@ func (f *Field) setStringGetter(ptrDeep int) {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			return f.newFrom(ptr, ptrDeep).String()
+			v := f.newFrom(ptr, ptrDeep)
+			if v.IsValid() {
+				return v.String()
+			}
+			return nil
 		}
 	}
 }
@@ -405,6 +417,9 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 		return nil
 	}
 	v = f.valueGetter(t.ptr)
+	if v == nil {
+		return nil
+	}
 	if len(subFields) == 0 {
 		return v
 	}
@@ -439,7 +454,7 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 	}
 	switch vv.Kind() {
 	default:
-		if vv.CanInterface() {
+		if !vv.IsNil() && vv.CanInterface() {
 			return vv.Interface()
 		}
 		return nil

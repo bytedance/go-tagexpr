@@ -105,11 +105,10 @@ type T struct {
 
 |Operator or Expression example|Explain|
 |-----|---------|
-|`true`|bool "true"|
-|`false`|bool "false"|
-|`1`|float64 "1"|
-|`1.0`|float64 "1.0"|
-|`'S'`|String "S"|
+|`true` `false`|bool|
+|`0` `0.0`|float64 "0"|
+|`''`|String|
+|`nil`|nil|
 |`+`|Digital addition or string splicing|
 |`-`|Digital subtraction or negative|
 |`*`|Digital multiplication|
@@ -146,7 +145,7 @@ type T struct {
 |`>>`|Integer bitwise `shift right`| -->
 
 Operator priority(high -> low):
-* `()` `bool` `string` `float64` `!`
+* `()` `bool` `string` `float64` `nil` `!`
 * `*` `/` `%`
 * `+` `-`
 * `<` `<=` `>` `>=`
