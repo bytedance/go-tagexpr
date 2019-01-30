@@ -155,13 +155,13 @@ Operator priority(high -> low):
 
 ## Selector
 
-If expession is **multiple model** and exprName is not `@`:
+If expression is **multiple model** and exprName is not `@`:
 
 ```
 field_lv1.field_lv2...field_lvn@exprName
 ```
 
-If expession is **single model** or exprName is `@`:
+If expression is **single model** or exprName is `@`:
 
 ```
 field_lv1.field_lv2...field_lvn@
