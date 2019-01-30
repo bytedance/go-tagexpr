@@ -48,7 +48,7 @@ func Example() {
 	fmt.Println(vd.Validate(e))
 
 	// Customizes the factory of validation error.
-	vd.SetErrorFactory(func(fieldSelector string) error {
+	vd.SetErrorFactory(func(fieldSelector, msg string) error {
 		return fmt.Errorf(`{"succ":false, "error":"invalid parameter: %s"}`, fieldSelector)
 	})
 
