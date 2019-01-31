@@ -145,6 +145,7 @@ type T struct {
 |`>>`|Integer bitwise `shift right`| -->
 
 Operator priority(high -> low):
+
 * `()` `bool` `string` `float64` `nil` `!`
 * `*` `/` `%`
 * `+` `-`
