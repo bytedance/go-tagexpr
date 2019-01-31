@@ -103,7 +103,7 @@ type T struct {
 
 NOTE: **The `exprName` under the same struct field cannot be the same！**
 
-|Operator or Expression example|Explain|
+|Operator or Operand|Explain|
 |-----|---------|
 |`true` `false`|bool|
 |`0` `0.0`|float64 "0"|
@@ -145,6 +145,7 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`>>`|Integer bitwise `shift right`| -->
 
 Operator priority(high -> low):
+
 * `()` `bool` `string` `float64` `nil` `!`
 * `*` `/` `%`
 * `+` `-`

@@ -103,7 +103,7 @@ type T struct {
 }
 ```
 
-|Operator or Expression example|Explain|
+|Operator or Operand|Explain|
 |-----|---------|
 |`true` `false`|bool|
 |`0` `0.0`|float64 "0"|
