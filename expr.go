@@ -189,14 +189,21 @@ func (p *Expr) checkSyntax() error {
 **/
 
 func sortPriority(e ExprNode) {
-	if e == nil {
-		return
+	for subSortPriority(e) {
 	}
-	sortPriority(e.LeftOperand())
-	sortPriority(e.RightOperand())
+}
+
+func subSortPriority(e ExprNode) bool {
+	if e == nil {
+		return false
+	}
+	leftChanged := subSortPriority(e.LeftOperand())
+	rightChanged := subSortPriority(e.RightOperand())
 	if getPriority(e) > getPriority(e.LeftOperand()) {
 		leftOperandToParent(e)
+		return true
 	}
+	return leftChanged || rightChanged
 }
 
 func getPriority(e ExprNode) (i int) {

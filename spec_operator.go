@@ -14,7 +14,9 @@
 
 package tagexpr
 
-import "math"
+import (
+	"math"
+)
 
 // --------------------------- Operator ---------------------------
 
@@ -212,7 +214,7 @@ type andExprNode struct{ exprBackground }
 func newAndExprNode() ExprNode { return &andExprNode{} }
 
 func (ae *andExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	for _, e := range []ExprNode{ae.leftOperand, ae.rightOperand} {
+	for _, e := range [2]ExprNode{ae.leftOperand, ae.rightOperand} {
 		switch r := e.Run(currField, tagExpr).(type) {
 		case float64:
 			if r == 0 {
@@ -240,7 +242,7 @@ type orExprNode struct{ exprBackground }
 func newOrExprNode() ExprNode { return &orExprNode{} }
 
 func (oe *orExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	for _, e := range []ExprNode{oe.leftOperand, oe.rightOperand} {
+	for _, e := range [2]ExprNode{oe.leftOperand, oe.rightOperand} {
 		switch r := e.Run(currField, tagExpr).(type) {
 		case float64:
 			if r != 0 {

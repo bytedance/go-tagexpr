@@ -136,6 +136,7 @@ func TestPriority(t *testing.T) {
 		expr string
 		val  interface{}
 	}{
+		{expr: "false||true&&8==8", val: true},
 		{expr: "1+2>5-4", val: true},
 		{expr: "1+2*4/2", val: 5.0},
 		{expr: "(true||false)&&false||false", val: false},
