@@ -126,7 +126,7 @@ func TestExpr(t *testing.T) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
 			}
-			t.Fatalf("expr: %q, got: %v, want: %v", c.expr, val, c.val)
+			t.Fatalf("expr: %q, got: %v, expect: %v", c.expr, val, c.val)
 		}
 	}
 }
@@ -154,7 +154,7 @@ func TestPriority(t *testing.T) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
 			}
-			t.Fatalf("expr: %q, got: %v, want: %v", c.expr, val, c.val)
+			t.Fatalf("expr: %q, got: %v, expect: %v", c.expr, val, c.val)
 		}
 	}
 }
@@ -190,7 +190,7 @@ func TestBuiltInFunc(t *testing.T) {
 			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
 				continue
 			}
-			t.Fatalf("expr: %q, got: %v, want: %v", c.expr, val, c.val)
+			t.Fatalf("expr: %q, got: %v, expect: %v", c.expr, val, c.val)
 		}
 	}
 }
@@ -212,7 +212,7 @@ func TestSyntaxIncorrect(t *testing.T) {
 	for _, c := range cases {
 		_, err := parseExpr(c.incorrectExpr)
 		if err == nil {
-			t.Fatalf("want syntax incorrect: %s", c.incorrectExpr)
+			t.Fatalf("expect syntax incorrect: %s", c.incorrectExpr)
 		} else {
 			t.Log(err)
 		}

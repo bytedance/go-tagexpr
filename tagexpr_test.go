@@ -94,7 +94,7 @@ func Test(t *testing.T) {
 			structure: &struct {
 				A  int            `tagexpr:"$>0&&$<10"`
 				A2 int            `tagexpr:"{@:$>0&&$<10}"`
-				b  string         `tagexpr:"{is:$=='test'}{msg:sprintf('want: test, but got: %s',$)}"`
+				b  string         `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
 				c  float32        `tagexpr:"(A)$+$"`
 				d  *string        `tagexpr:"$"`
 				e  **int          `tagexpr:"$"`
@@ -120,7 +120,7 @@ func Test(t *testing.T) {
 				"A@":    true,
 				"A2@":   true,
 				"b@is":  false,
-				"b@msg": "want: test, but got: x",
+				"b@msg": "expect: test, but got: x",
 				"c@":    6.0,
 				"d@":    d,
 				"e@":    float64(*e),
@@ -140,7 +140,7 @@ func Test(t *testing.T) {
 			tagName: "tagexpr",
 			structure: &struct {
 				A int    `tagexpr:"$>0&&$<10"`
-				b string `tagexpr:"{is:$=='test'}{msg:sprintf('want: test, but got: %s',$)}"`
+				b string `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
 				c struct {
 					_ int
 					d bool `tagexpr:"$"`
@@ -162,7 +162,7 @@ func Test(t *testing.T) {
 				n *bool   `tagexpr:"$==nil"`
 				p *string `tagexpr:"$"`
 			}{
-				A: 5.0,
+				A: 5,
 				b: "x",
 				c: struct {
 					_ int
@@ -178,7 +178,7 @@ func Test(t *testing.T) {
 			tests: map[string]interface{}{
 				"A@":    true,
 				"b@is":  false,
-				"b@msg": "want: test, but got: x",
+				"b@msg": "expect: test, but got: x",
 				"c.d@":  true,
 				"e.f@":  true,
 				"g.h@":  "haha",
@@ -201,7 +201,7 @@ func Test(t *testing.T) {
 		for selector, value := range c.tests {
 			val := tagExpr.Eval(selector)
 			if !reflect.DeepEqual(val, value) {
-				t.Fatalf("Eval NO: %d, selector: %q, got: %v, want: %v", i, selector, val, value)
+				t.Fatalf("Eval NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
 		tagExpr.Range(func(selector string, eval func() interface{}) bool {
@@ -209,9 +209,76 @@ func Test(t *testing.T) {
 			value := c.tests[selector]
 			val := eval()
 			if !reflect.DeepEqual(val, value) {
-				t.Fatalf("Range NO: %d, selector: %q, got: %v, want: %v", i, selector, val, value)
+				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 			return true
 		})
+	}
+}
+
+func TestField(t *testing.T) {
+	g := &struct {
+		_ int
+		h string
+		s []string
+		m map[string][]string
+	}{
+		h: "haha",
+		s: []string{"1"},
+		m: map[string][]string{"0": {"2"}},
+	}
+	structure := &struct {
+		A int
+		b string
+		c struct {
+			_ int
+			d bool
+		}
+		e *struct {
+			_ int
+			f bool
+		}
+		g **struct {
+			_ int
+			h string
+			s []string
+			m map[string][]string
+		}
+		i string
+		j bool
+		k int
+		m *int
+		n *bool
+		p *string
+	}{
+		A: 5,
+		b: "x",
+		c: struct {
+			_ int
+			d bool
+		}{d: true},
+		e: &struct {
+			_ int
+			f bool
+		}{f: true},
+		g: &g,
+		i: "12",
+	}
+	vm := New("")
+	e, err := vm.Run(structure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		fieldSelector string
+		value         interface{}
+	}{
+		{"A", int(5)},
+	}
+	for _, c := range cases {
+		val := e.Field(c.fieldSelector).Interface()
+		if !reflect.DeepEqual(val, c.value) {
+			t.Fatalf("%s: got: %s, expect: %s", c.fieldSelector, val, c.value)
+		}
 	}
 }

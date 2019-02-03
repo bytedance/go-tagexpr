@@ -154,7 +154,13 @@ Operator priority(high -> low):
 * `&&`
 * `||`
 
-## Selector
+## Field Selector
+
+```
+field_lv1.field_lv2...field_lvn
+```
+
+## Expression Selector
 
 If expression is **multiple model** and exprName is not `@`:
 
