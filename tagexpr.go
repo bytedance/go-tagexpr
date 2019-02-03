@@ -43,8 +43,13 @@ type structVM struct {
 // fieldVM tag expression set of struct field
 type fieldVM struct {
 	reflect.StructField
-	host        *structVM
-	valueGetter func(uintptr) interface{}
+	ptrDeep            int
+	elemType           reflect.Type
+	elemZeroValue      reflect.Value
+	elemKind           reflect.Kind
+	host               *structVM
+	valueGetter        func(uintptr) interface{}
+	reflectValueGetter func(uintptr) reflect.Value
 }
 
 // New creates a tag expression interpreter that uses @tagName as the tag name.
@@ -130,13 +135,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 		if err != nil {
 			return nil, err
 		}
-		t := structField.Type
-		var ptrDeep int
-		for t.Kind() == reflect.Ptr {
-			t = t.Elem()
-			ptrDeep++
-		}
-		switch t.Kind() {
+		switch field.elemKind {
 		default:
 			field.valueGetter = func(ptr uintptr) interface{} { return nil }
 		case reflect.Struct:
@@ -144,17 +143,17 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			if err != nil {
 				return nil, err
 			}
-			s.copySubFields(field, sub, ptrDeep)
+			s.copySubFields(field, sub)
 		case reflect.Float32, reflect.Float64,
 			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			field.setFloatGetter(t.Kind(), ptrDeep)
+			field.setFloatGetter()
 		case reflect.String:
-			field.setStringGetter(ptrDeep)
+			field.setStringGetter()
 		case reflect.Bool:
-			field.setBoolGetter(ptrDeep)
+			field.setBoolGetter()
 		case reflect.Map, reflect.Array, reflect.Slice:
-			field.setLengthGetter(ptrDeep)
+			field.setLengthGetter()
 		}
 	}
 	return s, nil
@@ -179,41 +178,103 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 		return nil, err
 	}
 	s.fields[f.Name] = f
+	var t = structField.Type
+	var ptrDeep int
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		ptrDeep++
+	}
+	f.ptrDeep = ptrDeep
+	f.elemType = t
+	f.elemZeroValue = reflect.New(t).Elem()
+	f.elemKind = t.Kind()
+	f.reflectValueGetter = f.newFrom
 	return f, nil
 }
 
-func (f *fieldVM) newFrom(ptr uintptr, ptrDeep int) reflect.Value {
+func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
+	nameSpace := field.Name
+	ptrDeep := field.ptrDeep
+	for k, v := range sub.fields {
+		valueGetter := v.valueGetter
+		reflectValueGetter := v.reflectValueGetter
+		f := &fieldVM{
+			StructField: v.StructField,
+			host:        v.host,
+		}
+		if valueGetter != nil {
+			if ptrDeep == 0 {
+				f.valueGetter = func(ptr uintptr) interface{} {
+					return valueGetter(ptr + field.Offset)
+				}
+				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
+					return reflectValueGetter(ptr + field.Offset)
+				}
+			} else {
+				f.valueGetter = func(ptr uintptr) interface{} {
+					newFieldVM := reflect.NewAt(field.Type, unsafe.Pointer(ptr+field.Offset))
+					for i := 0; i < ptrDeep; i++ {
+						newFieldVM = newFieldVM.Elem()
+					}
+					if newFieldVM.IsNil() {
+						return nil
+					}
+					return valueGetter(uintptr(newFieldVM.Pointer()))
+				}
+				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
+					newFieldVM := reflect.NewAt(field.Type, unsafe.Pointer(ptr+field.Offset))
+					for i := 0; i < ptrDeep; i++ {
+						newFieldVM = newFieldVM.Elem()
+					}
+					if newFieldVM.IsNil() {
+						return reflect.Value{}
+					}
+					return reflectValueGetter(uintptr(newFieldVM.Pointer()))
+				}
+			}
+		}
+		s.fields[nameSpace+"."+k] = f
+	}
+	var selector string
+	for k, v := range sub.exprs {
+		selector = nameSpace + "." + k
+		s.exprs[selector] = v
+		s.selectorList = append(s.selectorList, selector)
+	}
+}
+
+func (f *fieldVM) newFrom(ptr uintptr) reflect.Value {
 	v := reflect.NewAt(f.Type, unsafe.Pointer(ptr+f.Offset)).Elem()
-	for i := 0; i < ptrDeep; i++ {
+	for i := 0; i < f.ptrDeep; i++ {
 		v = v.Elem()
 	}
 	return v
 }
 
-func (f *fieldVM) setFloatGetter(kind reflect.Kind, ptrDeep int) {
-	if ptrDeep == 0 {
+func (f *fieldVM) setFloatGetter() {
+	if f.ptrDeep == 0 {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			return getFloat64(kind, ptr+f.Offset)
+			return getFloat64(f.elemKind, ptr+f.Offset)
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newFrom(ptr, ptrDeep)
+			v := f.newFrom(ptr)
 			if v.CanAddr() {
-				return getFloat64(kind, v.UnsafeAddr())
+				return getFloat64(f.elemKind, v.UnsafeAddr())
 			}
 			return nil
 		}
 	}
 }
 
-func (f *fieldVM) setBoolGetter(ptrDeep int) {
-	if ptrDeep == 0 {
+func (f *fieldVM) setBoolGetter() {
+	if f.ptrDeep == 0 {
 		f.valueGetter = func(ptr uintptr) interface{} {
 			return *(*bool)(unsafe.Pointer(ptr + f.Offset))
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newFrom(ptr, ptrDeep)
+			v := f.newFrom(ptr)
 			if v.IsValid() {
 				return v.Bool()
 			}
@@ -222,14 +283,14 @@ func (f *fieldVM) setBoolGetter(ptrDeep int) {
 	}
 }
 
-func (f *fieldVM) setStringGetter(ptrDeep int) {
-	if ptrDeep == 0 {
+func (f *fieldVM) setStringGetter() {
+	if f.ptrDeep == 0 {
 		f.valueGetter = func(ptr uintptr) interface{} {
 			return *(*string)(unsafe.Pointer(ptr + f.Offset))
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newFrom(ptr, ptrDeep)
+			v := f.newFrom(ptr)
 			if v.IsValid() {
 				return v.String()
 			}
@@ -238,9 +299,13 @@ func (f *fieldVM) setStringGetter(ptrDeep int) {
 	}
 }
 
-func (f *fieldVM) setLengthGetter(ptrDeep int) {
+func (f *fieldVM) setLengthGetter() {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		return f.newFrom(ptr, ptrDeep).Interface()
+		v := f.newFrom(ptr)
+		if v.IsValid() {
+			return v.Interface()
+		}
+		return nil
 	}
 }
 
@@ -297,39 +362,6 @@ func (f *fieldVM) parseExprs(tag string) error {
 			}
 		}
 		return fmt.Errorf("syntax incorrect: %q", raw)
-	}
-}
-
-func (s *structVM) copySubFields(field *fieldVM, sub *structVM, ptrDeep int) {
-	nameSpace := field.Name
-	for k, v := range sub.fields {
-		valueGetter := v.valueGetter
-		f := &fieldVM{
-			StructField: v.StructField,
-			host:        v.host,
-		}
-		if valueGetter != nil {
-			if ptrDeep == 0 {
-				f.valueGetter = func(ptr uintptr) interface{} {
-					return valueGetter(ptr + field.Offset)
-				}
-			} else {
-				f.valueGetter = func(ptr uintptr) interface{} {
-					newFieldVM := reflect.NewAt(field.Type, unsafe.Pointer(ptr+field.Offset))
-					for i := 0; i < ptrDeep; i++ {
-						newFieldVM = newFieldVM.Elem()
-					}
-					return valueGetter(uintptr(newFieldVM.Pointer()))
-				}
-			}
-		}
-		s.fields[nameSpace+"."+k] = f
-	}
-	var selector string
-	for k, v := range sub.exprs {
-		selector = nameSpace + "." + k
-		s.exprs[selector] = v
-		s.selectorList = append(s.selectorList, selector)
 	}
 }
 
@@ -408,13 +440,20 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 	}
 }
 
-// Field returns the field reflect.Value specified by the selector.
-func (t *TagExpr) Field(fieldSelector string) reflect.Value {
+// FieldElem returns the field reflect.Value specified by the selector.
+// NOTE:
+//  Return invalid reflect.Value if the field is not exist;
+//  Return zero value if the field is nil.
+func (t *TagExpr) FieldElem(fieldSelector string) reflect.Value {
 	f, ok := t.s.fields[fieldSelector]
 	if !ok {
 		return reflect.Value{}
 	}
-	return reflect.NewAt(f.Type, unsafe.Pointer(t.ptr+f.Offset)).Elem()
+	elem := f.reflectValueGetter(t.ptr)
+	if !elem.IsValid() {
+		return f.elemZeroValue
+	}
+	return elem
 }
 
 func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}) {

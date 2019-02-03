@@ -108,7 +108,7 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`true` `false`|bool|
 |`0` `0.0`|float64 "0"|
 |`''`|String|
-|`nil`|nil|
+|`nil`|nil, undefined|
 |`+`|Digital addition or string splicing|
 |`-`|Digital subtraction or negative|
 |`*`|Digital multiplication|

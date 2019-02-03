@@ -92,18 +92,19 @@ func Test(t *testing.T) {
 		{
 			tagName: "tagexpr",
 			structure: &struct {
-				A  int            `tagexpr:"$>0&&$<10"`
-				A2 int            `tagexpr:"{@:$>0&&$<10}"`
-				b  string         `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
-				c  float32        `tagexpr:"(A)$+$"`
-				d  *string        `tagexpr:"$"`
-				e  **int          `tagexpr:"$"`
-				f  *[3]int        `tagexpr:"{x:len($)}{y:len()}"`
-				g  string         `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
-				h  []string       `tagexpr:"{x:$[1]}{y:$[10]}"`
-				i  map[string]int `tagexpr:"{x:$['a']}{y:$[0]}"`
-				j  iface          `tagexpr:"$==1"`
-				k  *iface         `tagexpr:"$"`
+				A  int             `tagexpr:"$>0&&$<10"`
+				A2 int             `tagexpr:"{@:$>0&&$<10}"`
+				b  string          `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
+				c  float32         `tagexpr:"(A)$+$"`
+				d  *string         `tagexpr:"$"`
+				e  **int           `tagexpr:"$"`
+				f  *[3]int         `tagexpr:"{x:len($)}{y:len()}"`
+				g  string          `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
+				h  []string        `tagexpr:"{x:$[1]}{y:$[10]}"`
+				i  map[string]int  `tagexpr:"{x:$['a']}{y:$[0]}"`
+				i2 *map[string]int `tagexpr:"{x:$['a']}{y:$[0]}"`
+				j  iface           `tagexpr:"$==1"`
+				k  *iface          `tagexpr:"$"`
 			}{
 				A:  5.0,
 				A2: 5.0,
@@ -132,6 +133,8 @@ func Test(t *testing.T) {
 				"h@y":   nil,
 				"i@x":   7.0,
 				"i@y":   nil,
+				"i2@x":  nil,
+				"i2@y":  nil,
 				"j@":    false,
 				"k@":    nil,
 			},
@@ -188,6 +191,17 @@ func Test(t *testing.T) {
 				"m@":    true,
 				"n@":    true,
 				"p@":    nil,
+			},
+		},
+		{
+			tagName: "p",
+			structure: &struct {
+				q *struct {
+					x int
+				} `p:"(q.x)$"`
+			}{},
+			tests: map[string]interface{}{
+				"q@": nil,
 			},
 		},
 	}
@@ -273,12 +287,29 @@ func TestField(t *testing.T) {
 		fieldSelector string
 		value         interface{}
 	}{
-		{"A", int(5)},
+		{"A", structure.A},
+		{"b", structure.b},
+		{"c", structure.c},
+		{"c.d", structure.c.d},
+		{"e", *structure.e},
+		{"e.f", structure.e.f},
+		{"g", **structure.g},
+		{"g.h", (*structure.g).h},
+		{"g.s", (*structure.g).s},
+		{"g.m", (*structure.g).m},
+		{"i", structure.i},
+		{"j", structure.j},
+		{"k", structure.k},
+		{"m", 0},
+		{"n", false},
+		{"p", ""},
 	}
 	for _, c := range cases {
-		val := e.Field(c.fieldSelector).Interface()
+		elem := e.FieldElem(c.fieldSelector)
+		t.Log(c.fieldSelector)
+		val := elem.Interface()
 		if !reflect.DeepEqual(val, c.value) {
-			t.Fatalf("%s: got: %s, expect: %s", c.fieldSelector, val, c.value)
+			t.Fatalf("%s: got: %v(%[2]T), expect: %v(%[3]T)", c.fieldSelector, val, c.value)
 		}
 	}
 }
