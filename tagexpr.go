@@ -448,7 +448,7 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 
 // Field returns the field value specified by the selector.
 // NOTE:
-//  Return nil if the field is not exist;
+//  Return nil if the field is not exist
 func (t *TagExpr) Field(fieldSelector string) interface{} {
 	f, ok := t.s.fields[fieldSelector]
 	if !ok {
