@@ -45,8 +45,8 @@ type fieldVM struct {
 	reflect.StructField
 	ptrDeep            int
 	elemType           reflect.Type
-	elemZeroValue      reflect.Value
 	elemKind           reflect.Kind
+	zeroValue          interface{}
 	host               *structVM
 	valueGetter        func(uintptr) interface{}
 	reflectValueGetter func(uintptr) reflect.Value
@@ -186,9 +186,11 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 	}
 	f.ptrDeep = ptrDeep
 	f.elemType = t
-	f.elemZeroValue = reflect.New(t).Elem()
 	f.elemKind = t.Kind()
-	f.reflectValueGetter = f.newFrom
+	if f.ptrDeep == 0 {
+		f.zeroValue = reflect.New(t).Elem().Interface()
+	}
+	f.reflectValueGetter = f.newRawFrom
 	return f, nil
 }
 
@@ -243,8 +245,12 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 	}
 }
 
-func (f *fieldVM) newFrom(ptr uintptr) reflect.Value {
-	v := reflect.NewAt(f.Type, unsafe.Pointer(ptr+f.Offset)).Elem()
+func (f *fieldVM) newRawFrom(ptr uintptr) reflect.Value {
+	return reflect.NewAt(f.Type, unsafe.Pointer(ptr+f.Offset)).Elem()
+}
+
+func (f *fieldVM) newElemFrom(ptr uintptr) reflect.Value {
+	v := f.newRawFrom(ptr)
 	for i := 0; i < f.ptrDeep; i++ {
 		v = v.Elem()
 	}
@@ -258,7 +264,7 @@ func (f *fieldVM) setFloatGetter() {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newFrom(ptr)
+			v := f.newElemFrom(ptr)
 			if v.CanAddr() {
 				return getFloat64(f.elemKind, v.UnsafeAddr())
 			}
@@ -274,7 +280,7 @@ func (f *fieldVM) setBoolGetter() {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newFrom(ptr)
+			v := f.newElemFrom(ptr)
 			if v.IsValid() {
 				return v.Bool()
 			}
@@ -290,7 +296,7 @@ func (f *fieldVM) setStringGetter() {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newFrom(ptr)
+			v := f.newElemFrom(ptr)
 			if v.IsValid() {
 				return v.String()
 			}
@@ -301,7 +307,7 @@ func (f *fieldVM) setStringGetter() {
 
 func (f *fieldVM) setLengthGetter() {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		v := f.newFrom(ptr)
+		v := f.newElemFrom(ptr)
 		if v.IsValid() {
 			return v.Interface()
 		}
@@ -440,20 +446,22 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 	}
 }
 
-// FieldElem returns the field reflect.Value specified by the selector.
+// Field returns the field value specified by the selector.
 // NOTE:
-//  Return invalid reflect.Value if the field is not exist;
-//  Return zero value if the field is nil.
-func (t *TagExpr) FieldElem(fieldSelector string) reflect.Value {
+//  Return nil if the field is not exist;
+func (t *TagExpr) Field(fieldSelector string) interface{} {
 	f, ok := t.s.fields[fieldSelector]
 	if !ok {
-		return reflect.Value{}
+		return nil
 	}
 	elem := f.reflectValueGetter(t.ptr)
 	if !elem.IsValid() {
-		return f.elemZeroValue
+		return f.zeroValue
 	}
-	return elem
+	if elem.CanInterface() {
+		return elem.Interface()
+	}
+	return nil
 }
 
 func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}) {

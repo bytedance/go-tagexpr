@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func BenchmarkTagExpr(b *testing.B) {
@@ -246,7 +247,7 @@ func TestField(t *testing.T) {
 		b string
 		c struct {
 			_ int
-			d bool
+			d *bool
 		}
 		e *struct {
 			_ int
@@ -267,10 +268,6 @@ func TestField(t *testing.T) {
 	}{
 		A: 5,
 		b: "x",
-		c: struct {
-			_ int
-			d bool
-		}{d: true},
 		e: &struct {
 			_ int
 			f bool
@@ -291,25 +288,33 @@ func TestField(t *testing.T) {
 		{"b", structure.b},
 		{"c", structure.c},
 		{"c.d", structure.c.d},
-		{"e", *structure.e},
+		{"e", structure.e},
 		{"e.f", structure.e.f},
-		{"g", **structure.g},
+		{"g", structure.g},
 		{"g.h", (*structure.g).h},
 		{"g.s", (*structure.g).s},
 		{"g.m", (*structure.g).m},
 		{"i", structure.i},
 		{"j", structure.j},
 		{"k", structure.k},
-		{"m", 0},
-		{"n", false},
-		{"p", ""},
+		{"m", structure.m},
+		{"n", structure.n},
+		{"p", structure.p},
 	}
 	for _, c := range cases {
-		elem := e.FieldElem(c.fieldSelector)
-		t.Log(c.fieldSelector)
-		val := elem.Interface()
+		val := e.Field(c.fieldSelector)
 		if !reflect.DeepEqual(val, c.value) {
 			t.Fatalf("%s: got: %v(%[2]T), expect: %v(%[3]T)", c.fieldSelector, val, c.value)
 		}
+	}
+	var wall uint64 = 1024
+	unix := time.Unix(1549186325, int64(wall))
+	e, err = vm.Run(&unix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	val := e.Field("wall")
+	if !reflect.DeepEqual(val, wall) {
+		t.Fatalf("Time.wall: got: %v(%[1]T), expect: %v(%[2]T)", val, wall)
 	}
 }
