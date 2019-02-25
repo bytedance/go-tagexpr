@@ -162,16 +162,16 @@ field_lv1.field_lv2...field_lvn
 
 ## Expression Selector
 
-If expression is **multiple model** and exprName is not `@`:
-
-```
-field_lv1.field_lv2...field_lvn@exprName
-```
-
-If expression is **single model** or exprName is `@`:
+- If expression is **single model** or exprName is `@`:
 
 ```
 field_lv1.field_lv2...field_lvn
+```
+
+- If expression is **multiple model** and exprName is not `@`:
+
+```
+field_lv1.field_lv2...field_lvn@exprName
 ```
 
 ## Benchmark
