@@ -430,6 +430,9 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 		// Compatible with single mode or the expression with the name @
 		if strings.HasSuffix(exprSelector, "@") {
 			exprSelector = exprSelector[:len(exprSelector)-1]
+			if strings.HasSuffix(exprSelector, "@") {
+				exprSelector = exprSelector[:len(exprSelector)-1]
+			}
 			expr, ok = t.s.exprs[exprSelector]
 		}
 		if !ok {
