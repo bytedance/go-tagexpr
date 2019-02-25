@@ -326,7 +326,7 @@ func (f *fieldVM) parseExprs(tag string) error {
 		if err != nil {
 			return err
 		}
-		selector := f.Name + "@"
+		selector := f.Name
 		f.host.exprs[selector] = expr
 		f.host.selectorList = append(f.host.selectorList, selector)
 		return nil
@@ -344,7 +344,7 @@ func (f *fieldVM) parseExprs(tag string) error {
 				case "":
 					continue
 				case "@":
-					selector = f.Name + selector
+					selector = f.Name
 				default:
 					selector = f.Name + "@" + selector
 				}
@@ -427,7 +427,14 @@ func (t *TagExpr) EvalBool(exprSelector string) bool {
 func (t *TagExpr) Eval(exprSelector string) interface{} {
 	expr, ok := t.s.exprs[exprSelector]
 	if !ok {
-		return nil
+		// Compatible with single mode or the expression with the name @
+		if strings.HasSuffix(exprSelector, "@") {
+			exprSelector = exprSelector[:len(exprSelector)-1]
+			expr, ok = t.s.exprs[exprSelector]
+		}
+		if !ok {
+			return nil
+		}
 	}
 	return expr.run(getFieldSelector(exprSelector), t)
 }

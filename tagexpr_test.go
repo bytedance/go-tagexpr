@@ -39,7 +39,7 @@ func BenchmarkTagExpr(b *testing.B) {
 		if err != nil {
 			b.FailNow()
 		}
-		if tagExpr.EvalFloat("a@") != 1 {
+		if tagExpr.EvalFloat("a") != 1 {
 			b.FailNow()
 		}
 	}
@@ -119,13 +119,13 @@ func Test(t *testing.T) {
 				i:  map[string]int{"a": 7},
 			},
 			tests: map[string]interface{}{
-				"A@":    true,
-				"A2@":   true,
+				"A":     true,
+				"A2":    true,
 				"b@is":  false,
 				"b@msg": "expect: test, but got: x",
-				"c@":    6.0,
-				"d@":    d,
-				"e@":    float64(*e),
+				"c":     6.0,
+				"d":     d,
+				"e":     float64(*e),
 				"f@x":   float64(3),
 				"f@y":   float64(3),
 				"g@x":   true,
@@ -136,8 +136,8 @@ func Test(t *testing.T) {
 				"i@y":   nil,
 				"i2@x":  nil,
 				"i2@y":  nil,
-				"j@":    false,
-				"k@":    nil,
+				"j":     false,
+				"k":     nil,
 			},
 		},
 		{
@@ -180,18 +180,18 @@ func Test(t *testing.T) {
 				i: "12",
 			},
 			tests: map[string]interface{}{
-				"A@":    true,
+				"A":     true,
 				"b@is":  false,
 				"b@msg": "expect: test, but got: x",
-				"c.d@":  true,
-				"e.f@":  true,
-				"g.h@":  "haha",
-				"i@":    true,
-				"j@":    true,
-				"k@":    nil,
-				"m@":    true,
-				"n@":    true,
-				"p@":    nil,
+				"c.d":   true,
+				"e.f":   true,
+				"g.h":   "haha",
+				"i":     true,
+				"j":     true,
+				"k":     nil,
+				"m":     true,
+				"n":     true,
+				"p":     nil,
 			},
 		},
 		{
@@ -202,7 +202,7 @@ func Test(t *testing.T) {
 				} `p:"(q.x)$"`
 			}{},
 			tests: map[string]interface{}{
-				"q@": nil,
+				"q": nil,
 			},
 		},
 	}

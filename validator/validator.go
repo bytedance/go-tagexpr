@@ -16,6 +16,8 @@
 package validator
 
 import (
+	"strings"
+
 	tagexpr "github.com/bytedance/go-tagexpr"
 )
 
@@ -45,7 +47,7 @@ func (v *Validator) Validate(structPtr interface{}) error {
 	}
 	var errSelector string
 	expr.Range(func(selector string, eval func() interface{}) bool {
-		if !isMatchSelector(selector) {
+		if strings.Contains(selector, "@") {
 			return true
 		}
 		valid, _ := eval().(bool)
@@ -57,19 +59,14 @@ func (v *Validator) Validate(structPtr interface{}) error {
 	if errSelector == "" {
 		return nil
 	}
-	errMsg := expr.EvalString(errSelector + errMsgExprName)
-	return v.errFactory(errSelector[:len(errSelector)-1], errMsg)
+	errMsg := expr.EvalString(errSelector + "@" + errMsgExprName)
+	return v.errFactory(errSelector, errMsg)
 }
 
 // SetErrorFactory customizes the factory of validation error.
 func (v *Validator) SetErrorFactory(errFactory func(fieldSelector, msg string) error) *Validator {
 	v.errFactory = errFactory
 	return v
-}
-
-func isMatchSelector(selector string) bool {
-	n := len(selector)
-	return n > 1 && selector[n-1] == '@' && selector[n-2] != '@'
 }
 
 // Error validate error
@@ -82,7 +79,7 @@ func (e *Error) Error() string {
 	if e.Msg != "" {
 		return e.Msg
 	}
-	return "Invalid parameter: " + e.FieldSelector
+	return "invalid parameter: " + e.FieldSelector
 }
 
 func defaultErrorFactory(fieldSelector, msg string) error {

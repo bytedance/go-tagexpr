@@ -36,7 +36,7 @@ func Example() {
 	fmt.Println(vd.Validate(c))
 
 	type D struct {
-		d []string `vd:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('Invalid d: %v',$)}"`
+		d []string `vd:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('invalid d: %v',$)}"`
 	}
 	d := &D{d: []string{"x", "y"}}
 	fmt.Println(vd.Validate(d))
@@ -66,7 +66,7 @@ func Example() {
 	// true
 	// true
 	// C must be false when S.A>0
-	// Invalid d: [x y]
-	// Invalid parameter: e
+	// invalid d: [x y]
+	// invalid parameter: e
 	// {"succ":false, "error":"invalid parameter: f.g"}
 }
