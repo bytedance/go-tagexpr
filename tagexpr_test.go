@@ -216,7 +216,7 @@ func Test(t *testing.T) {
 		for selector, value := range c.tests {
 			val := tagExpr.Eval(selector)
 			if !reflect.DeepEqual(val, value) {
-				t.Fatalf("Eval NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
+				t.Fatalf("Eval Serial: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
 		tagExpr.Range(func(selector string, eval func() interface{}) bool {

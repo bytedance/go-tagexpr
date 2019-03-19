@@ -21,20 +21,22 @@ import (
 
 type selectorExprNode struct {
 	exprBackground
-	field, name string
-	subExprs    []ExprNode
-	boolPrefix  *bool
+	field, name   string
+	subExprs      []ExprNode
+	boolOpposite  bool
+	floatOpposite bool
 }
 
 func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
-	field, name, subSelector, boolPrefix, found := findSelector(expr)
+	field, name, subSelector, boolOpposite, floatOpposite, found := findSelector(expr)
 	if !found {
 		return nil
 	}
 	operand := &selectorExprNode{
-		field:      field,
-		name:       name,
-		boolPrefix: boolPrefix,
+		field:         field,
+		name:          name,
+		boolOpposite:  boolOpposite,
+		floatOpposite: floatOpposite,
 	}
 	operand.subExprs = make([]ExprNode, 0, len(subSelector))
 	for _, s := range subSelector {
@@ -49,9 +51,9 @@ func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
 	return operand
 }
 
-var selectorRegexp = regexp.MustCompile(`^(\!*)(\([ \t]*[A-Za-z_]+[A-Za-z0-9_\.]*[ \t]*\))?(\$)([\)\[\],\+\-\*\/%><\|&!=\^ \t\\]|$)`)
+var selectorRegexp = regexp.MustCompile(`^([\!\+\-]*)(\([ \t]*[A-Za-z_]+[A-Za-z0-9_\.]*[ \t]*\))?(\$)([\)\[\],\+\-\*\/%><\|&!=\^ \t\\]|$)`)
 
-func findSelector(expr *string) (field string, name string, subSelector []string, boolPrefix *bool, found bool) {
+func findSelector(expr *string) (field string, name string, subSelector []string, boolOpposite, floatOpposite, found bool) {
 	raw := *expr
 	a := selectorRegexp.FindAllStringSubmatch(raw, -1)
 	if len(a) != 1 {
@@ -70,16 +72,33 @@ func findSelector(expr *string) (field string, name string, subSelector []string
 		}
 		if *sub == "" || (*sub)[0] == '[' {
 			*expr = raw
-			return "", "", nil, nil, false
+			return "", "", nil, false, false, false
 		}
 		subSelector = append(subSelector, strings.TrimSpace(*sub))
 	}
-	if boolNum := len(r[1]); boolNum > 0 {
-		bol := true
-		for i := len(r[1]); i > 0; i-- {
-			bol = !bol
+	prefix := r[1]
+	if len(prefix) == 0 {
+		found = true
+		return
+	}
+	t := rune(prefix[0])
+	for _, u := range prefix {
+		if t != u {
+			return "", "", nil, false, false, false
 		}
-		boolPrefix = &bol
+	}
+	switch t {
+	case '!':
+		for i := len(prefix); i > 0; i-- {
+			boolOpposite = !boolOpposite
+		}
+	case '-':
+		for i := len(prefix); i > 0; i-- {
+			floatOpposite = !floatOpposite
+		}
+	case '+':
+	default:
+		return "", "", nil, false, false, false
 	}
 	found = true
 	return
@@ -98,11 +117,17 @@ func (ve *selectorExprNode) Run(currField string, tagExpr *TagExpr) interface{} 
 		field = currField
 	}
 	v := tagExpr.getValue(field, subFields)
-	if ve.boolPrefix == nil {
-		return v
+	if ve.boolOpposite {
+		if bol, ok := v.(bool); ok {
+			return !bol
+		}
+		return nil
 	}
-	if r, ok := v.(bool); ok {
-		return *ve.boolPrefix == r
+	if ve.floatOpposite {
+		if float, ok := v.(float64); ok {
+			return -float
+		}
+		return nil
 	}
-	return nil
+	return v
 }

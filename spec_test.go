@@ -94,45 +94,50 @@ func TestReadDigitalExprNode(t *testing.T) {
 }
 
 func TestFindSelector(t *testing.T) {
-	var falsePtr = new(bool)
-	var truePtr = new(bool)
-	*truePtr = true
 	var cases = []struct {
-		expr        string
-		field       string
-		name        string
-		subSelector []string
-		boolPrefix  *bool
-		found       bool
-		last        string
+		expr          string
+		field         string
+		name          string
+		subSelector   []string
+		boolOpposite  bool
+		floatOpposite bool
+		found         bool
+		last          string
 	}{
-		{expr: "$", field: "", name: "$", subSelector: nil, found: true, last: ""},
-		{expr: "!!$", field: "", name: "$", subSelector: nil, boolPrefix: truePtr, found: true, last: ""},
-		{expr: "!$", field: "", name: "$", subSelector: nil, boolPrefix: falsePtr, found: true, last: ""},
-		{expr: "()$", field: "", name: "", subSelector: nil, last: "()$"},
-		{expr: "(0)$", field: "", name: "", subSelector: nil, last: "(0)$"},
-		{expr: "(A)$", field: "A", name: "$", subSelector: nil, found: true, last: ""},
-		{expr: "!(A)$", field: "A", name: "$", subSelector: nil, boolPrefix: falsePtr, found: true, last: ""},
-		{expr: "(A0)$", field: "A0", name: "$", subSelector: nil, found: true, last: ""},
-		{expr: "!!(A0)$", field: "A0", name: "$", subSelector: nil, boolPrefix: truePtr, found: true, last: ""},
-		{expr: "(A0)$(A1)$", field: "", name: "", subSelector: nil, last: "(A0)$(A1)$"},
-		{expr: "(A0)$ $(A1)$", field: "A0", name: "$", subSelector: nil, found: true, last: " $(A1)$"},
-		{expr: "$a", field: "", name: "", subSelector: nil, last: "$a"},
-		{expr: "$[1]['a']", field: "", name: "$", subSelector: []string{"1", "'a'"}, found: true, last: ""},
-		{expr: "$[1][]", field: "", name: "", subSelector: nil, last: "$[1][]"},
-		{expr: "$[[]]", field: "", name: "", subSelector: nil, last: "$[[]]"},
-		{expr: "$[[[]]]", field: "", name: "", subSelector: nil, last: "$[[[]]]"},
-		{expr: "$[(A)$[1]]", field: "", name: "$", subSelector: []string{"(A)$[1]"}, found: true, last: ""},
-		{expr: "$>0&&$<10", field: "", name: "$", subSelector: nil, found: true, last: ">0&&$<10"},
+		{expr: "$", name: "$", found: true},
+		{expr: "!!$", name: "$", found: true},
+		{expr: "!$", name: "$", boolOpposite: true, found: true},
+		{expr: "()$", last: "()$"},
+		{expr: "(0)$", last: "(0)$"},
+		{expr: "(A)$", field: "A", name: "$", found: true},
+		{expr: "+(A)$", field: "A", name: "$", found: true},
+		{expr: "++(A)$", field: "A", name: "$", found: true},
+		{expr: "!(A)$", field: "A", name: "$", boolOpposite: true, found: true},
+		{expr: "-(A)$", field: "A", name: "$", floatOpposite: true, found: true},
+		{expr: "(A0)$", field: "A0", name: "$", found: true},
+		{expr: "!!(A0)$", field: "A0", name: "$", found: true},
+		{expr: "--(A0)$", field: "A0", name: "$", found: true},
+		{expr: "(A0)$(A1)$", last: "(A0)$(A1)$"},
+		{expr: "(A0)$ $(A1)$", field: "A0", name: "$", found: true, last: " $(A1)$"},
+		{expr: "$a", last: "$a"},
+		{expr: "$[1]['a']", name: "$", subSelector: []string{"1", "'a'"}, found: true},
+		{expr: "$[1][]", last: "$[1][]"},
+		{expr: "$[[]]", last: "$[[]]"},
+		{expr: "$[[[]]]", last: "$[[[]]]"},
+		{expr: "$[(A)$[1]]", name: "$", subSelector: []string{"(A)$[1]"}, found: true},
+		{expr: "$>0&&$<10", name: "$", found: true, last: ">0&&$<10"},
 	}
 	for _, c := range cases {
 		last := c.expr
-		field, name, subSelector, boolPrefix, found := findSelector(&last)
+		field, name, subSelector, boolOpposite, floatOpposite, found := findSelector(&last)
 		if found != c.found {
 			t.Fatalf("%q found: got: %v, want: %v", c.expr, found, c.found)
 		}
-		if printBoolPtr(boolPrefix) != printBoolPtr(c.boolPrefix) {
-			t.Fatalf("%q boolPrefix: got: %v, want: %v", c.expr, printBoolPtr(boolPrefix), printBoolPtr(c.boolPrefix))
+		if boolOpposite != c.boolOpposite {
+			t.Fatalf("%q boolOpposite: got: %v, want: %v", c.expr, boolOpposite, c.boolOpposite)
+		}
+		if floatOpposite != c.floatOpposite {
+			t.Fatalf("%q floatOpposite: got: %v, want: %v", c.expr, floatOpposite, c.floatOpposite)
 		}
 		if field != c.field {
 			t.Fatalf("%q field: got: %q, want: %q", c.expr, field, c.field)
