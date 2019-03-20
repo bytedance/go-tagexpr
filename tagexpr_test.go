@@ -93,19 +93,20 @@ func Test(t *testing.T) {
 		{
 			tagName: "tagexpr",
 			structure: &struct {
-				A  int             `tagexpr:"$>0&&$<10"`
-				A2 int             `tagexpr:"{@:$>0&&$<10}"`
-				b  string          `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
-				c  float32         `tagexpr:"(A)$+$"`
-				d  *string         `tagexpr:"$"`
-				e  **int           `tagexpr:"$"`
-				f  *[3]int         `tagexpr:"{x:len($)}{y:len()}"`
-				g  string          `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
-				h  []string        `tagexpr:"{x:$[1]}{y:$[10]}"`
-				i  map[string]int  `tagexpr:"{x:$['a']}{y:$[0]}"`
-				i2 *map[string]int `tagexpr:"{x:$['a']}{y:$[0]}"`
-				j  iface           `tagexpr:"$==1"`
-				k  *iface          `tagexpr:"$"`
+				A     int             `tagexpr:"$>0&&$<10"`
+				A2    int             `tagexpr:"{@:$>0&&$<10}"`
+				b     string          `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
+				c     float32         `tagexpr:"(A)$+$"`
+				d     *string         `tagexpr:"$"`
+				e     **int           `tagexpr:"$"`
+				f     *[3]int         `tagexpr:"{x:len($)}{y:len()}"`
+				g     string          `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
+				h     []string        `tagexpr:"{x:$[1]}{y:$[10]}"`
+				i     map[string]int  `tagexpr:"{x:$['a']}{y:$[0]} {z:$==nil}"`
+				i2    *map[string]int `tagexpr:"{x:$['a']}{y:$[0]} {z:$}"`
+				j, j2 iface           `tagexpr:"{@:$==1} {y:$}"`
+				k     *iface          `tagexpr:"$==nil"`
+				m     *struct{ int }  `tagexpr:"$"`
 			}{
 				A:  5.0,
 				A2: 5.0,
@@ -117,6 +118,8 @@ func Test(t *testing.T) {
 				g:  "g123",
 				h:  []string{"", "hehe"},
 				i:  map[string]int{"a": 7},
+				j2: iface(1),
+				m:  &struct{ int }{1},
 			},
 			tests: map[string]interface{}{
 				"A":     true,
@@ -134,10 +137,16 @@ func Test(t *testing.T) {
 				"h@y":   nil,
 				"i@x":   7.0,
 				"i@y":   nil,
+				"i@z":   false,
 				"i2@x":  nil,
 				"i2@y":  nil,
+				"i2@z":  nil,
 				"j":     false,
-				"k":     nil,
+				"j@y":   nil,
+				"j2":    true,
+				"j2@y":  1.0,
+				"k":     true,
+				"m":     &struct{ int }{1},
 			},
 		},
 		{

@@ -137,13 +137,14 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 		}
 		switch field.elemKind {
 		default:
-			field.valueGetter = func(ptr uintptr) interface{} { return nil }
-		case reflect.Struct:
-			sub, err = vm.registerStructLocked(field.Type)
-			if err != nil {
-				return nil, err
+			field.setUnsupportGetter()
+			if field.elemKind == reflect.Struct {
+				sub, err = vm.registerStructLocked(field.Type)
+				if err != nil {
+					return nil, err
+				}
+				s.copySubFields(field, sub)
 			}
-			s.copySubFields(field, sub)
 		case reflect.Float32, reflect.Float64,
 			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
@@ -315,6 +316,44 @@ func (f *fieldVM) setLengthGetter() {
 	}
 }
 
+func (f *fieldVM) setUnsupportGetter() {
+	f.valueGetter = func(ptr uintptr) interface{} {
+		raw := f.newRawFrom(ptr)
+		if raw.IsNil() {
+			return nil
+		}
+		v := raw
+		for i := 0; i < f.ptrDeep; i++ {
+			v = v.Elem()
+		}
+		for v.Kind() == reflect.Interface {
+			v = v.Elem()
+		}
+		kind := v.Kind()
+		switch kind {
+		case reflect.Float32, reflect.Float64,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			if v.CanAddr() {
+				return getFloat64(kind, v.UnsafeAddr())
+			}
+			switch kind {
+			case reflect.Float32, reflect.Float64:
+				return v.Float()
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				return float64(v.Int())
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+				return float64(v.Uint())
+			}
+		case reflect.String:
+			return v.String()
+		case reflect.Bool:
+			return v.Bool()
+		}
+		return raw.Interface()
+	}
+}
+
 func (f *fieldVM) parseExprs(tag string) error {
 	raw := tag
 	tag = strings.TrimSpace(tag)
@@ -473,6 +512,15 @@ func (t *TagExpr) Field(fieldSelector string) interface{} {
 	}
 	return nil
 }
+
+// // UnsupportType returns the type or its pointer,
+// // when it finds a type go-tagexpr does not support
+// type UnsupportType struct{}
+
+// var (
+// 	unsupportTypePtr  = new(UnsupportType)
+// 	unsupportTypeElem = *unsupportTypePtr
+// )
 
 func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}) {
 	f, ok := t.s.fields[field]
