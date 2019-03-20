@@ -27,3 +27,6 @@ _testmain.go
 *.sublime-project
 *.sublime-workspace
 .DS_Store
+
+# idea ignore
+.idea/
