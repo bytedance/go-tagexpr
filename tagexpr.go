@@ -535,6 +535,9 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 		case reflect.Struct:
 			if float, ok := k.(float64); ok {
 				idx := int(float)
+				if idx < 0 || idx >= vv.NumField() {
+					return nil
+				}
 				vv = vv.Field(idx)
 			} else if str, ok := k.(string); ok {
 				vv = vv.FieldByName(str)
