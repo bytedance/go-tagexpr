@@ -106,7 +106,7 @@ func Test(t *testing.T) {
 				i2    *map[string]int  `tagexpr:"{x:$['a']}{y:$[0]} {z:$}"`
 				j, j2 iface            `tagexpr:"{@:$==1} {y:$}"`
 				k     *iface           `tagexpr:"$==nil"`
-				m     *struct{ i int } `tagexpr:"$"`
+				m     *struct{ i int } `tagexpr:"{@:$}{x:$['a']['x']}"`
 			}{
 				A:  5.0,
 				A2: 5.0,
@@ -147,6 +147,7 @@ func Test(t *testing.T) {
 				"j2@y":  1.0,
 				"k":     true,
 				"m":     &struct{ i int }{1},
+				"m@x":   nil,
 			},
 		},
 		{

@@ -549,6 +549,9 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 				return nil
 			}
 		}
+		if !vv.IsValid() {
+			return nil
+		}
 	}
 	raw := vv
 	for vv.Kind() == reflect.Ptr || vv.Kind() == reflect.Interface {
@@ -606,6 +609,9 @@ func getFloat64(kind reflect.Kind, ptr uintptr) interface{} {
 }
 
 func anyValueGetter(raw, elem reflect.Value) interface{} {
+	// if !elem.IsValid() || !raw.IsValid() {
+	// 	return nil
+	// }
 	kind := elem.Kind()
 	switch kind {
 	case reflect.Float32, reflect.Float64,
