@@ -329,3 +329,126 @@ func TestField(t *testing.T) {
 		t.Fatalf("Time.wall: got: %v(%[1]T), expect: %v(%[2]T)", val, wall)
 	}
 }
+
+func TestOperator(t *testing.T) {
+
+	type Tmp1 struct {
+		A string `tagexpr:$=="1"||$=="2"||$="3"`
+		B []int  `tagexpr:len($)>=10&&$[0]<10`
+		C interface{}
+	}
+
+	type Tmp2 struct {
+		A *Tmp1
+		B interface{}
+	}
+
+	type Target struct {
+		A int             `tagexpr:"-$+$<=10"`
+		B int             `tagexpr:"+$-$<=10"`
+		C int             `tagexpr:"-$+(M)$*(N)$/$%(D.B)$[2]+$==1"`
+		D *Tmp1           `tagexpr:"(D.A)$!=nil"`
+		E string          `tagexpr:"((D.A)$=='1'&&len($)>1)||((D.A)$=='2'&&len($)>2)||((D.A)$=='3'&&len($)>3)"`
+		F map[string]int  `tagexpr:"{x:len($)}{y:$['a']>10&&$['b']>1}"`
+		G *map[string]int `tagexpr:"{x:$['a']+(F)$['a']>20}"`
+		H []string        `tagexpr:"len($)>=1&&len($)<10&&$[0]=='123'&&$[1]!='456'"`
+		I interface{}     `tagexpr:"$!=nil"`
+		K *string         `tagexpr:"len((D.A)$)+len($)<10&&len((D.A)$+$)<10"`
+		L **string        `tagexpr:"false"`
+		M float64         `tagexpr:"$/2>10&&$%2==0"`
+		N *float64        `tagexpr:"($+$*$-$/$+1)/$==$+1"`
+		O *[3]float64     `tagexpr:"$[0]>10&&$[0]<20||$[0]>20&&$[0]<30"`
+		P *Tmp2           `tagexpr:"{x:$!=nil}{y:len((P.A.A)$)<=1&&(P.A.B)$[0]==1}{z:$['A']['C']==nil}{w:$['A']['B'][0]==1}{r:$[0][1][2]==3}{s1:$[2]==nil}{s2:$[0][3]==nil}{s3:(ZZ)$}{s4:(P.B)$!=nil}"`
+		Q *Tmp2           `tagexpr:"{s1:$['A']['B']!=nil}{s2:(Q.A)$['B']!=nil}{s3:$['A']['C']==nil}{s4:(Q.A)$['C']==nil}{s5:(Q.A)$['B'][0]==1}{s6:$['X']['Z']==nil}"`
+	}
+
+	k := "123456"
+	n := float64(-12.5)
+	o := [3]float64{15, 9, 9}
+	var cases = []struct {
+		tagName   string
+		structure interface{}
+		tests     map[string]interface{}
+	}{
+		{
+			tagName: "tagexpr",
+			structure: &Target{
+				A: 5,
+				B: 10,
+				C: -10,
+				D: &Tmp1{A: "3", B: []int{1, 2, 3}},
+				E: "1234",
+				F: map[string]int{"a": 11, "b": 9},
+				G: &map[string]int{"a": 11},
+				H: []string{"123", "45"},
+				I: struct{}{},
+				K: &k,
+				L: nil,
+				M: float64(30),
+				N: &n,
+				O: &o,
+				P: &Tmp2{A: &Tmp1{A: "3", B: []int{1, 2, 3}}, B: struct{}{}},
+				Q: &Tmp2{A: &Tmp1{A: "3", B: []int{1, 2, 3}}, B: struct{}{}},
+			},
+			tests: map[string]interface{}{
+				"A":   true,
+				"B":   true,
+				"C":   true,
+				"D":   true,
+				"E":   true,
+				"F@x": float64(2),
+				"F@y": true,
+				"G@x": true,
+				"H":   true,
+				"I":   true,
+				"K":   true,
+				"L":   false,
+				"M":   true,
+				"N":   true,
+				"O":   true,
+
+				"P@x":  true,
+				"P@y":  true,
+				"P@z":  true,
+				"P@w":  true,
+				"P@r":  true,
+				"P@s1": true,
+				"P@s2": true,
+				"P@s3": nil,
+				"P@s4": true,
+
+				"Q@s1": true,
+				"Q@s2": true,
+				"Q@s3": true,
+				"Q@s4": true,
+				"Q@s5": true,
+				"Q@s6": true,
+			},
+		},
+	}
+
+	for i, c := range cases {
+		vm := New(c.tagName)
+		// vm.WarmUp(c.structure)
+		tagExpr, err := vm.Run(c.structure)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for selector, value := range c.tests {
+			val := tagExpr.Eval(selector)
+			if !reflect.DeepEqual(val, value) {
+				t.Fatalf("Eval NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
+			}
+		}
+		tagExpr.Range(func(selector string, eval func() interface{}) bool {
+			t.Logf("Range selector: %s", selector)
+			value := c.tests[selector]
+			val := eval()
+			if !reflect.DeepEqual(val, value) {
+				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
+			}
+			return true
+		})
+	}
+
+}
