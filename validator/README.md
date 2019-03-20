@@ -126,8 +126,8 @@ type T struct {
 |`(X)$`|Struct field value named X|
 |`(X.Y)$`|Struct field value named X.Y|
 |`$`|Shorthand for `(X)$`, omit `(X)` to indicate current struct field value|
-|`(X)$['A']`|Map value with key A in the struct field X|
-|`(X)$[0]`|The 0th element of the struct field X(type: map, slice, array)|
+|`(X)$['A']`|Map value with key A or struct A sub-field in the struct field X|
+|`(X)$[0]`|The 0th element or sub-field of the struct field X(type: map, slice, array, struct)|
 |`len((X)$)`|Built-in function `len`, the length of struct field X|
 |`len()`|Built-in function `len`, the length of the current struct field|
 |`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|

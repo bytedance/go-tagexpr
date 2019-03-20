@@ -93,20 +93,20 @@ func Test(t *testing.T) {
 		{
 			tagName: "tagexpr",
 			structure: &struct {
-				A     int             `tagexpr:"$>0&&$<10"`
-				A2    int             `tagexpr:"{@:$>0&&$<10}"`
-				b     string          `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
-				c     float32         `tagexpr:"(A)$+$"`
-				d     *string         `tagexpr:"$"`
-				e     **int           `tagexpr:"$"`
-				f     *[3]int         `tagexpr:"{x:len($)}{y:len()}"`
-				g     string          `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
-				h     []string        `tagexpr:"{x:$[1]}{y:$[10]}"`
-				i     map[string]int  `tagexpr:"{x:$['a']}{y:$[0]} {z:$==nil}"`
-				i2    *map[string]int `tagexpr:"{x:$['a']}{y:$[0]} {z:$}"`
-				j, j2 iface           `tagexpr:"{@:$==1} {y:$}"`
-				k     *iface          `tagexpr:"$==nil"`
-				m     *struct{ int }  `tagexpr:"$"`
+				A     int              `tagexpr:"$>0&&$<10"`
+				A2    int              `tagexpr:"{@:$>0&&$<10}"`
+				b     string           `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
+				c     float32          `tagexpr:"(A)$+$"`
+				d     *string          `tagexpr:"$"`
+				e     **int            `tagexpr:"$"`
+				f     *[3]int          `tagexpr:"{x:len($)}{y:len()}"`
+				g     string           `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
+				h     []string         `tagexpr:"{x:$[1]}{y:$[10]}"`
+				i     map[string]int   `tagexpr:"{x:$['a']}{y:$[0]} {z:$==nil}"`
+				i2    *map[string]int  `tagexpr:"{x:$['a']}{y:$[0]} {z:$}"`
+				j, j2 iface            `tagexpr:"{@:$==1} {y:$}"`
+				k     *iface           `tagexpr:"$==nil"`
+				m     *struct{ i int } `tagexpr:"$"`
 			}{
 				A:  5.0,
 				A2: 5.0,
@@ -119,7 +119,7 @@ func Test(t *testing.T) {
 				h:  []string{"", "hehe"},
 				i:  map[string]int{"a": 7},
 				j2: iface(1),
-				m:  &struct{ int }{1},
+				m:  &struct{ i int }{1},
 			},
 			tests: map[string]interface{}{
 				"A":     true,
@@ -146,7 +146,7 @@ func Test(t *testing.T) {
 				"j2":    true,
 				"j2@y":  1.0,
 				"k":     true,
-				"m":     &struct{ int }{1},
+				"m":     &struct{ i int }{1},
 			},
 		},
 		{
@@ -194,6 +194,7 @@ func Test(t *testing.T) {
 				"b@msg": "expect: test, but got: x",
 				"c.d":   true,
 				"e.f":   true,
+				"g":     "haha",
 				"g.h":   "haha",
 				"i":     true,
 				"j":     true,

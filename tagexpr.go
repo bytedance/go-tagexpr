@@ -319,7 +319,7 @@ func (f *fieldVM) setLengthGetter() {
 func (f *fieldVM) setUnsupportGetter() {
 	f.valueGetter = func(ptr uintptr) interface{} {
 		raw := f.newRawFrom(ptr)
-		if raw.IsNil() {
+		if safeIsNil(raw) {
 			return nil
 		}
 		v := raw
@@ -329,28 +329,7 @@ func (f *fieldVM) setUnsupportGetter() {
 		for v.Kind() == reflect.Interface {
 			v = v.Elem()
 		}
-		kind := v.Kind()
-		switch kind {
-		case reflect.Float32, reflect.Float64,
-			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			if v.CanAddr() {
-				return getFloat64(kind, v.UnsafeAddr())
-			}
-			switch kind {
-			case reflect.Float32, reflect.Float64:
-				return v.Float()
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				return float64(v.Int())
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-				return float64(v.Uint())
-			}
-		case reflect.String:
-			return v.String()
-		case reflect.Bool:
-			return v.Bool()
-		}
-		return raw.Interface()
+		return anyValueGetter(raw, v)
 	}
 }
 
@@ -513,15 +492,6 @@ func (t *TagExpr) Field(fieldSelector string) interface{} {
 	return nil
 }
 
-// // UnsupportType returns the type or its pointer,
-// // when it finds a type go-tagexpr does not support
-// type UnsupportType struct{}
-
-// var (
-// 	unsupportTypePtr  = new(UnsupportType)
-// 	unsupportTypeElem = *unsupportTypePtr
-// )
-
 func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}) {
 	f, ok := t.s.fields[field]
 	if !ok {
@@ -538,11 +508,14 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 		return v
 	}
 	vv := reflect.ValueOf(v)
-	for _, k := range subFields {
-		for vv.Kind() == reflect.Ptr {
+	var kind reflect.Kind
+	for i, k := range subFields {
+		kind = vv.Kind()
+		for kind == reflect.Ptr || kind == reflect.Interface {
 			vv = vv.Elem()
+			kind = vv.Kind()
 		}
-		switch vv.Kind() {
+		switch kind {
 		case reflect.Slice, reflect.Array, reflect.String:
 			if float, ok := k.(float64); ok {
 				idx := int(float)
@@ -559,31 +532,26 @@ func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}
 				return nil
 			}
 			vv = vv.MapIndex(k)
+		case reflect.Struct:
+			if float, ok := k.(float64); ok {
+				idx := int(float)
+				vv = vv.Field(idx)
+			} else if str, ok := k.(string); ok {
+				vv = vv.FieldByName(str)
+			} else {
+				return nil
+			}
 		default:
-			return nil
+			if i < len(subFields)-1 {
+				return nil
+			}
 		}
 	}
-	for vv.Kind() == reflect.Ptr {
+	raw := vv
+	for vv.Kind() == reflect.Ptr || vv.Kind() == reflect.Interface {
 		vv = vv.Elem()
 	}
-	switch vv.Kind() {
-	default:
-		if !vv.IsNil() && vv.CanInterface() {
-			return vv.Interface()
-		}
-		return nil
-	case reflect.String:
-		return vv.String()
-	case reflect.Bool:
-		return vv.Bool()
-	case reflect.Float32, reflect.Float64,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		if vv.CanAddr() {
-			return getFloat64(vv.Kind(), vv.UnsafeAddr())
-		}
-		return vv.Convert(float64Type).Float()
-	}
+	return anyValueGetter(raw, vv)
 }
 
 func safeConvert(v reflect.Value, t reflect.Type) reflect.Value {
@@ -632,4 +600,41 @@ func getFloat64(kind reflect.Kind, ptr uintptr) interface{} {
 		return float64(*(*uintptr)(p))
 	}
 	return nil
+}
+
+func anyValueGetter(raw, elem reflect.Value) interface{} {
+	kind := elem.Kind()
+	switch kind {
+	case reflect.Float32, reflect.Float64,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		if elem.CanAddr() {
+			return getFloat64(kind, elem.UnsafeAddr())
+		}
+		switch kind {
+		case reflect.Float32, reflect.Float64:
+			return elem.Float()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return float64(elem.Int())
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			return float64(elem.Uint())
+		}
+	case reflect.String:
+		return elem.String()
+	case reflect.Bool:
+		return elem.Bool()
+	}
+	if raw.CanInterface() {
+		return raw.Interface()
+	}
+	return nil
+}
+
+func safeIsNil(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr,
+		reflect.UnsafePointer, reflect.Interface, reflect.Slice:
+		return v.IsNil()
+	}
+	return false
 }
