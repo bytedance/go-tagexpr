@@ -77,6 +77,14 @@ func (vm *VM) WarmUp(structOrStructPtr ...interface{}) error {
 	return nil
 }
 
+// MustWarmUp is similar to WarmUp, but panic when error.
+func (vm *VM) MustWarmUp(structOrStructPtr ...interface{}) {
+	err := vm.WarmUp(structOrStructPtr...)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Run returns the tag expression handler of the @structPtr.
 // NOTE:
 //  If the structure type has not been warmed up,
@@ -112,6 +120,15 @@ func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
 		vm.rw.Unlock()
 	}
 	return s.newTagExpr(v.Pointer()), nil
+}
+
+// MustRun is similar to Run, but panic when error.
+func (vm *VM) MustRun(structPtr interface{}) *TagExpr {
+	te, err := vm.Run(structPtr)
+	if err != nil {
+		panic(err)
+	}
+	return te
 }
 
 func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {

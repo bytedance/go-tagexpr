@@ -20,55 +20,89 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/henrylee2cn/goutil/errors"
 )
 
+// --------------------------- Custom function ---------------------------
+
+var funcList = map[string]func(p *Expr, expr *string) ExprNode{}
+
+// RegSimpleFunc registers simple function expression.
+// NOTE:
+//  example: len($) or len() to returns the v's length;
+//  The go number types always are float64;
+//  The go string types always are string.
+func RegSimpleFunc(funcName string, fn func(v interface{}) interface{}) error {
+	_, ok := funcList[funcName]
+	if ok {
+		return errors.Errorf("duplicate expression function: %s", funcName)
+	}
+	funcList[funcName] = newSimpleFunc(funcName, fn)
+	return nil
+}
+
+func newSimpleFunc(funcName string, fn func(interface{}) interface{}) func(*Expr, *string) ExprNode {
+	return func(p *Expr, expr *string) ExprNode {
+		if !strings.HasPrefix(*expr, funcName+"(") {
+			return nil
+		}
+		*expr = (*expr)[len(funcName):]
+		lastStr := *expr
+		s := strings.TrimLeftFunc((*expr)[1:], unicode.IsSpace)
+		if strings.HasPrefix(s, ")") {
+			*expr = "($" + s
+		}
+		operand, subExprNode := readGroupExprNode(expr)
+		if operand == nil {
+			return nil
+		}
+		_, err := p.parseExprNode(subExprNode, operand)
+		if err != nil {
+			*expr = lastStr
+			return nil
+		}
+		e := &simpleFuncExprNode{fn: fn}
+		e.SetRightOperand(operand)
+		return e
+	}
+}
+
+type simpleFuncExprNode struct {
+	exprBackground
+	fn func(v interface{}) interface{}
+}
+
+func (sfn *simpleFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+	return sfn.fn(sfn.rightOperand.Run(currField, tagExpr))
+}
+
 // --------------------------- Built-in function ---------------------------
-
-type lenFnExprNode struct{ exprBackground }
-
-func (p *Expr) readLenFnExprNode(expr *string) ExprNode {
-	if !strings.HasPrefix(*expr, "len(") {
-		return nil
-	}
-	*expr = (*expr)[3:]
-	lastStr := *expr
-	s := strings.TrimLeftFunc((*expr)[1:], unicode.IsSpace)
-	if strings.HasPrefix(s, ")") {
-		*expr = "($" + s
-	}
-	operand, subExprNode := readGroupExprNode(expr)
-	if operand == nil {
-		return nil
-	}
-	_, err := p.parseExprNode(subExprNode, operand)
+func init() {
+	funcList["regexp"] = readRegexpFuncExprNode
+	funcList["sprintf"] = readSprintfFuncExprNode
+	err := RegSimpleFunc("len", func(param interface{}) interface{} {
+		switch v := param.(type) {
+		case string:
+			return float64(len(v))
+		case float64, bool:
+			return nil
+		}
+		defer func() { recover() }()
+		v := reflect.ValueOf(param)
+		return float64(v.Len())
+	})
 	if err != nil {
-		*expr = lastStr
-		return nil
+		panic(err)
 	}
-	e := &lenFnExprNode{}
-	e.SetRightOperand(operand)
-	return e
 }
 
-func (le *lenFnExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	param := le.rightOperand.Run(currField, tagExpr)
-	switch v := param.(type) {
-	case string:
-		return float64(len(v))
-	case float64, bool:
-		return nil
-	}
-	defer func() { recover() }()
-	v := reflect.ValueOf(param)
-	return float64(v.Len())
-}
-
-type regexpFnExprNode struct {
+type regexpFuncExprNode struct {
 	exprBackground
 	re *regexp.Regexp
 }
 
-func (p *Expr) readRegexpFnExprNode(expr *string) ExprNode {
+func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
 	if !strings.HasPrefix(*expr, "regexp(") {
 		return nil
 	}
@@ -106,14 +140,14 @@ func (p *Expr) readRegexpFnExprNode(expr *string) ExprNode {
 		*expr = lastStr
 		return nil
 	}
-	e := &regexpFnExprNode{
+	e := &regexpFuncExprNode{
 		re: rege,
 	}
 	e.SetRightOperand(operand)
 	return e
 }
 
-func (re *regexpFnExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+func (re *regexpFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 	param := re.rightOperand.Run(currField, tagExpr)
 	switch v := param.(type) {
 	case string:
@@ -128,13 +162,13 @@ func (re *regexpFnExprNode) Run(currField string, tagExpr *TagExpr) interface{} 
 	return nil
 }
 
-type sprintfFnExprNode struct {
+type sprintfFuncExprNode struct {
 	exprBackground
 	format string
 	args   []ExprNode
 }
 
-func (p *Expr) readSprintfFnExprNode(expr *string) ExprNode {
+func readSprintfFuncExprNode(p *Expr, expr *string) ExprNode {
 	if !strings.HasPrefix(*expr, "sprintf(") {
 		return nil
 	}
@@ -149,7 +183,7 @@ func (p *Expr) readSprintfFnExprNode(expr *string) ExprNode {
 		*expr = lastStr
 		return nil
 	}
-	e := &sprintfFnExprNode{
+	e := &sprintfFuncExprNode{
 		format: *format,
 	}
 	for {
@@ -174,7 +208,7 @@ func (p *Expr) readSprintfFnExprNode(expr *string) ExprNode {
 	}
 }
 
-func (se *sprintfFnExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+func (se *sprintfFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 	var args []interface{}
 	if n := len(se.args); n > 0 {
 		args = make([]interface{}, n)

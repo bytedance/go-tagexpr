@@ -48,14 +48,10 @@ func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
 }
 
 func (p *Expr) parseOperand(expr *string) (e ExprNode) {
-	if e = p.readLenFnExprNode(expr); e != nil {
-		return e
-	}
-	if e = p.readRegexpFnExprNode(expr); e != nil {
-		return e
-	}
-	if e = p.readSprintfFnExprNode(expr); e != nil {
-		return e
+	for _, fn := range funcList {
+		if e = fn(p, expr); e != nil {
+			return e
+		}
 	}
 	if e = readStringExprNode(expr); e != nil {
 		return e
