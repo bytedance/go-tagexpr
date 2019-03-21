@@ -105,8 +105,8 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 
 |Operator or Operand|Explain|
 |-----|---------|
-|`true` `false`|boolean|
 |`!`|not, only valid for boolean value|
+|`true` `false`|boolean|
 |`0` `0.0`|float64 "0"|
 |`''`|String|
 |`nil`|nil, undefined|
@@ -146,7 +146,7 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 
 Operator priority(high -> low):
 
-* `()` `bool` `string` `float64` `nil` `!`
+* `()` `!` `bool` `float64` `string` `nil`
 * `*` `/` `%`
 * `+` `-`
 * `<` `<=` `>` `>=`

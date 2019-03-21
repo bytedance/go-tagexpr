@@ -175,7 +175,7 @@ func (p *Expr) checkSyntax() error {
 
 /**
  * Priority:
- * () bool string float64 nil !
+ * () ! bool float64 string nil
  * * / %
  * + -
  * < <= > >=
@@ -207,7 +207,7 @@ func getPriority(e ExprNode) (i int) {
 	// 	fmt.Printf("expr:%T %d\n", e, i)
 	// }()
 	switch e.(type) {
-	default: // () bool string float64 !
+	default: // () ! bool float64 string nil
 		return 7
 	case *multiplicationExprNode, *divisionExprNode, *remainderExprNode: // * / %
 		return 6
