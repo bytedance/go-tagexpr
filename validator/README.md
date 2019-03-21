@@ -27,11 +27,19 @@ func Example() {
 	var vd = validator.New("vd")
 
 	type InfoRequest struct {
-		Name  string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
-		Age   int    `vd:"$>0"`
-		Email string `vd:"email($)"`
+		Name   string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
+		Age    int    `vd:"$>0"`
+		Email  string `vd:"email($)"`
+		Phone1 string `vd:"phone($)"`
+		Phone2 string `vd:"phone($,'CN')"`
 	}
-	info := &InfoRequest{Name: "Alice", Age: 18, Email: "henrylee2cn@gmail.com"}
+	info := &InfoRequest{
+		Name:   "Alice",
+		Age:    18,
+		Email:  "henrylee2cn@gmail.com",
+		Phone1: "+8618812345678",
+		Phone2: "18812345678",
+	}
 	fmt.Println(vd.Validate(info) == nil)
 
 	type A struct {
@@ -106,7 +114,8 @@ type T struct {
 
 |Operator or Operand|Explain|
 |-----|---------|
-|`true` `false`|bool|
+|`!`|not, only valid for boolean value|
+|`true` `false`|boolean|
 |`0` `0.0`|float64 "0"|
 |`''`|String|
 |`nil`|nil, undefined|
@@ -130,12 +139,11 @@ type T struct {
 |`(X)$['A']`|Map value with key A or struct A sub-field in the struct field X|
 |`(X)$[0]`|The 0th element or sub-field of the struct field X(type: map, slice, array, struct)|
 |`len((X)$)`|Built-in function `len`, the length of struct field X|
-|`len()`|Built-in function `len`, the length of the current struct field|
 |`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|
 |`regexp('^\\w*$')`|Regular match the current struct field, return boolean|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
 |`email((X)$)`|Regular match the struct field X, return true if it is email|
-|`email()`|Regular match the current struct field, return true if it is email|
+|`phone((X)$,<'defaultRegion'>)`|Regular match the struct field X, return true if it is phone|
 
 <!-- |`(X)$k`|Traverse each element key of the struct field X(type: map, slice, array)|
 |`(X)$v`|Traverse each element value of the struct field X(type: map, slice, array)| -->
@@ -149,7 +157,7 @@ type T struct {
 
 Operator priority(high -> low):
 
-* `()` `bool` `string` `float64` `nil` `!`
+* `()` `!` `bool` `float64` `string` `nil`
 * `*` `/` `%`
 * `+` `-`
 * `<` `<=` `>` `>=`
