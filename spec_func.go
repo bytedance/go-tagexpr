@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"unicode"
 
 	"github.com/henrylee2cn/goutil/errors"
 )
@@ -28,73 +27,107 @@ import (
 
 var funcList = map[string]func(p *Expr, expr *string) ExprNode{}
 
-// RegSimpleFunc registers simple function expression.
+// RegFunc registers function expression.
 // NOTE:
-//  example: len($) or len() to returns the v's length;
+//  example: len($) to returns the v's length;
 //  If @force=true, allow to cover the existed same @funcName;
 //  The go number types always are float64;
 //  The go string types always are string.
-func RegSimpleFunc(funcName string, fn func(v interface{}) interface{}, force ...bool) error {
+func RegFunc(funcName string, fn func(...interface{}) interface{}, force ...bool) error {
 	if len(force) == 0 || !force[0] {
 		_, ok := funcList[funcName]
 		if ok {
 			return errors.Errorf("duplicate registration expression function: %s", funcName)
 		}
 	}
-	funcList[funcName] = newSimpleFunc(funcName, fn)
+	funcList[funcName] = newFunc(funcName, fn)
 	return nil
 }
 
-func newSimpleFunc(funcName string, fn func(interface{}) interface{}) func(*Expr, *string) ExprNode {
+func newFunc(funcName string, fn func(...interface{}) interface{}) func(*Expr, *string) ExprNode {
+	prefix := funcName + "("
+	length := len(funcName)
 	return func(p *Expr, expr *string) ExprNode {
-		if !strings.HasPrefix(*expr, funcName+"(") {
+		last, boolOpposite := readBoolOpposite(expr)
+		if !strings.HasPrefix(last, prefix) {
 			return nil
 		}
-		*expr = (*expr)[len(funcName):]
+		*expr = last[length:]
 		lastStr := *expr
-		s := strings.TrimLeftFunc((*expr)[1:], unicode.IsSpace)
-		if strings.HasPrefix(s, ")") {
-			*expr = "($" + s
-		}
-		operand, subExprNode := readGroupExprNode(expr)
-		if operand == nil {
+		subExprNode := readPairedSymbol(expr, '(', ')')
+		if subExprNode == nil {
 			return nil
 		}
-		_, err := p.parseExprNode(subExprNode, operand)
-		if err != nil {
-			*expr = lastStr
-			return nil
+		f := &funcExprNode{
+			fn:           fn,
+			boolOpposite: boolOpposite,
 		}
-		e := &simpleFuncExprNode{fn: fn}
-		e.SetRightOperand(operand)
-		return e
+		*subExprNode = "," + *subExprNode
+		for {
+			if strings.HasPrefix(*subExprNode, ",") {
+				*subExprNode = (*subExprNode)[1:]
+				operand := newGroupExprNode()
+				_, err := p.parseExprNode(trimLeftSpace(subExprNode), operand)
+				if err != nil {
+					*expr = lastStr
+					return nil
+				}
+				sortPriority(operand.RightOperand())
+				f.args = append(f.args, operand)
+			} else {
+				*expr = lastStr
+				return nil
+			}
+			trimLeftSpace(subExprNode)
+			if len(*subExprNode) == 0 {
+				return f
+			}
+		}
 	}
 }
 
-type simpleFuncExprNode struct {
+type funcExprNode struct {
 	exprBackground
-	fn func(v interface{}) interface{}
+	args         []ExprNode
+	fn           func(...interface{}) interface{}
+	boolOpposite bool
 }
 
-func (sfn *simpleFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	return sfn.fn(sfn.rightOperand.Run(currField, tagExpr))
+func (f *funcExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+	var args []interface{}
+	if n := len(f.args); n > 0 {
+		args = make([]interface{}, n)
+		for k, v := range f.args {
+			args[k] = v.Run(currField, tagExpr)
+		}
+	}
+	v := f.fn(args...)
+	if f.boolOpposite {
+		if bol, ok := v.(bool); ok {
+			return !bol
+		}
+	}
+	return v
 }
 
 // --------------------------- Built-in function ---------------------------
 func init() {
 	funcList["regexp"] = readRegexpFuncExprNode
 	funcList["sprintf"] = readSprintfFuncExprNode
-	err := RegSimpleFunc("len", func(param interface{}) interface{} {
-		switch v := param.(type) {
+	err := RegFunc("len", func(args ...interface{}) interface{} {
+		if len(args) != 1 {
+			return 0
+		}
+		v := args[0]
+		switch e := v.(type) {
 		case string:
-			return float64(len(v))
+			return float64(len(e))
 		case float64, bool:
 			return nil
 		}
 		defer func() { recover() }()
-		v := reflect.ValueOf(param)
-		return float64(v.Len())
-	})
+		return float64(reflect.ValueOf(v).Len())
+	}, true)
 	if err != nil {
 		panic(err)
 	}
@@ -102,14 +135,16 @@ func init() {
 
 type regexpFuncExprNode struct {
 	exprBackground
-	re *regexp.Regexp
+	re           *regexp.Regexp
+	boolOpposite bool
 }
 
 func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
-	if !strings.HasPrefix(*expr, "regexp(") {
+	last, boolOpposite := readBoolOpposite(expr)
+	if !strings.HasPrefix(last, "regexp(") {
 		return nil
 	}
-	*expr = (*expr)[6:]
+	*expr = last[6:]
 	lastStr := *expr
 	subExprNode := readPairedSymbol(expr, '(', ')')
 	if subExprNode == nil {
@@ -144,7 +179,8 @@ func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
 		return nil
 	}
 	e := &regexpFuncExprNode{
-		re: rege,
+		re:           rege,
+		boolOpposite: boolOpposite,
 	}
 	e.SetRightOperand(operand)
 	return e
@@ -154,12 +190,18 @@ func (re *regexpFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{
 	param := re.rightOperand.Run(currField, tagExpr)
 	switch v := param.(type) {
 	case string:
+		if re.boolOpposite {
+			return !re.re.MatchString(v)
+		}
 		return re.re.MatchString(v)
 	case float64, bool:
 		return nil
 	}
 	v := reflect.ValueOf(param)
 	if v.Kind() == reflect.String {
+		if re.boolOpposite {
+			return !re.re.MatchString(v.String())
+		}
 		return re.re.MatchString(v.String())
 	}
 	return nil
@@ -220,4 +262,13 @@ func (se *sprintfFuncExprNode) Run(currField string, tagExpr *TagExpr) interface
 		}
 	}
 	return fmt.Sprintf(se.format, args...)
+}
+
+func readBoolOpposite(expr *string) (string, bool) {
+	last := strings.TrimLeft(*expr, "!")
+	n := len(*expr) - len(last)
+	if n == 0 {
+		return last, false
+	}
+	return last, n%2 == 1
 }

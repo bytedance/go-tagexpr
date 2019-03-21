@@ -22,38 +22,34 @@ import (
 )
 
 func TestFunc(t *testing.T) {
-	var pattern = "^([A-Za-z0-9_\\-\\.\u4e00-\u9fa5])+\\@([A-Za-z0-9_\\-\\.])+\\.([A-Za-z]{2,8})$"
-	emailRegexp := regexp.MustCompile(pattern)
-	tagexpr.RegSimpleFunc("email", func(v interface{}) interface{} {
-		s, ok := v.(string)
+	var emailRegexp = regexp.MustCompile(
+		"^([A-Za-z0-9_\\-\\.\u4e00-\u9fa5])+\\@([A-Za-z0-9_\\-\\.])+\\.([A-Za-z]{2,8})$",
+	)
+	tagexpr.RegFunc("email", func(args ...interface{}) interface{} {
+		if len(args) == 0 {
+			return false
+		}
+		s, ok := args[0].(string)
 		if !ok {
 			return false
 		}
 		t.Log(s)
 		return emailRegexp.MatchString(s)
 	})
-	err := tagexpr.RegSimpleFunc("email", func(v interface{}) interface{} {
-		s, ok := v.(string)
-		if !ok {
-			return false
-		}
-		t.Log(s)
-		return emailRegexp.MatchString(s)
-	}, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	var vm = tagexpr.New("te")
+
 	type T struct {
 		Email string `te:"email($)"`
 	}
-	vm := tagexpr.New("te")
-	cases := []struct {
+	var cases = []struct {
 		email  string
 		expect bool
 	}{
 		{"", false},
 		{"henrylee2cn@gmail.com", true},
 	}
+
 	obj := new(T)
 	for _, c := range cases {
 		obj.Email = c.email

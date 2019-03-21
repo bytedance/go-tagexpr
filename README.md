@@ -105,7 +105,8 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 
 |Operator or Operand|Explain|
 |-----|---------|
-|`true` `false`|bool|
+|`true` `false`|boolean|
+|`!`|not, only valid for boolean value|
 |`0` `0.0`|float64 "0"|
 |`''`|String|
 |`nil`|nil, undefined|
@@ -129,7 +130,6 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`(X)$['A']`|Map value with key A or struct A sub-field in the struct field X|
 |`(X)$[0]`|The 0th element or sub-field of the struct field X(type: map, slice, array, struct)|
 |`len((X)$)`|Built-in function `len`, the length of struct field X|
-|`len()`|Built-in function `len`, the length of the current struct field|
 |`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|
 |`regexp('^\\w*$')`|Regular match the current struct field, return boolean|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|

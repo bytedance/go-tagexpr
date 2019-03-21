@@ -99,8 +99,8 @@ func Test(t *testing.T) {
 				c     float32          `tagexpr:"(A)$+$"`
 				d     *string          `tagexpr:"$"`
 				e     **int            `tagexpr:"$"`
-				f     *[3]int          `tagexpr:"{x:len($)}{y:len()}"`
-				g     string           `tagexpr:"{x:regexp('g\\d{3}$',$)}{y:regexp('g\\d{3}$')}"`
+				f     *[3]int          `tagexpr:"{x:len($)}"`
+				g     string           `tagexpr:"{x:!regexp('xxx',$)}{y:regexp('g\\d{3}$')}"`
 				h     []string         `tagexpr:"{x:$[1]}{y:$[10]}"`
 				i     map[string]int   `tagexpr:"{x:$['a']}{y:$[0]} {z:$==nil}"`
 				i2    *map[string]int  `tagexpr:"{x:$['a']}{y:$[0]} {z:$}"`
@@ -130,7 +130,6 @@ func Test(t *testing.T) {
 				"d":     d,
 				"e":     float64(*e),
 				"f@x":   float64(3),
-				"f@y":   float64(3),
 				"g@x":   true,
 				"g@y":   true,
 				"h@x":   "hehe",
