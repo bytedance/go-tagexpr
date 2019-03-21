@@ -7,9 +7,9 @@ import (
 	"github.com/nyaruka/phonenumbers"
 )
 
-// RegValidateFunc registers simple validate function expression.
+// RegValidateFunc registers validate function expression.
 // NOTE:
-//  example: email($) or email();
+//  example: phone($) or phone($,'CN');
 //  If @force=true, allow to cover the existed same @funcName;
 //  The go number types always are float64;
 //  The go string types always are string.

@@ -29,7 +29,7 @@ var funcList = map[string]func(p *Expr, expr *string) ExprNode{}
 
 // RegFunc registers function expression.
 // NOTE:
-//  example: len($) to returns the v's length;
+//  example: len($), regexp("\\d") or regexp("\\d",$);
 //  If @force=true, allow to cover the existed same @funcName;
 //  The go number types always are float64;
 //  The go string types always are string.
