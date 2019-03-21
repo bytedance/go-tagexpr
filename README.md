@@ -12,6 +12,7 @@ An interesting go struct tag expression syntax for field validation, etc.
 - Support for accessing arrays, slices, members of the dictionary
 - Support access to any field in the current structure
 - Support access to nested fields, non-exported fields, etc.
+- Support registers function expression
 - Built-in len, sprintf, regexp functions
 - Support single mode and multiple mode to define expression
 - Parameter check subpackage

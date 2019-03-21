@@ -7,7 +7,7 @@ import (
 	"github.com/nyaruka/phonenumbers"
 )
 
-// RegValidateFunc registers validate function expression.
+// RegValidateFunc registers validator function expression.
 // NOTE:
 //  example: phone($) or phone($,'CN');
 //  If @force=true, allow to cover the existed same @funcName;

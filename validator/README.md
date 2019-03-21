@@ -8,6 +8,7 @@ A powerful validator that supports struct tag expression.
 - Support for accessing arrays, slices, members of the dictionary
 - Support access to any field in the current structure
 - Support access to nested fields, non-exported fields, etc.
+- Support registers validator function expression
 - Built-in len, sprintf, regexp, email, phone functions
 - Support simple mode, or specify error message mode
 - Use offset pointers to directly take values, better performance
