@@ -32,6 +32,17 @@ func TestFunc(t *testing.T) {
 		t.Log(s)
 		return emailRegexp.MatchString(s)
 	})
+	err := tagexpr.RegSimpleFunc("email", func(v interface{}) interface{} {
+		s, ok := v.(string)
+		if !ok {
+			return false
+		}
+		t.Log(s)
+		return emailRegexp.MatchString(s)
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	type T struct {
 		Email string `te:"email($)"`
 	}

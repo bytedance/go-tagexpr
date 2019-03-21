@@ -31,12 +31,15 @@ var funcList = map[string]func(p *Expr, expr *string) ExprNode{}
 // RegSimpleFunc registers simple function expression.
 // NOTE:
 //  example: len($) or len() to returns the v's length;
+//  If @force=true, allow to cover the existed same @funcName;
 //  The go number types always are float64;
 //  The go string types always are string.
-func RegSimpleFunc(funcName string, fn func(v interface{}) interface{}) error {
-	_, ok := funcList[funcName]
-	if ok {
-		return errors.Errorf("duplicate expression function: %s", funcName)
+func RegSimpleFunc(funcName string, fn func(v interface{}) interface{}, force ...bool) error {
+	if len(force) == 0 || !force[0] {
+		_, ok := funcList[funcName]
+		if ok {
+			return errors.Errorf("duplicate registration expression function: %s", funcName)
+		}
 	}
 	funcList[funcName] = newSimpleFunc(funcName, fn)
 	return nil
