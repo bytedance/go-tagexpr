@@ -10,10 +10,11 @@ func Example() {
 	var vd = validator.New("vd")
 
 	type InfoRequest struct {
-		Name string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
-		Age  int    `vd:"$>0"`
+		Name  string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
+		Age   int    `vd:"$>0"`
+		Email string `vd:"email($)"`
 	}
-	info := &InfoRequest{Name: "Alice", Age: 18}
+	info := &InfoRequest{Name: "Alice", Age: 18, Email: "henrylee2cn@gmail.com"}
 	fmt.Println(vd.Validate(info) == nil)
 
 	type A struct {

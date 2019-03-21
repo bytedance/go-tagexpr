@@ -27,10 +27,11 @@ func Example() {
 	var vd = validator.New("vd")
 
 	type InfoRequest struct {
-		Name string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
-		Age  int    `vd:"$>0"`
+		Name  string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
+		Age   int    `vd:"$>0"`
+		Email string `vd:"email($)"`
 	}
-	info := &InfoRequest{Name: "Alice", Age: 18}
+	info := &InfoRequest{Name: "Alice", Age: 18, Email: "henrylee2cn@gmail.com"}
 	fmt.Println(vd.Validate(info) == nil)
 
 	type A struct {
@@ -133,6 +134,8 @@ type T struct {
 |`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|
 |`regexp('^\\w*$')`|Regular match the current struct field, return boolean|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
+|`email((X)$)`|Regular match the struct field X, return true if it is email|
+|`email()`|Regular match the current struct field, return true if it is email|
 
 <!-- |`(X)$k`|Traverse each element key of the struct field X(type: map, slice, array)|
 |`(X)$v`|Traverse each element value of the struct field X(type: map, slice, array)| -->
