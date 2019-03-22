@@ -22,19 +22,22 @@ import (
 
 func TestReadPairedSymbol(t *testing.T) {
 	var cases = []struct {
-		expr         string
-		val          string
-		lastExprNode string
-		left, right  rune
+		left, right             rune
+		expr, val, lastExprNode string
 	}{
-		{expr: "'true '+'a'", val: "true ", lastExprNode: "+'a'", left: '\'', right: '\''},
-		{expr: "((0+1)/(2-1)*9)%2", val: "(0+1)/(2-1)*9", lastExprNode: "%2", left: '(', right: ')'},
+		{left: '\'', right: '\'', expr: "'true '+'a'", val: "true ", lastExprNode: "+'a'"},
+		{left: '(', right: ')', expr: "((0+1)/(2-1)*9)%2", val: "(0+1)/(2-1)*9", lastExprNode: "%2"},
+		{left: '(', right: ')', expr: `(\)\(\))`, val: `)()`},
+		{left: '\'', right: '\'', expr: `'\\'`, val: `\\`},
+		{left: '\'', right: '\'', expr: `'\'\''`, val: `''`},
 	}
 	for _, c := range cases {
 		t.Log(c.expr)
 		expr := c.expr
 		got := readPairedSymbol(&expr, c.left, c.right)
-		if *got != c.val || expr != c.lastExprNode {
+		if got == nil {
+			t.Fatalf("expr: %q, got: %v, %q, want: %q, %q", c.expr, got, expr, c.val, c.lastExprNode)
+		} else if *got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %q, got: %q, %q, want: %q, %q", c.expr, *got, expr, c.val, c.lastExprNode)
 		}
 	}

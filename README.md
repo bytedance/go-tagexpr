@@ -109,6 +109,8 @@ NOTE: **The `exprName` under the same struct field cannot be the same！**
 |`true` `false`|boolean|
 |`0` `0.0`|float64 "0"|
 |`''`|String|
+|`\\'`| Escape `'` delims in string|
+|`\"`| Escape `"` delims in string|
 |`nil`|nil, undefined|
 |`!`|not, suitable for `bool`, `string`, `float64`, `nil`, `$` and `()`|
 |`+`|Digital addition or string splicing|

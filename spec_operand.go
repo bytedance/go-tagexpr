@@ -150,21 +150,41 @@ func readPairedSymbol(p *string, left, right rune) *string {
 	var last1 = left
 	var last2 rune
 	var leftLevel, rightLevel int
+	var escapeIndexes = make(map[int]bool)
+	var realEqual, escapeEqual bool
 	for i, r := range s {
-		if r == right && (last1 != '\\' || last2 == '\\') {
+		if realEqual, escapeEqual = equalRune(right, r, last1, last2); realEqual {
 			if leftLevel == rightLevel {
 				*p = s[i+1:]
-				sub := s[:i]
-				return &sub
+				var sub = make([]rune, 0, i)
+				for k, v := range s[:i] {
+					if !escapeIndexes[k] {
+						sub = append(sub, v)
+					}
+				}
+				s = string(sub)
+				return &s
 			}
 			rightLevel++
-		} else if r == left && (last1 != '\\' || last2 == '\\') {
+		} else if escapeEqual {
+			escapeIndexes[i-1] = true
+		} else if realEqual, escapeEqual = equalRune(left, r, last1, last2); realEqual {
 			leftLevel++
+		} else if escapeEqual {
+			escapeIndexes[i-1] = true
 		}
 		last2 = last1
 		last1 = r
 	}
 	return nil
+}
+
+func equalRune(a, b, last1, last2 rune) (real, escape bool) {
+	if a == b {
+		real = last1 != '\\' || last2 == '\\'
+		escape = last1 == '\\' && last2 != '\\'
+	}
+	return
 }
 
 func getBoolOpposite(expr *string) (string, *bool) {
