@@ -137,7 +137,7 @@ func TestFindSelector(t *testing.T) {
 		if found != c.found {
 			t.Fatalf("%q found: got: %v, want: %v", c.expr, found, c.found)
 		}
-		if boolOpposite != c.boolOpposite {
+		if c.boolOpposite && (boolOpposite == nil || !*boolOpposite) {
 			t.Fatalf("%q boolOpposite: got: %v, want: %v", c.expr, boolOpposite, c.boolOpposite)
 		}
 		if floatOpposite != c.floatOpposite {

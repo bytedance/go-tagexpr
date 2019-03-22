@@ -23,7 +23,7 @@ type selectorExprNode struct {
 	exprBackground
 	field, name   string
 	subExprs      []ExprNode
-	boolOpposite  bool
+	boolOpposite  *bool
 	floatOpposite bool
 }
 
@@ -53,7 +53,7 @@ func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
 
 var selectorRegexp = regexp.MustCompile(`^([\!\+\-]*)(\([ \t]*[A-Za-z_]+[A-Za-z0-9_\.]*[ \t]*\))?(\$)([\)\[\],\+\-\*\/%><\|&!=\^ \t\\]|$)`)
 
-func findSelector(expr *string) (field string, name string, subSelector []string, boolOpposite, floatOpposite, found bool) {
+func findSelector(expr *string) (field string, name string, subSelector []string, boolOpposite *bool, floatOpposite, found bool) {
 	raw := *expr
 	a := selectorRegexp.FindAllStringSubmatch(raw, -1)
 	if len(a) != 1 {
@@ -72,7 +72,7 @@ func findSelector(expr *string) (field string, name string, subSelector []string
 		}
 		if *sub == "" || (*sub)[0] == '[' {
 			*expr = raw
-			return "", "", nil, false, false, false
+			return "", "", nil, nil, false, false
 		}
 		subSelector = append(subSelector, strings.TrimSpace(*sub))
 	}
@@ -84,21 +84,22 @@ func findSelector(expr *string) (field string, name string, subSelector []string
 	t := rune(prefix[0])
 	for _, u := range prefix {
 		if t != u {
-			return "", "", nil, false, false, false
+			return "", "", nil, nil, false, false
 		}
 	}
 	switch t {
 	case '!':
-		for i := len(prefix); i > 0; i-- {
-			boolOpposite = !boolOpposite
+		if n := len(prefix); n > 0 {
+			bol := n%2 == 1
+			boolOpposite = &bol
 		}
 	case '-':
-		for i := len(prefix); i > 0; i-- {
-			floatOpposite = !floatOpposite
+		if n := len(prefix); n > 0 {
+			floatOpposite = n%2 == 1
 		}
 	case '+':
 	default:
-		return "", "", nil, false, false, false
+		return "", "", nil, nil, false, false
 	}
 	found = true
 	return
@@ -117,17 +118,11 @@ func (ve *selectorExprNode) Run(currField string, tagExpr *TagExpr) interface{} 
 		field = currField
 	}
 	v := tagExpr.getValue(field, subFields)
-	if ve.boolOpposite {
-		if bol, ok := v.(bool); ok {
-			return !bol
-		}
-		return nil
-	}
 	if ve.floatOpposite {
 		if float, ok := v.(float64); ok {
 			return -float
 		}
 		return nil
 	}
-	return v
+	return realValue(v, ve.boolOpposite)
 }

@@ -215,22 +215,7 @@ func newAndExprNode() ExprNode { return &andExprNode{} }
 
 func (ae *andExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 	for _, e := range [2]ExprNode{ae.leftOperand, ae.rightOperand} {
-		switch r := e.Run(currField, tagExpr).(type) {
-		case float64:
-			if r == 0 {
-				return false
-			}
-		case string:
-			if r == "" {
-				return false
-			}
-		case bool:
-			if !r {
-				return false
-			}
-		case nil:
-			return false
-		default:
+		if !FakeBool(e.Run(currField, tagExpr)) {
 			return false
 		}
 	}
@@ -243,19 +228,8 @@ func newOrExprNode() ExprNode { return &orExprNode{} }
 
 func (oe *orExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 	for _, e := range [2]ExprNode{oe.leftOperand, oe.rightOperand} {
-		switch r := e.Run(currField, tagExpr).(type) {
-		case float64:
-			if r != 0 {
-				return true
-			}
-		case string:
-			if r != "" {
-				return true
-			}
-		case bool:
-			if r {
-				return true
-			}
+		if FakeBool(e.Run(currField, tagExpr)) {
+			return true
 		}
 	}
 	return false

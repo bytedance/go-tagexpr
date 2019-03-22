@@ -93,7 +93,7 @@ func Test(t *testing.T) {
 		{
 			tagName: "tagexpr",
 			structure: &struct {
-				A     int              `tagexpr:"$>0&&$<10"`
+				A     int              `tagexpr:"$>0&&$<10&&!''&&!!!0&&!nil&&$"`
 				A2    int              `tagexpr:"{@:$>0&&$<10}"`
 				b     string           `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
 				c     float32          `tagexpr:"(A)$+$"`
@@ -198,7 +198,7 @@ func Test(t *testing.T) {
 				"g.h":   "haha",
 				"i":     true,
 				"j":     true,
-				"k":     nil,
+				"k":     true,
 				"m":     true,
 				"n":     true,
 				"p":     nil,

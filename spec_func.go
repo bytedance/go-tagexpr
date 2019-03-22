@@ -48,7 +48,7 @@ func newFunc(funcName string, fn func(...interface{}) interface{}) func(*Expr, *
 	prefix := funcName + "("
 	length := len(funcName)
 	return func(p *Expr, expr *string) ExprNode {
-		last, boolOpposite := readBoolOpposite(expr)
+		last, boolOpposite := getBoolOpposite(expr)
 		if !strings.HasPrefix(last, prefix) {
 			return nil
 		}
@@ -90,7 +90,7 @@ type funcExprNode struct {
 	exprBackground
 	args         []ExprNode
 	fn           func(...interface{}) interface{}
-	boolOpposite bool
+	boolOpposite *bool
 }
 
 func (f *funcExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
@@ -101,13 +101,7 @@ func (f *funcExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 			args[k] = v.Run(currField, tagExpr)
 		}
 	}
-	v := f.fn(args...)
-	if f.boolOpposite {
-		if bol, ok := v.(bool); ok {
-			return !bol
-		}
-	}
-	return v
+	return realValue(f.fn(args...), f.boolOpposite)
 }
 
 // --------------------------- Built-in function ---------------------------
@@ -140,7 +134,7 @@ type regexpFuncExprNode struct {
 }
 
 func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
-	last, boolOpposite := readBoolOpposite(expr)
+	last, boolOpposite := getBoolOpposite(expr)
 	if !strings.HasPrefix(last, "regexp(") {
 		return nil
 	}
@@ -179,8 +173,10 @@ func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
 		return nil
 	}
 	e := &regexpFuncExprNode{
-		re:           rege,
-		boolOpposite: boolOpposite,
+		re: rege,
+	}
+	if boolOpposite != nil {
+		e.boolOpposite = *boolOpposite
 	}
 	e.SetRightOperand(operand)
 	return e
@@ -190,21 +186,23 @@ func (re *regexpFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{
 	param := re.rightOperand.Run(currField, tagExpr)
 	switch v := param.(type) {
 	case string:
+		bol := re.re.MatchString(v)
 		if re.boolOpposite {
-			return !re.re.MatchString(v)
+			return !bol
 		}
-		return re.re.MatchString(v)
+		return bol
 	case float64, bool:
-		return nil
+		return false
 	}
 	v := reflect.ValueOf(param)
 	if v.Kind() == reflect.String {
+		bol := re.re.MatchString(v.String())
 		if re.boolOpposite {
-			return !re.re.MatchString(v.String())
+			return !bol
 		}
-		return re.re.MatchString(v.String())
+		return bol
 	}
-	return nil
+	return false
 }
 
 type sprintfFuncExprNode struct {
@@ -262,13 +260,4 @@ func (se *sprintfFuncExprNode) Run(currField string, tagExpr *TagExpr) interface
 		}
 	}
 	return fmt.Sprintf(se.format, args...)
-}
-
-func readBoolOpposite(expr *string) (string, bool) {
-	last := strings.TrimLeft(*expr, "!")
-	n := len(*expr) - len(last)
-	if n == 0 {
-		return last, false
-	}
-	return last, n%2 == 1
 }

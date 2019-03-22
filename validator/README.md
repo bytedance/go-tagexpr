@@ -115,11 +115,11 @@ type T struct {
 
 |Operator or Operand|Explain|
 |-----|---------|
-|`!`|not, only valid for boolean value|
 |`true` `false`|boolean|
 |`0` `0.0`|float64 "0"|
 |`''`|String|
 |`nil`|nil, undefined|
+|`!`|not, suitable for bool, string, float64, nil and $|
 |`+`|Digital addition or string splicing|
 |`-`|Digital subtraction or negative|
 |`*`|Digital multiplication|

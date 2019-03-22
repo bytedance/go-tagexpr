@@ -46,11 +46,12 @@ func (v *Validator) Validate(structPtr interface{}) error {
 		return err
 	}
 	var errSelector string
+	var valid bool
 	expr.Range(func(selector string, eval func() interface{}) bool {
 		if strings.Contains(selector, "@") {
 			return true
 		}
-		valid, _ := eval().(bool)
+		valid = tagexpr.FakeBool(eval())
 		if !valid {
 			errSelector = selector
 		}

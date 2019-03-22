@@ -449,10 +449,25 @@ func (t *TagExpr) EvalString(exprSelector string) string {
 
 // EvalBool evaluate the value of the struct tag expression by the selector expression.
 // NOTE:
-//  If the expression value type is not bool, return false.
+//  If the expression value is not 0, '' or nil, return true.
 func (t *TagExpr) EvalBool(exprSelector string) bool {
-	r, _ := t.Eval(exprSelector).(bool)
-	return r
+	return FakeBool(t.Eval(exprSelector))
+}
+
+// FakeBool fakes any type as a boolean.
+func FakeBool(v interface{}) bool {
+	switch r := v.(type) {
+	case float64:
+		return r != 0
+	case string:
+		return r != ""
+	case bool:
+		return r
+	case nil:
+		return false
+	default:
+		return true
+	}
 }
 
 // Eval evaluate the value of the struct tag expression by the selector expression.
