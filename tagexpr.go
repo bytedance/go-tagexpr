@@ -22,12 +22,14 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
+
+	"github.com/henrylee2cn/goutil/tpack"
 )
 
 // VM struct tag expression interpreter
 type VM struct {
 	tagName   string
-	structJar map[string]*structVM
+	structJar map[int32]*structVM
 	rw        sync.RWMutex
 }
 
@@ -56,7 +58,7 @@ type fieldVM struct {
 func New(tagName string) *VM {
 	return &VM{
 		tagName:   tagName,
-		structJar: make(map[string]*structVM, 256),
+		structJar: make(map[int32]*structVM, 256),
 	}
 }
 
@@ -102,14 +104,14 @@ func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
 		return nil, fmt.Errorf("not structure pointer: %s", v.Type().String())
 	}
 	t := elem.Type()
-	tname := t.String()
+	tid := tpack.Unpack(structPtr).TypeID()
 	var err error
 	vm.rw.RLock()
-	s, ok := vm.structJar[tname]
+	s, ok := vm.structJar[tid]
 	vm.rw.RUnlock()
 	if !ok {
 		vm.rw.Lock()
-		s, ok = vm.structJar[tname]
+		s, ok = vm.structJar[tid]
 		if !ok {
 			s, err = vm.registerStructLocked(t)
 			if err != nil {
@@ -136,13 +138,13 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 	if err != nil {
 		return nil, err
 	}
-	structTypeName := structType.String()
-	s, had := vm.structJar[structTypeName]
+	tid := tpack.TypeID(structType)
+	s, had := vm.structJar[tid]
 	if had {
 		return s, nil
 	}
 	s = vm.newStructVM()
-	vm.structJar[structTypeName] = s
+	vm.structJar[tid] = s
 	var numField = structType.NumField()
 	var structField reflect.StructField
 	var sub *structVM
