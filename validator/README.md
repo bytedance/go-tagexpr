@@ -34,7 +34,7 @@ func Example() {
 		Phone1 string `vd:"phone($)"`
 		Phone2 string `vd:"phone($,'CN')"`
 	}
-	info := &InfoRequest{
+	info := InfoRequest{
 		Name:   "Alice",
 		Age:    18,
 		Email:  "henrylee2cn@gmail.com",
@@ -44,10 +44,12 @@ func Example() {
 	fmt.Println(vd.Validate(info) == nil)
 
 	type A struct {
-		A int `vd:"$<0||$>=100"`
+		A    int `vd:"$<0||$>=100"`
+		Info interface{}
 	}
-	a := &A{107}
-	fmt.Println(vd.Validate(a) == nil)
+	info.Email = "xxx"
+	a := &A{A: 107, Info: info}
+	fmt.Println(vd.Validate(a))
 
 	type B struct {
 		B string `vd:"len($)>1 && regexp('^\\w*$')"`
@@ -90,7 +92,7 @@ func Example() {
 
 	// Output:
 	// true
-	// true
+	// invalid parameter: Email
 	// true
 	// C must be false when S.A>0
 	// invalid d: [x y]
