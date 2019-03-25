@@ -35,11 +35,12 @@ type VM struct {
 
 // structVM tag expression set of struct
 type structVM struct {
-	vm           *VM
-	name         string
-	fields       map[string]*fieldVM
-	exprs        map[string]*Expr
-	selectorList []string
+	vm                  *VM
+	name                string
+	fields              map[string]*fieldVM
+	exprs               map[string]*Expr
+	selectorList        []string
+	ifaceTagExprGetters []func(ptr uintptr) (*TagExpr, bool)
 }
 
 // fieldVM tag expression set of struct field
@@ -91,20 +92,12 @@ func (vm *VM) MustWarmUp(structOrStructPtr ...interface{}) {
 // NOTE:
 //  If the structure type has not been warmed up,
 //  it will be slower when it is first called.
-func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
-	if structPtr == nil {
+func (vm *VM) Run(structOrStructPtr interface{}) (*TagExpr, error) {
+	if structOrStructPtr == nil {
 		return nil, errors.New("cannot run nil interface")
 	}
-	v := reflect.ValueOf(structPtr)
-	if v.Kind() != reflect.Ptr {
-		return nil, fmt.Errorf("not structure pointer: %s", v.Type().String())
-	}
-	elem := v.Elem()
-	if elem.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("not structure pointer: %s", v.Type().String())
-	}
-	t := elem.Type()
-	tid := tpack.Unpack(structPtr).TypeID()
+	u := tpack.Unpack(structOrStructPtr).UnderlyingElem()
+	tid := u.RuntimeTypeID()
 	var err error
 	vm.rw.RLock()
 	s, ok := vm.structJar[tid]
@@ -113,7 +106,7 @@ func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
 		vm.rw.Lock()
 		s, ok = vm.structJar[tid]
 		if !ok {
-			s, err = vm.registerStructLocked(t)
+			s, err = vm.registerStructLocked(reflect.TypeOf(structOrStructPtr))
 			if err != nil {
 				vm.rw.Unlock()
 				return nil, err
@@ -121,7 +114,7 @@ func (vm *VM) Run(structPtr interface{}) (*TagExpr, error) {
 		}
 		vm.rw.Unlock()
 	}
-	return s.newTagExpr(v.Pointer()), nil
+	return s.newTagExpr(u.Pointer()), nil
 }
 
 // MustRun is similar to Run, but panic when error.
@@ -138,7 +131,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 	if err != nil {
 		return nil, err
 	}
-	tid := tpack.TypeID(structType)
+	tid := tpack.RuntimeTypeID(structType)
 	s, had := vm.structJar[tid]
 	if had {
 		return s, nil
@@ -157,12 +150,15 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 		switch field.elemKind {
 		default:
 			field.setUnsupportGetter()
-			if field.elemKind == reflect.Struct {
+			switch field.elemKind {
+			case reflect.Struct:
 				sub, err = vm.registerStructLocked(field.Type)
 				if err != nil {
 					return nil, err
 				}
 				s.copySubFields(field, sub)
+			case reflect.Interface:
+				s.setIfaceTagExprGetter(field)
 			}
 		case reflect.Float32, reflect.Float64,
 			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -210,7 +206,7 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 	if f.ptrDeep == 0 {
 		f.zeroValue = reflect.New(t).Elem().Interface()
 	}
-	f.reflectValueGetter = f.newRawFrom
+	f.reflectValueGetter = f.packRawFrom
 	return f, nil
 }
 
@@ -265,16 +261,55 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 	}
 }
 
-func (f *fieldVM) newRawFrom(ptr uintptr) reflect.Value {
+func (f *fieldVM) packRawFrom(ptr uintptr) reflect.Value {
 	return reflect.NewAt(f.Type, unsafe.Pointer(ptr+f.Offset)).Elem()
 }
 
-func (f *fieldVM) newElemFrom(ptr uintptr) reflect.Value {
-	v := f.newRawFrom(ptr)
+func (f *fieldVM) packElemFrom(ptr uintptr) reflect.Value {
+	v := f.packRawFrom(ptr)
 	for i := 0; i < f.ptrDeep; i++ {
 		v = v.Elem()
 	}
 	return v
+}
+
+func (s *structVM) setIfaceTagExprGetter(f *fieldVM) {
+	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr uintptr) (*TagExpr, bool) {
+		v := f.packElemFrom(ptr)
+		if !v.IsValid() {
+			return nil, false
+		}
+		te, ok := s.vm.runFromValue(v)
+		if !ok {
+			return nil, false
+		}
+		return te, true
+	})
+}
+
+func (vm *VM) runFromValue(v reflect.Value) (*TagExpr, bool) {
+	u := tpack.From(v).UnderlyingElem()
+	if u.Kind() != reflect.Struct {
+		return nil, false
+	}
+	tid := u.RuntimeTypeID()
+	var err error
+	vm.rw.RLock()
+	s, ok := vm.structJar[tid]
+	vm.rw.RUnlock()
+	if !ok {
+		vm.rw.Lock()
+		s, ok = vm.structJar[tid]
+		if !ok {
+			s, err = vm.registerStructLocked(v.Elem().Type())
+			if err != nil {
+				vm.rw.Unlock()
+				return nil, false
+			}
+		}
+		vm.rw.Unlock()
+	}
+	return s.newTagExpr(u.Pointer()), true
 }
 
 func (f *fieldVM) setFloatGetter() {
@@ -284,7 +319,7 @@ func (f *fieldVM) setFloatGetter() {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newElemFrom(ptr)
+			v := f.packElemFrom(ptr)
 			if v.CanAddr() {
 				return getFloat64(f.elemKind, v.UnsafeAddr())
 			}
@@ -300,7 +335,7 @@ func (f *fieldVM) setBoolGetter() {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newElemFrom(ptr)
+			v := f.packElemFrom(ptr)
 			if v.IsValid() {
 				return v.Bool()
 			}
@@ -316,7 +351,7 @@ func (f *fieldVM) setStringGetter() {
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			v := f.newElemFrom(ptr)
+			v := f.packElemFrom(ptr)
 			if v.IsValid() {
 				return v.String()
 			}
@@ -327,7 +362,7 @@ func (f *fieldVM) setStringGetter() {
 
 func (f *fieldVM) setLengthGetter() {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		v := f.newElemFrom(ptr)
+		v := f.packElemFrom(ptr)
 		if v.IsValid() {
 			return v.Interface()
 		}
@@ -337,7 +372,7 @@ func (f *fieldVM) setLengthGetter() {
 
 func (f *fieldVM) setUnsupportGetter() {
 	f.valueGetter = func(ptr uintptr) interface{} {
-		raw := f.newRawFrom(ptr)
+		raw := f.packRawFrom(ptr)
 		if safeIsNil(raw) {
 			return nil
 		}
@@ -506,6 +541,14 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 			return
 		}
 	}
+	var te *TagExpr
+	var ok bool
+	ptr := t.ptr
+	for _, getter := range t.s.ifaceTagExprGetters {
+		if te, ok = getter(ptr); ok {
+			te.Range(fn)
+		}
+	}
 }
 
 // Field returns the field value specified by the selector.
@@ -643,9 +686,9 @@ func getFloat64(kind reflect.Kind, ptr uintptr) interface{} {
 }
 
 func anyValueGetter(raw, elem reflect.Value) interface{} {
-	// if !elem.IsValid() || !raw.IsValid() {
-	// 	return nil
-	// }
+	if !elem.IsValid() || !raw.IsValid() {
+		return nil
+	}
 	kind := elem.Kind()
 	switch kind {
 	case reflect.Float32, reflect.Float64,
@@ -674,6 +717,9 @@ func anyValueGetter(raw, elem reflect.Value) interface{} {
 }
 
 func safeIsNil(v reflect.Value) bool {
+	if !v.IsValid() {
+		return true
+	}
 	switch v.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr,
 		reflect.UnsafePointer, reflect.Interface, reflect.Slice:
