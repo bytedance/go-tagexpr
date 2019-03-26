@@ -533,20 +533,24 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 // NOTE:
 //  eval result types: float64, string, bool, nil
 func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bool) {
-	exprs := t.s.exprs
-	for _, exprSelector := range t.s.selectorList {
-		if !fn(exprSelector, func() interface{} {
-			return exprs[exprSelector].run(getFieldSelector(exprSelector), t)
-		}) {
-			return
+	if list := t.s.selectorList; len(list) > 0 {
+		exprs := t.s.exprs
+		for _, exprSelector := range list {
+			if !fn(exprSelector, func() interface{} {
+				return exprs[exprSelector].run(getFieldSelector(exprSelector), t)
+			}) {
+				return
+			}
 		}
 	}
-	var te *TagExpr
-	var ok bool
-	ptr := t.ptr
-	for _, getter := range t.s.ifaceTagExprGetters {
-		if te, ok = getter(ptr); ok {
-			te.Range(fn)
+	if list := t.s.ifaceTagExprGetters; len(list) > 0 {
+		var te *TagExpr
+		var ok bool
+		ptr := t.ptr
+		for _, getter := range list {
+			if te, ok = getter(ptr); ok {
+				te.Range(fn)
+			}
 		}
 	}
 }
