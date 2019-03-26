@@ -22,7 +22,6 @@ import (
 )
 
 func BenchmarkTagExpr(b *testing.B) {
-	b.StopTimer()
 	type T struct {
 		a int `bench:"$%3"`
 	}
@@ -32,7 +31,7 @@ func BenchmarkTagExpr(b *testing.B) {
 		b.Fatal(err)
 	}
 	b.ReportAllocs()
-	b.StartTimer()
+	b.ResetTimer()
 	var t = &T{10}
 	for i := 0; i < b.N; i++ {
 		tagExpr, err := vm.Run(t)
@@ -46,12 +45,11 @@ func BenchmarkTagExpr(b *testing.B) {
 }
 
 func BenchmarkReflect(b *testing.B) {
-	b.StopTimer()
 	type T struct {
 		a int `remainder:"3"`
 	}
 	b.ReportAllocs()
-	b.StartTimer()
+	b.ResetTimer()
 	var t = &T{1}
 	for i := 0; i < b.N; i++ {
 		v := reflect.ValueOf(t).Elem()
