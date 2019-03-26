@@ -71,6 +71,8 @@ func Example() {
 	f := &F{}
 	f.f.g = 10
 	fmt.Println(vd.Validate(f))
+	f = nil
+	fmt.Println(vd.Validate(f))
 
 	// Output:
 	// true
@@ -80,4 +82,5 @@ func Example() {
 	// invalid d: [x y]
 	// invalid parameter: e
 	// {"succ":false, "error":"invalid parameter: f.g"}
+	// cannot run nil data
 }

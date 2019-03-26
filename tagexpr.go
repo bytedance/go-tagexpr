@@ -93,10 +93,11 @@ func (vm *VM) MustWarmUp(structOrStructPtr ...interface{}) {
 //  If the structure type has not been warmed up,
 //  it will be slower when it is first called.
 func (vm *VM) Run(structOrStructPtr interface{}) (*TagExpr, error) {
-	if structOrStructPtr == nil {
-		return nil, errors.New("cannot run nil interface")
+	u := tpack.Unpack(structOrStructPtr)
+	if u.IsNil() {
+		return nil, errors.New("cannot run nil data")
 	}
-	u := tpack.Unpack(structOrStructPtr).UnderlyingElem()
+	u = u.UnderlyingElem()
 	tid := u.RuntimeTypeID()
 	var err error
 	vm.rw.RLock()
@@ -276,7 +277,7 @@ func (f *fieldVM) packElemFrom(ptr uintptr) reflect.Value {
 func (s *structVM) setIfaceTagExprGetter(f *fieldVM) {
 	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr uintptr) (*TagExpr, bool) {
 		v := f.packElemFrom(ptr)
-		if !v.IsValid() {
+		if !v.IsValid() || v.IsNil() {
 			return nil, false
 		}
 		te, ok := s.vm.runFromValue(v)
