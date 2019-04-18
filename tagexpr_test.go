@@ -475,4 +475,14 @@ func TestStruct(t *testing.T) {
 	if expr.EvalString("B.C") != "xxx" {
 		t.FailNow()
 	}
+	if expr.EvalString("B.C.D.X") != "xxx" {
+		t.FailNow()
+	}
+	expr.Range(func(exprSelector string, eval func() interface{}) bool {
+		t.Log(exprSelector)
+		if eval().(string) != "xxx" {
+			t.FailNow()
+		}
+		return true
+	})
 }
