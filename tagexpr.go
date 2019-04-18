@@ -50,7 +50,7 @@ type fieldVM struct {
 	elemType           reflect.Type
 	elemKind           reflect.Kind
 	zeroValue          interface{}
-	host               *structVM
+	origin             *structVM
 	valueGetter        func(uintptr) interface{}
 	reflectValueGetter func(uintptr) reflect.Value
 }
@@ -157,6 +157,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 				if err != nil {
 					return nil, err
 				}
+				field.origin = sub
 				s.copySubFields(field, sub)
 			case reflect.Interface:
 				s.setIfaceTagExprGetter(field)
@@ -188,7 +189,7 @@ func (vm *VM) newStructVM() *structVM {
 func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error) {
 	f := &fieldVM{
 		StructField: structField,
-		host:        s,
+		origin:      s,
 	}
 	err := f.parseExprs(structField.Tag.Get(s.vm.tagName))
 	if err != nil {
@@ -219,7 +220,7 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 		reflectValueGetter := v.reflectValueGetter
 		f := &fieldVM{
 			StructField: v.StructField,
-			host:        v.host,
+			origin:      v.origin,
 		}
 		if valueGetter != nil {
 			if ptrDeep == 0 {
@@ -262,16 +263,20 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 	}
 }
 
+func (f *fieldVM) elemPtr(ptr uintptr) uintptr {
+	ptr = ptr + f.Offset
+	for i := f.ptrDeep; i > 0; i-- {
+		ptr = uintptrElem(ptr)
+	}
+	return ptr
+}
+
 func (f *fieldVM) packRawFrom(ptr uintptr) reflect.Value {
 	return reflect.NewAt(f.Type, unsafe.Pointer(ptr+f.Offset)).Elem()
 }
 
 func (f *fieldVM) packElemFrom(ptr uintptr) reflect.Value {
-	v := f.packRawFrom(ptr)
-	for i := 0; i < f.ptrDeep; i++ {
-		v = v.Elem()
-	}
-	return v
+	return reflect.NewAt(f.elemType, unsafe.Pointer(f.elemPtr(ptr))).Elem()
 }
 
 func (s *structVM) setIfaceTagExprGetter(f *fieldVM) {
@@ -400,8 +405,8 @@ func (f *fieldVM) parseExprs(tag string) error {
 			return err
 		}
 		selector := f.Name
-		f.host.exprs[selector] = expr
-		f.host.selectorList = append(f.host.selectorList, selector)
+		f.origin.exprs[selector] = expr
+		f.origin.selectorList = append(f.origin.selectorList, selector)
 		return nil
 	}
 	var subtag *string
@@ -421,14 +426,14 @@ func (f *fieldVM) parseExprs(tag string) error {
 				default:
 					selector = f.Name + "@" + selector
 				}
-				if _, had := f.host.exprs[selector]; had {
+				if _, had := f.origin.exprs[selector]; had {
 					return fmt.Errorf("duplicate expression name: %s", selector)
 				}
 				exprStr = strings.TrimSpace((*subtag)[idx+1:])
 				if exprStr != "" {
 					if expr, err := parseExpr(exprStr); err == nil {
-						f.host.exprs[selector] = expr
-						f.host.selectorList = append(f.host.selectorList, selector)
+						f.origin.exprs[selector] = expr
+						f.origin.selectorList = append(f.origin.selectorList, selector)
 					} else {
 						return err
 					}
@@ -459,6 +464,7 @@ func (s *structVM) newTagExpr(ptr uintptr) *TagExpr {
 	te := &TagExpr{
 		s:   s,
 		ptr: ptr,
+		sub: make(map[string]*TagExpr, 8),
 	}
 	return te
 }
@@ -467,6 +473,7 @@ func (s *structVM) newTagExpr(ptr uintptr) *TagExpr {
 type TagExpr struct {
 	s   *structVM
 	ptr uintptr
+	sub map[string]*TagExpr
 }
 
 // EvalFloat evaluate the value of the struct tag expression by the selector expression.
@@ -527,7 +534,12 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 			return nil
 		}
 	}
-	return expr.run(getFieldSelector(exprSelector), t)
+	dir, base := splitFieldSelector(exprSelector)
+	targetTagExpr, err := t.checkout(dir)
+	if err != nil {
+		return nil
+	}
+	return expr.run(base, targetTagExpr)
 }
 
 // Range loop through each tag expression
@@ -538,7 +550,12 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 		exprs := t.s.exprs
 		for _, exprSelector := range list {
 			if !fn(exprSelector, func() interface{} {
-				return exprs[exprSelector].run(getFieldSelector(exprSelector), t)
+				dir, base := splitFieldSelector(exprSelector)
+				targetTagExpr, err := t.checkout(dir)
+				if err != nil {
+					return nil
+				}
+				return exprs[exprSelector].run(base, targetTagExpr)
 			}) {
 				return
 			}
@@ -574,9 +591,28 @@ func (t *TagExpr) Field(fieldSelector string) interface{} {
 	return nil
 }
 
-func (t *TagExpr) getValue(field string, subFields []interface{}) (v interface{}) {
-	f, ok := t.s.fields[field]
+var errFieldSelector = errors.New("field selector does not exist")
+
+func (t *TagExpr) checkout(fs string) (*TagExpr, error) {
+	if fs == "" {
+		return t, nil
+	}
+	subTagExpr, ok := t.sub[fs]
+	if ok {
+		return subTagExpr, nil
+	}
+	f, ok := t.s.fields[fs]
 	if !ok {
+		return nil, errFieldSelector
+	}
+	subTagExpr = f.origin.newTagExpr(f.elemPtr(t.ptr))
+	t.sub[fs] = subTagExpr
+	return subTagExpr, nil
+}
+
+func (t *TagExpr) getValue(fieldSelector string, subFields []interface{}) (v interface{}) {
+	f := t.s.fields[fieldSelector]
+	if f == nil {
 		return nil
 	}
 	if f.valueGetter == nil {
@@ -649,12 +685,16 @@ func safeConvert(v reflect.Value, t reflect.Type) reflect.Value {
 
 var float64Type = reflect.TypeOf(float64(0))
 
-func getFieldSelector(selector string) string {
-	idx := strings.Index(selector, "@")
-	if idx == -1 {
-		return selector
+func splitFieldSelector(selector string) (dir, base string) {
+	idx := strings.LastIndex(selector, "@")
+	if idx != -1 {
+		selector = selector[:idx]
 	}
-	return selector[:idx]
+	idx = strings.LastIndex(selector, ".")
+	if idx != -1 {
+		return selector[:idx], selector[idx+1:]
+	}
+	return "", selector
 }
 
 func getFloat64(kind reflect.Kind, ptr uintptr) interface{} {
@@ -731,4 +771,8 @@ func safeIsNil(v reflect.Value) bool {
 		return v.IsNil()
 	}
 	return false
+}
+
+func uintptrElem(ptr uintptr) uintptr {
+	return *(*uintptr)(unsafe.Pointer(ptr))
 }

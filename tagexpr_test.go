@@ -449,3 +449,30 @@ func TestOperator(t *testing.T) {
 	}
 
 }
+
+func TestStruct(t *testing.T) {
+	type A struct {
+		B struct {
+			C struct {
+				D struct {
+					X string `vd:"$"`
+				}
+			} `vd:"{@:$['D']['X']}"`
+			C2 string `vd:"{@:(C)$['D']['X']}"`
+			C3 string `vd:"{@:(C.D.X)$}"`
+		}
+	}
+	a := new(A)
+	a.B.C.D.X = "xxx"
+	vm := New("vd")
+	expr := vm.MustRun(a)
+	if expr.EvalString("B.C2") != "xxx" {
+		t.FailNow()
+	}
+	if expr.EvalString("B.C3") != "xxx" {
+		t.FailNow()
+	}
+	if expr.EvalString("B.C") != "xxx" {
+		t.FailNow()
+	}
+}
