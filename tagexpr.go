@@ -35,25 +35,28 @@ type VM struct {
 
 // structVM tag expression set of struct
 type structVM struct {
-	vm                  *VM
-	name                string
-	fields              map[string]*fieldVM
-	exprs               map[string]*Expr
-	selectorList        []string
-	ifaceTagExprGetters []func(ptr uintptr) (*TagExpr, bool)
+	vm                    *VM
+	name                  string
+	fields                map[string]*fieldVM
+	fieldsWithSubStructVM []*fieldVM
+	exprs                 map[string]*Expr
+	selectorList          []string
+	ifaceTagExprGetters   []func(ptr uintptr) (*TagExpr, bool)
 }
 
 // fieldVM tag expression set of struct field
 type fieldVM struct {
-	structField        reflect.StructField
-	offset             uintptr
-	ptrDeep            int
-	elemType           reflect.Type
-	elemKind           reflect.Kind
-	zeroValue          interface{}
-	origin             *structVM
-	valueGetter        func(uintptr) interface{}
-	reflectValueGetter func(uintptr) reflect.Value
+	structField            reflect.StructField
+	offset                 uintptr
+	ptrDeep                int
+	elemType               reflect.Type
+	elemKind               reflect.Kind
+	zeroValue              interface{}
+	valueGetter            func(uintptr) interface{}
+	reflectValueGetter     func(uintptr) reflect.Value
+	origin                 *structVM
+	mapKeyStructVM         *structVM
+	mapOrSliceElemStructVM *structVM
 }
 
 // New creates a tag expression interpreter that uses @tagName as the tag name.
@@ -171,19 +174,50 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			field.setStringGetter()
 		case reflect.Bool:
 			field.setBoolGetter()
-		case reflect.Map, reflect.Array, reflect.Slice:
-			field.setLengthGetter()
+		case reflect.Array, reflect.Slice, reflect.Map:
+			err = vm.registerSubStructLocked(field)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return s, nil
 }
 
+func (vm *VM) registerSubStructLocked(field *fieldVM) error {
+	a := make([]reflect.Type, 1, 2)
+	a[0] = derefType(field.elemType.Elem())
+	if field.elemKind == reflect.Map {
+		a = append(a, derefType(field.elemType.Key()))
+	}
+	for i, t := range a {
+		if t.Kind() != reflect.Struct {
+			continue
+		}
+		s, err := vm.registerStructLocked(t)
+		if err != nil {
+			return err
+		}
+		if len(s.selectorList) > 0 || len(s.ifaceTagExprGetters) > 0 {
+			if i == 0 {
+				field.mapOrSliceElemStructVM = s
+			} else {
+				field.mapKeyStructVM = s
+			}
+			field.origin.fieldsWithSubStructVM = append(field.origin.fieldsWithSubStructVM, field)
+		}
+	}
+	field.setLengthGetter()
+	return nil
+}
+
 func (vm *VM) newStructVM() *structVM {
 	return &structVM{
-		vm:           vm,
-		fields:       make(map[string]*fieldVM, 16),
-		exprs:        make(map[string]*Expr, 64),
-		selectorList: make([]string, 0, 64),
+		vm:                    vm,
+		fields:                make(map[string]*fieldVM, 16),
+		fieldsWithSubStructVM: make([]*fieldVM, 0, 4),
+		exprs:                 make(map[string]*Expr, 64),
+		selectorList:          make([]string, 0, 64),
 	}
 }
 
@@ -546,10 +580,11 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 	return expr.run(base, targetTagExpr)
 }
 
-// Range loop through each tag expression
+// Range loop through each tag expression.
+// When fn returns false, interrupt traversal and return false.
 // NOTE:
 //  eval result types: float64, string, bool, nil
-func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bool) {
+func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bool) bool {
 	if list := t.s.selectorList; len(list) > 0 {
 		exprs := t.s.exprs
 		for _, exprSelector := range list {
@@ -561,20 +596,68 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 				}
 				return exprs[exprSelector].run(base, targetTagExpr)
 			}) {
-				return
+				return false
 			}
 		}
 	}
+
 	if list := t.s.ifaceTagExprGetters; len(list) > 0 {
 		var te *TagExpr
 		var ok bool
 		ptr := t.ptr
 		for _, getter := range list {
 			if te, ok = getter(ptr); ok {
-				te.Range(fn)
+				if !te.Range(fn) {
+					return false
+				}
 			}
 		}
 	}
+
+	if list := t.s.fieldsWithSubStructVM; len(list) > 0 {
+		for _, f := range list {
+			v := f.packElemFrom(t.ptr)
+
+			if f.elemKind == reflect.Map {
+				iter := v.MapRange()
+				for iter.Next() {
+					if f.mapKeyStructVM != nil {
+						ptr := tpack.From(derefValue(iter.Key())).Pointer()
+						if ptr == 0 {
+							continue
+						}
+						if !f.mapKeyStructVM.newTagExpr(ptr).Range(fn) {
+							return false
+						}
+					}
+					if f.mapOrSliceElemStructVM != nil {
+						ptr := tpack.From(derefValue(iter.Value())).Pointer()
+						if ptr == 0 {
+							continue
+						}
+						if !f.mapOrSliceElemStructVM.newTagExpr(ptr).Range(fn) {
+							return false
+						}
+					}
+				}
+
+			} else {
+
+				// slice or array
+				for i := v.Len() - 1; i >= 0; i-- {
+					ptr := tpack.From(derefValue(v.Index(i))).Pointer()
+					if ptr == 0 {
+						continue
+					}
+					if !f.mapOrSliceElemStructVM.newTagExpr(ptr).Range(fn) {
+						return false
+					}
+				}
+			}
+		}
+	}
+
+	return true
 }
 
 // Field returns the field value specified by the selector.
@@ -779,4 +862,18 @@ func safeIsNil(v reflect.Value) bool {
 
 func uintptrElem(ptr uintptr) uintptr {
 	return *(*uintptr)(unsafe.Pointer(ptr))
+}
+
+func derefType(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
+func derefValue(v reflect.Value) reflect.Value {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	return v
 }

@@ -510,3 +510,73 @@ func TestStruct2(t *testing.T) {
 		t.Fatal(expr.EvalString("Props.Data.DataType"))
 	}
 }
+
+func TestStruct3(t *testing.T) {
+	type Data struct {
+		DataType string `vd:"$"`
+	}
+	type Prop struct {
+		PropType string       `vd:"$"`
+		Datas    []*Data      `vd:"$"`
+		Datas2   []*Data      `vd:"$"`
+		DataMap  map[int]Data `vd:"$"`
+		DataMap2 map[int]Data `vd:"$"`
+	}
+	type IframeBlock struct {
+		XBlock struct {
+			BlockType string `vd:"$"`
+		}
+		Props    []Prop        `vd:"$"`
+		Props1   [2]Prop       `vd:"$"`
+		Props2   []Prop        `vd:"$"`
+		PropMap  map[int]*Prop `vd:"$"`
+		PropMap2 map[int]*Prop `vd:"$"`
+	}
+
+	b := new(IframeBlock)
+	b.XBlock.BlockType = "BlockType"
+	p1 := Prop{
+		PropType: "p1",
+		Datas: []*Data{
+			{"p1s1"},
+			{"p1s2"},
+			nil,
+		},
+		DataMap: map[int]Data{
+			1: {"p1m1"},
+			2: {"p1m2"},
+			0: Data{},
+		},
+	}
+	b.Props = []Prop{p1}
+	p2 := &Prop{
+		PropType: "p2",
+		Datas: []*Data{
+			{"p2s1"},
+			{"p2s2"},
+			nil,
+		},
+		DataMap: map[int]Data{
+			1: {"p2m1"},
+			2: {"p2m2"},
+			0: Data{},
+		},
+	}
+	b.Props1 = [2]Prop{p1, Prop{}}
+	b.PropMap = map[int]*Prop{
+		9: p2,
+	}
+
+	vm := New("vd")
+	expr := vm.MustRun(b)
+	if expr.EvalString("XBlock.BlockType") != "BlockType" {
+		t.Fatal(expr.EvalString("XBlock.BlockType"))
+	}
+	ok := expr.Range(func(exprSelector string, eval func() interface{}) bool {
+		t.Log(exprSelector, "=====", eval())
+		return true
+	})
+	if !ok {
+		t.FailNow()
+	}
+}
