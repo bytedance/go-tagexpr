@@ -503,9 +503,9 @@ func TestStruct2(t *testing.T) {
 	b.Props.Data.DataType = "DataType"
 	vm := New("vd")
 	expr := vm.MustRun(b)
-	// if expr.EvalString("XBlock.BlockType") != "BlockType" {
-	// 	t.Fatal(expr.EvalString("XBlock.BlockType"))
-	// }
+	if expr.EvalString("XBlock.BlockType") != "BlockType" {
+		t.Fatal(expr.EvalString("XBlock.BlockType"))
+	}
 	if expr.EvalString("Props.Data.DataType") != "DataType" {
 		t.Fatal(expr.EvalString("Props.Data.DataType"))
 	}

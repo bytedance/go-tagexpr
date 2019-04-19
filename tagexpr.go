@@ -45,7 +45,7 @@ type structVM struct {
 
 // fieldVM tag expression set of struct field
 type fieldVM struct {
-	StructField        reflect.StructField
+	structField        reflect.StructField
 	offset             uintptr
 	ptrDeep            int
 	elemType           reflect.Type
@@ -154,7 +154,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			field.setUnsupportGetter()
 			switch field.elemKind {
 			case reflect.Struct:
-				sub, err = vm.registerStructLocked(field.StructField.Type)
+				sub, err = vm.registerStructLocked(field.structField.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -189,7 +189,7 @@ func (vm *VM) newStructVM() *structVM {
 
 func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error) {
 	f := &fieldVM{
-		StructField: structField,
+		structField: structField,
 		offset:      structField.Offset,
 		origin:      s,
 	}
@@ -197,7 +197,7 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 	if err != nil {
 		return nil, err
 	}
-	s.fields[f.StructField.Name] = f
+	s.fields[f.structField.Name] = f
 	var t = structField.Type
 	var ptrDeep int
 	for t.Kind() == reflect.Ptr {
@@ -215,14 +215,14 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 }
 
 func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
-	nameSpace := field.StructField.Name
+	nameSpace := field.structField.Name
 	offset := field.offset
 	ptrDeep := field.ptrDeep
 	for k, v := range sub.fields {
 		valueGetter := v.valueGetter
 		reflectValueGetter := v.reflectValueGetter
 		f := &fieldVM{
-			StructField: v.StructField,
+			structField: v.structField,
 			offset:      offset + v.offset,
 			origin:      v.origin,
 		}
@@ -236,7 +236,7 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 				}
 			} else {
 				f.valueGetter = func(ptr uintptr) interface{} {
-					newFieldVM := reflect.NewAt(field.StructField.Type, unsafe.Pointer(ptr+field.offset))
+					newFieldVM := reflect.NewAt(field.structField.Type, unsafe.Pointer(ptr+field.offset))
 					for i := 0; i < ptrDeep; i++ {
 						newFieldVM = newFieldVM.Elem()
 					}
@@ -246,7 +246,7 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 					return valueGetter(uintptr(newFieldVM.Pointer()))
 				}
 				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
-					newFieldVM := reflect.NewAt(field.StructField.Type, unsafe.Pointer(ptr+field.offset))
+					newFieldVM := reflect.NewAt(field.structField.Type, unsafe.Pointer(ptr+field.offset))
 					for i := 0; i < ptrDeep; i++ {
 						newFieldVM = newFieldVM.Elem()
 					}
@@ -276,7 +276,7 @@ func (f *fieldVM) elemPtr(ptr uintptr) uintptr {
 }
 
 func (f *fieldVM) packRawFrom(ptr uintptr) reflect.Value {
-	return reflect.NewAt(f.StructField.Type, unsafe.Pointer(ptr+f.offset)).Elem()
+	return reflect.NewAt(f.structField.Type, unsafe.Pointer(ptr+f.offset)).Elem()
 }
 
 func (f *fieldVM) packElemFrom(ptr uintptr) reflect.Value {
@@ -408,7 +408,7 @@ func (f *fieldVM) parseExprs(tag string) error {
 		if err != nil {
 			return err
 		}
-		selector := f.StructField.Name
+		selector := f.structField.Name
 		f.origin.exprs[selector] = expr
 		f.origin.selectorList = append(f.origin.selectorList, selector)
 		return nil
@@ -426,9 +426,9 @@ func (f *fieldVM) parseExprs(tag string) error {
 				case "":
 					continue
 				case "@":
-					selector = f.StructField.Name
+					selector = f.structField.Name
 				default:
-					selector = f.StructField.Name + "@" + selector
+					selector = f.structField.Name + "@" + selector
 				}
 				if _, had := f.origin.exprs[selector]; had {
 					return fmt.Errorf("duplicate expression name: %s", selector)
