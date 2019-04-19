@@ -45,7 +45,8 @@ type structVM struct {
 
 // fieldVM tag expression set of struct field
 type fieldVM struct {
-	reflect.StructField
+	StructField        reflect.StructField
+	offset             uintptr
 	ptrDeep            int
 	elemType           reflect.Type
 	elemKind           reflect.Kind
@@ -153,7 +154,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			field.setUnsupportGetter()
 			switch field.elemKind {
 			case reflect.Struct:
-				sub, err = vm.registerStructLocked(field.Type)
+				sub, err = vm.registerStructLocked(field.StructField.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -189,13 +190,14 @@ func (vm *VM) newStructVM() *structVM {
 func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error) {
 	f := &fieldVM{
 		StructField: structField,
+		offset:      structField.Offset,
 		origin:      s,
 	}
 	err := f.parseExprs(structField.Tag.Get(s.vm.tagName))
 	if err != nil {
 		return nil, err
 	}
-	s.fields[f.Name] = f
+	s.fields[f.StructField.Name] = f
 	var t = structField.Type
 	var ptrDeep int
 	for t.Kind() == reflect.Ptr {
@@ -213,26 +215,28 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 }
 
 func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
-	nameSpace := field.Name
+	nameSpace := field.StructField.Name
+	offset := field.offset
 	ptrDeep := field.ptrDeep
 	for k, v := range sub.fields {
 		valueGetter := v.valueGetter
 		reflectValueGetter := v.reflectValueGetter
 		f := &fieldVM{
 			StructField: v.StructField,
+			offset:      offset + v.offset,
 			origin:      v.origin,
 		}
 		if valueGetter != nil {
 			if ptrDeep == 0 {
 				f.valueGetter = func(ptr uintptr) interface{} {
-					return valueGetter(ptr + field.Offset)
+					return valueGetter(ptr + field.offset)
 				}
 				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
-					return reflectValueGetter(ptr + field.Offset)
+					return reflectValueGetter(ptr + field.offset)
 				}
 			} else {
 				f.valueGetter = func(ptr uintptr) interface{} {
-					newFieldVM := reflect.NewAt(field.Type, unsafe.Pointer(ptr+field.Offset))
+					newFieldVM := reflect.NewAt(field.StructField.Type, unsafe.Pointer(ptr+field.offset))
 					for i := 0; i < ptrDeep; i++ {
 						newFieldVM = newFieldVM.Elem()
 					}
@@ -242,7 +246,7 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 					return valueGetter(uintptr(newFieldVM.Pointer()))
 				}
 				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
-					newFieldVM := reflect.NewAt(field.Type, unsafe.Pointer(ptr+field.Offset))
+					newFieldVM := reflect.NewAt(field.StructField.Type, unsafe.Pointer(ptr+field.offset))
 					for i := 0; i < ptrDeep; i++ {
 						newFieldVM = newFieldVM.Elem()
 					}
@@ -264,7 +268,7 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 }
 
 func (f *fieldVM) elemPtr(ptr uintptr) uintptr {
-	ptr = ptr + f.Offset
+	ptr = ptr + f.offset
 	for i := f.ptrDeep; i > 0; i-- {
 		ptr = uintptrElem(ptr)
 	}
@@ -272,7 +276,7 @@ func (f *fieldVM) elemPtr(ptr uintptr) uintptr {
 }
 
 func (f *fieldVM) packRawFrom(ptr uintptr) reflect.Value {
-	return reflect.NewAt(f.Type, unsafe.Pointer(ptr+f.Offset)).Elem()
+	return reflect.NewAt(f.StructField.Type, unsafe.Pointer(ptr+f.offset)).Elem()
 }
 
 func (f *fieldVM) packElemFrom(ptr uintptr) reflect.Value {
@@ -321,7 +325,7 @@ func (vm *VM) runFromValue(v reflect.Value) (*TagExpr, bool) {
 func (f *fieldVM) setFloatGetter() {
 	if f.ptrDeep == 0 {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			return getFloat64(f.elemKind, ptr+f.Offset)
+			return getFloat64(f.elemKind, ptr+f.offset)
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
@@ -337,7 +341,7 @@ func (f *fieldVM) setFloatGetter() {
 func (f *fieldVM) setBoolGetter() {
 	if f.ptrDeep == 0 {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			return *(*bool)(unsafe.Pointer(ptr + f.Offset))
+			return *(*bool)(unsafe.Pointer(ptr + f.offset))
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
@@ -353,7 +357,7 @@ func (f *fieldVM) setBoolGetter() {
 func (f *fieldVM) setStringGetter() {
 	if f.ptrDeep == 0 {
 		f.valueGetter = func(ptr uintptr) interface{} {
-			return *(*string)(unsafe.Pointer(ptr + f.Offset))
+			return *(*string)(unsafe.Pointer(ptr + f.offset))
 		}
 	} else {
 		f.valueGetter = func(ptr uintptr) interface{} {
@@ -404,7 +408,7 @@ func (f *fieldVM) parseExprs(tag string) error {
 		if err != nil {
 			return err
 		}
-		selector := f.Name
+		selector := f.StructField.Name
 		f.origin.exprs[selector] = expr
 		f.origin.selectorList = append(f.origin.selectorList, selector)
 		return nil
@@ -422,9 +426,9 @@ func (f *fieldVM) parseExprs(tag string) error {
 				case "":
 					continue
 				case "@":
-					selector = f.Name
+					selector = f.StructField.Name
 				default:
-					selector = f.Name + "@" + selector
+					selector = f.StructField.Name + "@" + selector
 				}
 				if _, had := f.origin.exprs[selector]; had {
 					return fmt.Errorf("duplicate expression name: %s", selector)

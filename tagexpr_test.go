@@ -486,3 +486,27 @@ func TestStruct(t *testing.T) {
 		return true
 	})
 }
+
+func TestStruct2(t *testing.T) {
+	type IframeBlock struct {
+		XBlock struct {
+			BlockType string `vd:"$"`
+		}
+		Props struct {
+			Data struct {
+				DataType string `vd:"$"`
+			}
+		}
+	}
+	b := new(IframeBlock)
+	b.XBlock.BlockType = "BlockType"
+	b.Props.Data.DataType = "DataType"
+	vm := New("vd")
+	expr := vm.MustRun(b)
+	// if expr.EvalString("XBlock.BlockType") != "BlockType" {
+	// 	t.Fatal(expr.EvalString("XBlock.BlockType"))
+	// }
+	if expr.EvalString("Props.Data.DataType") != "DataType" {
+		t.Fatal(expr.EvalString("Props.Data.DataType"))
+	}
+}
