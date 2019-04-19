@@ -214,8 +214,8 @@ func (vm *VM) registerSubStructLocked(field *fieldVM) error {
 func (vm *VM) newStructVM() *structVM {
 	return &structVM{
 		vm:                    vm,
-		fields:                make(map[string]*fieldVM, 16),
-		fieldsWithSubStructVM: make([]*fieldVM, 0, 4),
+		fields:                make(map[string]*fieldVM, 32),
+		fieldsWithSubStructVM: make([]*fieldVM, 0, 32),
 		exprs:                 make(map[string]*Expr, 64),
 		selectorList:          make([]string, 0, 64),
 	}
