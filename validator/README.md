@@ -12,6 +12,7 @@ A powerful validator that supports struct tag expression.
 - Built-in len, sprintf, regexp, email, phone functions
 - Support simple mode, or specify error message mode
 - Use offset pointers to directly take values, better performance
+- Required go version ≥1.9
 
 ## Example
 

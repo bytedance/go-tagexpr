@@ -17,6 +17,7 @@ An interesting go struct tag expression syntax for field validation, etc.
 - Support single mode and multiple mode to define expression
 - Parameter check subpackage
 - Use offset pointers to directly take values, better performance
+- Required go version ≥1.9
 
 ## Example
 

@@ -619,10 +619,9 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 			v := f.packElemFrom(t.ptr)
 
 			if f.elemKind == reflect.Map {
-				iter := v.MapRange()
-				for iter.Next() {
+				for _, key := range v.MapKeys() {
 					if f.mapKeyStructVM != nil {
-						ptr := tpack.From(derefValue(iter.Key())).Pointer()
+						ptr := tpack.From(derefValue(key)).Pointer()
 						if ptr == 0 {
 							continue
 						}
@@ -631,7 +630,7 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 						}
 					}
 					if f.mapOrSliceElemStructVM != nil {
-						ptr := tpack.From(derefValue(iter.Value())).Pointer()
+						ptr := tpack.From(derefValue(v.MapIndex(key))).Pointer()
 						if ptr == 0 {
 							continue
 						}
@@ -640,6 +639,30 @@ func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bo
 						}
 					}
 				}
+
+				// go version>=1.12
+
+				//iter := v.MapRange()
+				//for iter.Next() {
+				//	if f.mapKeyStructVM != nil {
+				//		ptr := tpack.From(derefValue(iter.Key())).Pointer()
+				//		if ptr == 0 {
+				//			continue
+				//		}
+				//		if !f.mapKeyStructVM.newTagExpr(ptr).Range(fn) {
+				//			return false
+				//		}
+				//	}
+				//	if f.mapOrSliceElemStructVM != nil {
+				//		ptr := tpack.From(derefValue(iter.Value())).Pointer()
+				//		if ptr == 0 {
+				//			continue
+				//		}
+				//		if !f.mapOrSliceElemStructVM.newTagExpr(ptr).Range(fn) {
+				//			return false
+				//		}
+				//	}
+				//}
 
 			} else {
 
