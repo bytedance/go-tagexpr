@@ -3,12 +3,10 @@ package validator_test
 import (
 	"fmt"
 
-	"github.com/bytedance/go-tagexpr/validator"
+	vd "github.com/bytedance/go-tagexpr/validator"
 )
 
 func Example() {
-	var vd = validator.New("vd")
-
 	type InfoRequest struct {
 		Name   string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
 		Age    int    `vd:"$>0"`

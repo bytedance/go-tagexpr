@@ -22,12 +22,10 @@ package validator_test
 import (
 	"fmt"
 
-	"github.com/bytedance/go-tagexpr/validator"
+	vd "github.com/bytedance/go-tagexpr/validator"
 )
 
 func Example() {
-	var vd = validator.New("vd")
-
 	type InfoRequest struct {
 		Name   string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
 		Age    int    `vd:"$>0"`
@@ -93,7 +91,7 @@ func Example() {
 
 	fmt.Println(vd.Validate(map[string]*F{"a": f}))
 
-	fmt.Println(vd.Validate([]*F{f}))
+	fmt.Println(vd.Validate([][1]*F{{f}}))
 
 	f = nil
 	fmt.Println(vd.Validate(f))
