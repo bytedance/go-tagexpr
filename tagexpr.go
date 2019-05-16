@@ -69,14 +69,21 @@ func New(tagName string) *VM {
 
 // WarmUp preheating some interpreters of the struct type in batches,
 // to improve the performance of the vm.Run.
-func (vm *VM) WarmUp(structOrStructPtr ...interface{}) error {
+func (vm *VM) WarmUp(structOrStructPtrOrReflect ...interface{}) error {
 	vm.rw.Lock()
 	defer vm.rw.Unlock()
-	for _, v := range structOrStructPtr {
-		if v == nil {
+	var err error
+	for _, v := range structOrStructPtrOrReflect {
+		switch t := v.(type) {
+		case nil:
 			return errors.New("cannot warn up nil interface")
+		case reflect.Type:
+			_, err = vm.registerStructLocked(t)
+		case reflect.Value:
+			_, err = vm.registerStructLocked(t.Type())
+		default:
+			_, err = vm.registerStructLocked(reflect.TypeOf(v))
 		}
-		_, err := vm.registerStructLocked(reflect.TypeOf(v))
 		if err != nil {
 			return err
 		}
@@ -85,19 +92,25 @@ func (vm *VM) WarmUp(structOrStructPtr ...interface{}) error {
 }
 
 // MustWarmUp is similar to WarmUp, but panic when error.
-func (vm *VM) MustWarmUp(structOrStructPtr ...interface{}) {
-	err := vm.WarmUp(structOrStructPtr...)
+func (vm *VM) MustWarmUp(structOrStructPtrOrReflect ...interface{}) {
+	err := vm.WarmUp(structOrStructPtrOrReflect...)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// Run returns the tag expression handler of the @structPtr.
+// Run returns the tag expression handler of the @structOrStructPtrOrReflectValue.
 // NOTE:
 //  If the structure type has not been warmed up,
 //  it will be slower when it is first called.
-func (vm *VM) Run(structOrStructPtr interface{}) (*TagExpr, error) {
-	u := tpack.Unpack(structOrStructPtr)
+func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error) {
+	var u tpack.U
+	v, isReflectValue := structOrStructPtrOrReflectValue.(reflect.Value)
+	if isReflectValue {
+		u = tpack.From(v)
+	} else {
+		u = tpack.Unpack(structOrStructPtrOrReflectValue)
+	}
 	if u.IsNil() {
 		return nil, errors.New("cannot run nil data")
 	}
@@ -111,7 +124,11 @@ func (vm *VM) Run(structOrStructPtr interface{}) (*TagExpr, error) {
 		vm.rw.Lock()
 		s, ok = vm.structJar[tid]
 		if !ok {
-			s, err = vm.registerStructLocked(reflect.TypeOf(structOrStructPtr))
+			if isReflectValue {
+				s, err = vm.registerStructLocked(v.Type())
+			} else {
+				s, err = vm.registerStructLocked(reflect.TypeOf(structOrStructPtrOrReflectValue))
+			}
 			if err != nil {
 				vm.rw.Unlock()
 				return nil, err
@@ -123,8 +140,8 @@ func (vm *VM) Run(structOrStructPtr interface{}) (*TagExpr, error) {
 }
 
 // MustRun is similar to Run, but panic when error.
-func (vm *VM) MustRun(structPtr interface{}) *TagExpr {
-	te, err := vm.Run(structPtr)
+func (vm *VM) MustRun(structOrStructPtrOrReflectValue interface{}) *TagExpr {
+	te, err := vm.Run(structOrStructPtrOrReflectValue)
 	if err != nil {
 		panic(err)
 	}
