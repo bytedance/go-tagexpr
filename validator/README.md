@@ -90,8 +90,17 @@ func Example() {
 	f := &F{}
 	f.f.g = 10
 	fmt.Println(vd.Validate(f))
+
+	fmt.Println(vd.Validate(map[string]*F{"a": f}))
+
+	fmt.Println(vd.Validate([]*F{f}))
+
 	f = nil
 	fmt.Println(vd.Validate(f))
+
+	fmt.Println(vd.Validate(map[string]*F{}))
+
+	fmt.Println(vd.Validate([]*F{}))
 
 	// Output:
 	// true
@@ -101,7 +110,11 @@ func Example() {
 	// invalid d: [x y]
 	// invalid parameter: e
 	// {"succ":false, "error":"invalid parameter: f.g"}
+	// {"succ":false, "error":"invalid parameter: f.g"}
+	// {"succ":false, "error":"invalid parameter: f.g"}
 	// cannot run nil data
+	// <nil>
+	// <nil>
 }
 ```
 

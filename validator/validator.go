@@ -16,6 +16,7 @@
 package validator
 
 import (
+	"reflect"
 	"strings"
 
 	tagexpr "github.com/bytedance/go-tagexpr"
@@ -39,9 +40,73 @@ func New(tagName string) *Validator {
 	return v
 }
 
-// Validate validates whether the fields of structPtr is valid.
-func (v *Validator) Validate(structPtr interface{}) error {
-	expr, err := v.vm.Run(structPtr)
+// Validate validates whether the fields of v is valid.
+func (v *Validator) Validate(value interface{}) error {
+	rv, ok := value.(reflect.Value)
+	if !ok {
+		rv = reflect.ValueOf(value)
+	}
+	return v.validate(rv)
+}
+
+func (v *Validator) validate(value reflect.Value) error {
+	rv := derefValue(value)
+	switch rv.Kind() {
+	case reflect.Struct:
+		break
+
+	case reflect.Slice, reflect.Array:
+		count := rv.Len()
+		if count == 0 {
+			return nil
+		}
+		switch derefType(rv.Type().Elem()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			for i := count - 1; i >= 0; i-- {
+				if err := v.validate(rv.Index(i)); err != nil {
+					return err
+				}
+			}
+		default:
+			return nil
+		}
+
+	case reflect.Map:
+		if rv.Len() == 0 {
+			return nil
+		}
+		var canKey, canValue bool
+		rt := rv.Type()
+		switch derefType(rt.Key()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			canKey = true
+		}
+		switch derefType(rt.Elem()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			canValue = true
+		}
+		if !canKey && !canValue {
+			return nil
+		}
+		for _, key := range rv.MapKeys() {
+			if canKey {
+				if err := v.validate(key); err != nil {
+					return err
+				}
+			}
+			if canValue {
+				if err := v.validate(rv.MapIndex(key)); err != nil {
+					return err
+				}
+			}
+		}
+	default:
+		if derefType(value.Type()).Kind() != reflect.Struct {
+			return nil
+		}
+	}
+
+	expr, err := v.vm.Run(rv)
 	if err != nil {
 		return err
 	}
@@ -88,4 +153,18 @@ func defaultErrorFactory(fieldSelector, msg string) error {
 		FieldSelector: fieldSelector,
 		Msg:           msg,
 	}
+}
+
+func derefType(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
+func derefValue(v reflect.Value) reflect.Value {
+	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+	return v
 }
