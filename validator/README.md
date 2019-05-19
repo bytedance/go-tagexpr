@@ -76,8 +76,8 @@ func Example() {
 	fmt.Println(vd.Validate(e))
 
 	// Customizes the factory of validation error.
-	vd.SetErrorFactory(func(fieldSelector, msg string) error {
-		return fmt.Errorf(`{"succ":false, "error":"validation failed: %s"}`, fieldSelector)
+	vd.SetErrorFactory(func(failPath, msg string) error {
+		return fmt.Errorf(`{"succ":false, "error":"validation failed: %s"}`, failPath)
 	})
 
 	type F struct {
