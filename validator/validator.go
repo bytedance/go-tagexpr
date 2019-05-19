@@ -16,7 +16,9 @@
 package validator
 
 import (
+	"errors"
 	"reflect"
+	"strconv"
 	"strings"
 
 	tagexpr "github.com/bytedance/go-tagexpr"
@@ -28,7 +30,7 @@ const errMsgExprName = "msg"
 // Validator struct fields validator
 type Validator struct {
 	vm         *tagexpr.VM
-	errFactory func(fieldSelector, msg string) error
+	errFactory func(failPath, msg string) error
 }
 
 // New creates a struct fields validator.
@@ -46,10 +48,10 @@ func (v *Validator) Validate(value interface{}) error {
 	if !ok {
 		rv = reflect.ValueOf(value)
 	}
-	return v.validate(rv)
+	return v.validate("", rv)
 }
 
-func (v *Validator) validate(value reflect.Value) error {
+func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 	rv := derefValue(value)
 	switch rv.Kind() {
 	case reflect.Struct:
@@ -63,7 +65,7 @@ func (v *Validator) validate(value reflect.Value) error {
 		switch derefType(rv.Type().Elem()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			for i := count - 1; i >= 0; i-- {
-				if err := v.validate(rv.Index(i)); err != nil {
+				if err := v.validate(selectorPrefix+strconv.Itoa(i)+"/", rv.Index(i)); err != nil {
 					return err
 				}
 			}
@@ -90,12 +92,12 @@ func (v *Validator) validate(value reflect.Value) error {
 		}
 		for _, key := range rv.MapKeys() {
 			if canKey {
-				if err := v.validate(key); err != nil {
+				if err := v.validate(selectorPrefix+"{k}"+"/", key); err != nil {
 					return err
 				}
 			}
 			if canValue {
-				if err := v.validate(rv.MapIndex(key)); err != nil {
+				if err := v.validate(selectorPrefix+key.String()+"/", rv.MapIndex(key)); err != nil {
 					return err
 				}
 			}
@@ -108,7 +110,7 @@ func (v *Validator) validate(value reflect.Value) error {
 
 	expr, err := v.vm.Run(rv)
 	if err != nil {
-		return err
+		return errors.New("validation failed: " + err.Error())
 	}
 	var errSelector string
 	var valid bool
@@ -126,18 +128,18 @@ func (v *Validator) validate(value reflect.Value) error {
 		return nil
 	}
 	errMsg := expr.EvalString(errSelector + "@" + errMsgExprName)
-	return v.errFactory(errSelector, errMsg)
+	return v.errFactory(selectorPrefix+errSelector, errMsg)
 }
 
 // SetErrorFactory customizes the factory of validation error.
-func (v *Validator) SetErrorFactory(errFactory func(fieldSelector, msg string) error) *Validator {
+func (v *Validator) SetErrorFactory(errFactory func(failPath, msg string) error) *Validator {
 	v.errFactory = errFactory
 	return v
 }
 
 // Error validate error
 type Error struct {
-	FieldSelector, Msg string
+	FailPath, Msg string
 }
 
 // Error implements error interface.
@@ -145,13 +147,13 @@ func (e *Error) Error() string {
 	if e.Msg != "" {
 		return e.Msg
 	}
-	return "invalid parameter: " + e.FieldSelector
+	return "validation failed: " + e.FailPath
 }
 
-func defaultErrorFactory(fieldSelector, msg string) error {
+func defaultErrorFactory(failPath, msg string) error {
 	return &Error{
-		FieldSelector: fieldSelector,
-		Msg:           msg,
+		FailPath: failPath,
+		Msg:      msg,
 	}
 }
 

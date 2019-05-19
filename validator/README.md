@@ -77,7 +77,7 @@ func Example() {
 
 	// Customizes the factory of validation error.
 	vd.SetErrorFactory(func(fieldSelector, msg string) error {
-		return fmt.Errorf(`{"succ":false, "error":"invalid parameter: %s"}`, fieldSelector)
+		return fmt.Errorf(`{"succ":false, "error":"validation failed: %s"}`, fieldSelector)
 	})
 
 	type F struct {
@@ -90,27 +90,24 @@ func Example() {
 	fmt.Println(vd.Validate(f))
 
 	fmt.Println(vd.Validate(map[string]*F{"a": f}))
-
+	fmt.Println(vd.Validate(map[*F]int{f: 1}))
 	fmt.Println(vd.Validate([][1]*F{{f}}))
-
-	f = nil
-	fmt.Println(vd.Validate(f))
-
+	fmt.Println(vd.Validate((*F)(nil)))
 	fmt.Println(vd.Validate(map[string]*F{}))
-
 	fmt.Println(vd.Validate([]*F{}))
 
 	// Output:
 	// true
-	// invalid parameter: Email
+	// validation failed: Email
 	// true
 	// C must be false when S.A>0
 	// invalid d: [x y]
-	// invalid parameter: e
-	// {"succ":false, "error":"invalid parameter: f.g"}
-	// {"succ":false, "error":"invalid parameter: f.g"}
-	// {"succ":false, "error":"invalid parameter: f.g"}
-	// cannot run nil data
+	// validation failed: e
+	// {"succ":false, "error":"validation failed: f.g"}
+	// {"succ":false, "error":"validation failed: a/f.g"}
+	// {"succ":false, "error":"validation failed: {k}/f.g"}
+	// {"succ":false, "error":"validation failed: 0/0/f.g"}
+	// validation failed: unsupported nil
 	// <nil>
 	// <nil>
 }
