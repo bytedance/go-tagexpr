@@ -79,16 +79,16 @@ func Example() {
 
 	// Output:
 	// true
-	// validation failed: Email
+	// invalid parameter: Email
 	// true
 	// C must be false when S.A>0
 	// invalid d: [x y]
-	// validation failed: e
+	// invalid parameter: e
 	// {"succ":false, "error":"validation failed: f.g"}
 	// {"succ":false, "error":"validation failed: a/f.g"}
 	// {"succ":false, "error":"validation failed: {k}/f.g"}
 	// {"succ":false, "error":"validation failed: 0/0/f.g"}
-	// validation failed: unsupported nil
+	// unsupport data: nil
 	// <nil>
 	// <nil>
 }

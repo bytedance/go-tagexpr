@@ -16,7 +16,6 @@
 package validator
 
 import (
-	"errors"
 	"reflect"
 	"strconv"
 	"strings"
@@ -110,7 +109,7 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 
 	expr, err := v.vm.Run(rv)
 	if err != nil {
-		return errors.New("validation failed: " + err.Error())
+		return err
 	}
 	var errSelector string
 	var valid bool
@@ -147,7 +146,7 @@ func (e *Error) Error() string {
 	if e.Msg != "" {
 		return e.Msg
 	}
-	return "validation failed: " + e.FailPath
+	return "invalid parameter: " + e.FailPath
 }
 
 func defaultErrorFactory(failPath, msg string) error {

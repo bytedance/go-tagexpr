@@ -112,7 +112,7 @@ func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error)
 		u = tpack.Unpack(structOrStructPtrOrReflectValue)
 	}
 	if u.IsNil() {
-		return nil, errors.New("unsupported nil")
+		return nil, errors.New("unsupport data: nil")
 	}
 	u = u.UnderlyingElem()
 	tid := u.RuntimeTypeID()
@@ -510,7 +510,7 @@ func (vm *VM) getStructType(t reflect.Type) (reflect.Type, error) {
 		structType = structType.Elem()
 	}
 	if structType.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("unsupported %s", t.String())
+		return nil, fmt.Errorf("unsupport type: %s", t.String())
 	}
 	return structType, nil
 }
