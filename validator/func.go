@@ -7,13 +7,13 @@ import (
 	"github.com/nyaruka/phonenumbers"
 )
 
-// RegValidateFunc registers validator function expression.
+// RegFunc registers validator function expression.
 // NOTE:
 //  example: phone($) or phone($,'CN');
 //  If @force=true, allow to cover the existed same @funcName;
 //  The go number types always are float64;
 //  The go string types always are string.
-func RegValidateFunc(funcName string, fn func(args ...interface{}) bool, force ...bool) error {
+func RegFunc(funcName string, fn func(args ...interface{}) bool, force ...bool) error {
 	return tagexpr.RegFunc(funcName, func(args ...interface{}) interface{} {
 		return fn(args[0])
 	}, force...)
