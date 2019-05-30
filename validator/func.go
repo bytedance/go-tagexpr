@@ -15,7 +15,7 @@ import (
 //  The go string types always are string.
 func RegFunc(funcName string, fn func(args ...interface{}) bool, force ...bool) error {
 	return tagexpr.RegFunc(funcName, func(args ...interface{}) interface{} {
-		return fn(args[0])
+		return fn(args...)
 	}, force...)
 }
 
