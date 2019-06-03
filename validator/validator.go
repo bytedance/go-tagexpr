@@ -24,8 +24,13 @@ import (
 	tagexpr "github.com/bytedance/go-tagexpr"
 )
 
-const matchExprName = "@"
-const errMsgExprName = "msg"
+const (
+	// MatchExprName the name of the expression used for validation
+	MatchExprName = tagexpr.DefaultExprName
+	// ErrMsgExprName the name of the expression used to specify the message
+	// returned when validation failed
+	ErrMsgExprName = "msg"
+)
 
 // Validator struct fields validator
 type Validator struct {
@@ -121,7 +126,7 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 	var valid bool
 	expr.Range(func(es tagexpr.ExprSelector, eval func() interface{}) bool {
 		selector := es.String()
-		if strings.Contains(selector, "@") {
+		if strings.Contains(selector, tagexpr.ExprNameSeparator) {
 			return true
 		}
 		valid = tagexpr.FakeBool(eval())
@@ -133,7 +138,7 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 	if errSelector == "" {
 		return nil
 	}
-	errMsg := expr.EvalString(errSelector + "@" + errMsgExprName)
+	errMsg := expr.EvalString(errSelector + tagexpr.ExprNameSeparator + ErrMsgExprName)
 	return v.errFactory(selectorPrefix+errSelector, errMsg)
 }
 

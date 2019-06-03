@@ -476,10 +476,10 @@ func (f *fieldVM) parseExprs(tag string) error {
 				switch selector {
 				case "":
 					continue
-				case "@":
+				case ExprNameSeparator:
 					selector = f.structField.Name
 				default:
-					selector = f.structField.Name + "@" + selector
+					selector = f.structField.Name + ExprNameSeparator + selector
 				}
 				if _, had := f.origin.exprs[selector]; had {
 					return fmt.Errorf("duplicate expression name: %s", selector)
@@ -578,9 +578,9 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 	expr, ok := t.s.exprs[exprSelector]
 	if !ok {
 		// Compatible with single mode or the expression with the name @
-		if strings.HasSuffix(exprSelector, "@") {
+		if strings.HasSuffix(exprSelector, ExprNameSeparator) {
 			exprSelector = exprSelector[:len(exprSelector)-1]
-			if strings.HasSuffix(exprSelector, "@") {
+			if strings.HasSuffix(exprSelector, ExprNameSeparator) {
 				exprSelector = exprSelector[:len(exprSelector)-1]
 			}
 			expr, ok = t.s.exprs[exprSelector]
@@ -813,7 +813,7 @@ func safeConvert(v reflect.Value, t reflect.Type) reflect.Value {
 var float64Type = reflect.TypeOf(float64(0))
 
 func splitFieldSelector(selector string) (dir, base string) {
-	idx := strings.LastIndex(selector, "@")
+	idx := strings.LastIndex(selector, ExprNameSeparator)
 	if idx != -1 {
 		selector = selector[:idx]
 	}
