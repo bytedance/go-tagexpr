@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	_ "unsafe"
 
 	tagexpr "github.com/bytedance/go-tagexpr"
 )
@@ -154,6 +155,8 @@ func (e *Error) Error() string {
 	return "invalid parameter: " + e.FailPath
 }
 
+//go:linkname defaultErrorFactory validator.defaultErrorFactory
+//go:nosplit
 func defaultErrorFactory(failPath, msg string) error {
 	return &Error{
 		FailPath: failPath,
@@ -161,6 +164,8 @@ func defaultErrorFactory(failPath, msg string) error {
 	}
 }
 
+//go:linkname derefType validator.derefType
+//go:nosplit
 func derefType(t reflect.Type) reflect.Type {
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -168,6 +173,8 @@ func derefType(t reflect.Type) reflect.Type {
 	return t
 }
 
+//go:linkname derefValue validator.derefValue
+//go:nosplit
 func derefValue(v reflect.Value) reflect.Value {
 	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
 		v = v.Elem()
