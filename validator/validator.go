@@ -131,7 +131,12 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 }
 
 // SetErrorFactory customizes the factory of validation error.
+// NOTE:
+//  If errFactory==nil, the default is used
 func (v *Validator) SetErrorFactory(errFactory func(failPath, msg string) error) *Validator {
+	if errFactory == nil {
+		errFactory = defaultErrorFactory
+	}
 	v.errFactory = errFactory
 	return v
 }
