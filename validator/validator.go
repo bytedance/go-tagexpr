@@ -42,6 +42,11 @@ func New(tagName string) *Validator {
 	return v
 }
 
+// VM returns the struct tag expression interpreter.
+func (v *Validator) VM() *tagexpr.VM {
+	return v.vm
+}
+
 // Validate validates whether the fields of v is valid.
 func (v *Validator) Validate(value interface{}) error {
 	rv, ok := value.(reflect.Value)
