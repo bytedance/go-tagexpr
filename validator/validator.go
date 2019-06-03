@@ -119,7 +119,8 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 	}
 	var errSelector string
 	var valid bool
-	expr.Range(func(selector string, eval func() interface{}) bool {
+	expr.Range(func(es tagexpr.ExprSelector, eval func() interface{}) bool {
+		selector := es.String()
 		if strings.Contains(selector, "@") {
 			return true
 		}

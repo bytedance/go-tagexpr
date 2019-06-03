@@ -227,12 +227,12 @@ func Test(t *testing.T) {
 				t.Fatalf("Eval Serial: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
-		tagExpr.Range(func(selector string, eval func() interface{}) bool {
-			t.Logf("Range selector: %s", selector)
-			value := c.tests[selector]
+		tagExpr.Range(func(es ExprSelector, eval func() interface{}) bool {
+			t.Logf("Range selector: %s, exprName: %q", es, es.Name())
+			value := c.tests[es.String()]
 			val := eval()
 			if !reflect.DeepEqual(val, value) {
-				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
+				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, es, val, value)
 			}
 			return true
 		})
@@ -437,12 +437,12 @@ func TestOperator(t *testing.T) {
 				t.Fatalf("Eval NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
-		tagExpr.Range(func(selector string, eval func() interface{}) bool {
-			t.Logf("Range selector: %s", selector)
-			value := c.tests[selector]
+		tagExpr.Range(func(es ExprSelector, eval func() interface{}) bool {
+			t.Logf("Range selector: %s, exprName:%q", es, es.Name())
+			value := c.tests[es.String()]
 			val := eval()
 			if !reflect.DeepEqual(val, value) {
-				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
+				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, es, val, value)
 			}
 			return true
 		})
@@ -478,8 +478,8 @@ func TestStruct(t *testing.T) {
 	if expr.EvalString("B.C.D.X") != "xxx" {
 		t.FailNow()
 	}
-	expr.Range(func(exprSelector string, eval func() interface{}) bool {
-		t.Log(exprSelector)
+	expr.Range(func(es ExprSelector, eval func() interface{}) bool {
+		t.Logf("Range selector: %s, exprName: %q", es, es.Name())
 		if eval().(string) != "xxx" {
 			t.FailNow()
 		}
@@ -572,8 +572,8 @@ func TestStruct3(t *testing.T) {
 	if expr.EvalString("XBlock.BlockType") != "BlockType" {
 		t.Fatal(expr.EvalString("XBlock.BlockType"))
 	}
-	ok := expr.Range(func(exprSelector string, eval func() interface{}) bool {
-		t.Log(exprSelector, "=====", eval())
+	ok := expr.Range(func(es ExprSelector, eval func() interface{}) bool {
+		t.Logf("selector: %s, exprName: %q, eval: %s", es, es.Name(), eval())
 		return true
 	})
 	if !ok {

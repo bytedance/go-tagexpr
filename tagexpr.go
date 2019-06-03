@@ -601,11 +601,11 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 // When fn returns false, interrupt traversal and return false.
 // NOTE:
 //  eval result types: float64, string, bool, nil
-func (t *TagExpr) Range(fn func(exprSelector string, eval func() interface{}) bool) bool {
+func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) bool {
 	if list := t.s.selectorList; len(list) > 0 {
 		exprs := t.s.exprs
 		for _, exprSelector := range list {
-			if !fn(exprSelector, func() interface{} {
+			if !fn(ExprSelector(exprSelector), func() interface{} {
 				dir, base := splitFieldSelector(exprSelector)
 				targetTagExpr, err := t.checkout(dir)
 				if err != nil {
