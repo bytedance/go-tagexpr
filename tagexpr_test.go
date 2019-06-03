@@ -228,7 +228,7 @@ func Test(t *testing.T) {
 			}
 		}
 		tagExpr.Range(func(es ExprSelector, eval func() interface{}) bool {
-			t.Logf("Range selector: %s, exprName: %q", es, es.Name())
+			t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 			value := c.tests[es.String()]
 			val := eval()
 			if !reflect.DeepEqual(val, value) {
@@ -438,7 +438,7 @@ func TestOperator(t *testing.T) {
 			}
 		}
 		tagExpr.Range(func(es ExprSelector, eval func() interface{}) bool {
-			t.Logf("Range selector: %s, exprName:%q", es, es.Name())
+			t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 			value := c.tests[es.String()]
 			val := eval()
 			if !reflect.DeepEqual(val, value) {
@@ -479,7 +479,7 @@ func TestStruct(t *testing.T) {
 		t.FailNow()
 	}
 	expr.Range(func(es ExprSelector, eval func() interface{}) bool {
-		t.Logf("Range selector: %s, exprName: %q", es, es.Name())
+		t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 		if eval().(string) != "xxx" {
 			t.FailNow()
 		}
@@ -573,7 +573,7 @@ func TestStruct3(t *testing.T) {
 		t.Fatal(expr.EvalString("XBlock.BlockType"))
 	}
 	ok := expr.Range(func(es ExprSelector, eval func() interface{}) bool {
-		t.Logf("selector: %s, exprName: %q, eval: %s", es, es.Name(), eval())
+		t.Logf("Range selector: %s, field: %q exprName: %q, eval: %v", es, es.Field(), es.Name(), eval())
 		return true
 	})
 	if !ok {
