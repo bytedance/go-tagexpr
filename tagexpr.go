@@ -308,11 +308,11 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 				}
 			}
 		}
-		s.fields[nameSpace+"."+k] = f
+		s.fields[nameSpace+FieldSeparator+k] = f
 	}
 	var selector string
 	for k, v := range sub.exprs {
-		selector = nameSpace + "." + k
+		selector = nameSpace + FieldSeparator + k
 		s.exprs[selector] = v
 		s.selectorList = append(s.selectorList, selector)
 	}
@@ -817,7 +817,7 @@ func splitFieldSelector(selector string) (dir, base string) {
 	if idx != -1 {
 		selector = selector[:idx]
 	}
-	idx = strings.LastIndex(selector, ".")
+	idx = strings.LastIndex(selector, FieldSeparator)
 	if idx != -1 {
 		return selector[:idx], selector[idx+1:]
 	}
