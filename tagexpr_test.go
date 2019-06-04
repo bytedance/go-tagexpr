@@ -239,7 +239,7 @@ func Test(t *testing.T) {
 	}
 }
 
-func TestField(t *testing.T) {
+func TestFieldNotInit(t *testing.T) {
 	g := &struct {
 		_ int
 		h string
@@ -310,7 +310,7 @@ func TestField(t *testing.T) {
 		{"p", structure.p},
 	}
 	for _, c := range cases {
-		val := e.Field(c.fieldSelector)
+		val := e.Field(c.fieldSelector, false).Interface()
 		if !reflect.DeepEqual(val, c.value) {
 			t.Fatalf("%s: got: %v(%[2]T), expect: %v(%[3]T)", c.fieldSelector, val, c.value)
 		}
@@ -321,9 +321,94 @@ func TestField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	val := e.Field("wall")
+	val := e.Field("wall", false).Interface()
 	if !reflect.DeepEqual(val, wall) {
 		t.Fatalf("Time.wall: got: %v(%[1]T), expect: %v(%[2]T)", val, wall)
+	}
+}
+
+func TestFieldInitZero(t *testing.T) {
+	g := &struct {
+		_ int
+		h string
+		s []string
+		m map[string][]string
+	}{
+		h: "haha",
+		s: []string{"1"},
+		m: map[string][]string{"0": {"2"}},
+	}
+	structure := &struct {
+		A int
+		b string
+		c struct {
+			_ int
+			d *bool
+		}
+		e *struct {
+			_ int
+			f bool
+		}
+		g **struct {
+			_ int
+			h string
+			s []string
+			m map[string][]string
+		}
+		g2 ****struct {
+			_ int
+			h string
+			s []string
+			m map[string][]string
+		}
+		i string
+		j bool
+		k int
+		m *int
+		n *bool
+		p *string
+	}{
+		A: 5,
+		b: "x",
+		e: &struct {
+			_ int
+			f bool
+		}{f: true},
+		g: &g,
+		i: "12",
+	}
+	vm := New("")
+	e, err := vm.Run(structure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		fieldSelector string
+		value         interface{}
+	}{
+		{"A", structure.A},
+		{"b", structure.b},
+		{"c", structure.c},
+		{"c.d", new(bool)},
+		{"e", structure.e},
+		{"e.f", structure.e.f},
+		{"g", structure.g},
+		{"g.h", (*structure.g).h},
+		{"g.s", (*structure.g).s},
+		{"g.m", (*structure.g).m},
+		{"g2.m", (map[string][]string)(nil)},
+		{"i", structure.i},
+		{"j", structure.j},
+		{"k", structure.k},
+		{"m", new(int)},
+		{"n", new(bool)},
+		{"p", new(string)},
+	}
+	for _, c := range cases {
+		val := e.Field(c.fieldSelector, true).Interface()
+		if !reflect.DeepEqual(val, c.value) {
+			t.Fatalf("%s: got: %#v(%[2]T), expect: %#v(%[3]T)", c.fieldSelector, val, c.value)
+		}
 	}
 }
 

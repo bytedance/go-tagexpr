@@ -52,8 +52,7 @@ type fieldVM struct {
 	elemType               reflect.Type
 	elemKind               reflect.Kind
 	valueGetter            func(uintptr) interface{}
-	reflectValueGetter     func(uintptr) reflect.Value
-	zeroValue              reflect.Value
+	reflectValueGetter     func(uintptr, bool) reflect.Value
 	origin                 *structVM
 	mapKeyStructVM         *structVM
 	mapOrSliceElemStructVM *structVM
@@ -258,11 +257,30 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 	f.ptrDeep = ptrDeep
 	f.elemType = t
 	f.elemKind = t.Kind()
-	if f.ptrDeep == 0 {
-		f.zeroValue = reflect.New(t).Elem()
+	f.reflectValueGetter = func(ptr uintptr, initZero bool) reflect.Value {
+		v := f.packRawFrom(ptr)
+		if initZero {
+			f.ensureInit(v)
+		}
+		return v
 	}
-	f.reflectValueGetter = f.packRawFrom
 	return f, nil
+}
+
+func (f *fieldVM) ensureInit(v reflect.Value) {
+	if safeIsNil(v) && v.CanSet() {
+		newField := reflect.New(f.elemType).Elem()
+		for i := 0; i < f.ptrDeep; i++ {
+			if newField.CanAddr() {
+				newField = newField.Addr()
+			} else {
+				newField2 := reflect.New(newField.Type())
+				newField2.Elem().Set(newField)
+				newField = newField2
+			}
+		}
+		v.Set(newField)
+	}
 }
 
 func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
@@ -282,8 +300,8 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 				f.valueGetter = func(ptr uintptr) interface{} {
 					return valueGetter(ptr + field.offset)
 				}
-				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
-					return reflectValueGetter(ptr + field.offset)
+				f.reflectValueGetter = func(ptr uintptr, initZero bool) reflect.Value {
+					return reflectValueGetter(ptr+field.offset, initZero)
 				}
 			} else {
 				f.valueGetter = func(ptr uintptr) interface{} {
@@ -296,15 +314,18 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 					}
 					return valueGetter(uintptr(newField.Pointer()))
 				}
-				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
+				f.reflectValueGetter = func(ptr uintptr, initZero bool) reflect.Value {
 					newField := reflect.NewAt(field.structField.Type, unsafe.Pointer(ptr+field.offset))
+					if initZero {
+						field.ensureInit(newField.Elem())
+					}
 					for i := 0; i < ptrDeep; i++ {
 						newField = newField.Elem()
 					}
-					if newField.IsNil() {
+					if !initZero && newField.IsNil() {
 						return reflect.Value{}
 					}
-					return reflectValueGetter(uintptr(newField.Pointer()))
+					return reflectValueGetter(uintptr(newField.Pointer()), initZero)
 				}
 			}
 		}
@@ -572,13 +593,14 @@ func FakeBool(v interface{}) bool {
 
 // Field returns the field value specified by the selector.
 // NOTE:
-//  Return reflect.Value{} if the field is not exist
-func (t *TagExpr) Field(fieldSelector string) reflect.Value {
+//  If initZero==true, initialize nil pointer to zero value;
+//  If the field is not exist, return reflect.Value{}
+func (t *TagExpr) Field(fieldSelector string, initZero bool) reflect.Value {
 	f, ok := t.s.fields[fieldSelector]
 	if !ok {
 		return reflect.Value{}
 	}
-	return f.reflectValueGetter(t.ptr)
+	return f.reflectValueGetter(t.ptr, initZero)
 }
 
 // Eval evaluate the value of the struct tag expression by the selector expression.
