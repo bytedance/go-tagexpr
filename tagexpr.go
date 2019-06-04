@@ -51,9 +51,9 @@ type fieldVM struct {
 	ptrDeep                int
 	elemType               reflect.Type
 	elemKind               reflect.Kind
-	zeroValue              interface{}
 	valueGetter            func(uintptr) interface{}
 	reflectValueGetter     func(uintptr) reflect.Value
+	zeroValue              reflect.Value
 	origin                 *structVM
 	mapKeyStructVM         *structVM
 	mapOrSliceElemStructVM *structVM
@@ -259,7 +259,7 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 	f.elemType = t
 	f.elemKind = t.Kind()
 	if f.ptrDeep == 0 {
-		f.zeroValue = reflect.New(t).Elem().Interface()
+		f.zeroValue = reflect.New(t).Elem()
 	}
 	f.reflectValueGetter = f.packRawFrom
 	return f, nil
@@ -287,24 +287,24 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 				}
 			} else {
 				f.valueGetter = func(ptr uintptr) interface{} {
-					newFieldVM := reflect.NewAt(field.structField.Type, unsafe.Pointer(ptr+field.offset))
+					newField := reflect.NewAt(field.structField.Type, unsafe.Pointer(ptr+field.offset))
 					for i := 0; i < ptrDeep; i++ {
-						newFieldVM = newFieldVM.Elem()
+						newField = newField.Elem()
 					}
-					if newFieldVM.IsNil() {
+					if newField.IsNil() {
 						return nil
 					}
-					return valueGetter(uintptr(newFieldVM.Pointer()))
+					return valueGetter(uintptr(newField.Pointer()))
 				}
 				f.reflectValueGetter = func(ptr uintptr) reflect.Value {
-					newFieldVM := reflect.NewAt(field.structField.Type, unsafe.Pointer(ptr+field.offset))
+					newField := reflect.NewAt(field.structField.Type, unsafe.Pointer(ptr+field.offset))
 					for i := 0; i < ptrDeep; i++ {
-						newFieldVM = newFieldVM.Elem()
+						newField = newField.Elem()
 					}
-					if newFieldVM.IsNil() {
+					if newField.IsNil() {
 						return reflect.Value{}
 					}
-					return reflectValueGetter(uintptr(newFieldVM.Pointer()))
+					return reflectValueGetter(uintptr(newField.Pointer()))
 				}
 			}
 		}
@@ -570,6 +570,17 @@ func FakeBool(v interface{}) bool {
 	}
 }
 
+// Field returns the field value specified by the selector.
+// NOTE:
+//  Return reflect.Value{} if the field is not exist
+func (t *TagExpr) Field(fieldSelector string) reflect.Value {
+	f, ok := t.s.fields[fieldSelector]
+	if !ok {
+		return reflect.Value{}
+	}
+	return f.reflectValueGetter(t.ptr)
+}
+
 // Eval evaluate the value of the struct tag expression by the selector expression.
 // NOTE:
 //  format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
@@ -698,24 +709,6 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 	}
 
 	return true
-}
-
-// Field returns the field value specified by the selector.
-// NOTE:
-//  Return nil if the field is not exist
-func (t *TagExpr) Field(fieldSelector string) interface{} {
-	f, ok := t.s.fields[fieldSelector]
-	if !ok {
-		return nil
-	}
-	elem := f.reflectValueGetter(t.ptr)
-	if !elem.IsValid() {
-		return f.zeroValue
-	}
-	if elem.CanInterface() {
-		return elem.Interface()
-	}
-	return nil
 }
 
 var errFieldSelector = errors.New("field selector does not exist")
