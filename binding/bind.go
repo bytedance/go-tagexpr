@@ -52,12 +52,12 @@ func (b *Binding) SetErrorFactory(bindErrFactory, validatingErrFactory func(fail
 }
 
 // BindAndValidate binds the request parameters and validates them if needed.
-func (b *Binding) BindAndValidate(req *http.Request, structPointer interface{}) error {
+func (b *Binding) BindAndValidate(structPointer interface{}, req *http.Request, pathParams PathParams) error {
 	v, err := b.structValueOf(structPointer)
 	if err != nil {
 		return err
 	}
-	hasVd, err := b.bind(req, v)
+	hasVd, err := b.bind(v, req, pathParams)
 	if err != nil {
 		return err
 	}
@@ -68,12 +68,12 @@ func (b *Binding) BindAndValidate(req *http.Request, structPointer interface{}) 
 }
 
 // Bind binds the request parameters.
-func (b *Binding) Bind(req *http.Request, structPointer interface{}) error {
+func (b *Binding) Bind(structPointer interface{}, req *http.Request, pathParams PathParams) error {
 	v, err := b.structValueOf(structPointer)
 	if err != nil {
 		return err
 	}
-	_, err = b.bind(req, v)
+	_, err = b.bind(v, req, pathParams)
 	return err
 }
 
@@ -192,7 +192,7 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	return recv, nil
 }
 
-func (b *Binding) bind(req *http.Request, value reflect.Value) (hasVd bool, err error) {
+func (b *Binding) bind(value reflect.Value, req *http.Request, pathParams PathParams) (hasVd bool, err error) {
 	recv, err := b.getObjOrPrepare(value)
 	if err != nil {
 		return false, err
@@ -223,6 +223,7 @@ func (b *Binding) bind(req *http.Request, value reflect.Value) (hasVd bool, err 
 		case query:
 			_, err = param.bindQuery(expr, queryValues)
 		case path:
+			_, err = param.bindPath(expr, pathParams)
 		case header:
 			_, err = param.bindHeader(expr, req.Header)
 		case cookie:

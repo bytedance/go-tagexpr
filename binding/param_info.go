@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/bytedance/go-tagexpr"
-	"github.com/bytedance/go-tagexpr/binding/gjsonassign"
+	"github.com/bytedance/go-tagexpr/binding/jsonparam"
 	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 )
@@ -64,6 +64,17 @@ func (p *paramInfo) bindRawBody(expr *tagexpr.TagExpr, bodyBytes []byte) error {
 	}
 }
 
+func (p *paramInfo) bindPath(expr *tagexpr.TagExpr, pathParams PathParams) (bool, error) {
+	r, found := pathParams.Get(p.name)
+	if !found {
+		if p.required {
+			return false, p.requiredError
+		}
+		return false, nil
+	}
+	return true, p.bindStringSlice(expr, []string{r})
+}
+
 func (p *paramInfo) bindQuery(expr *tagexpr.TagExpr, queryValues url.Values) (bool, error) {
 	return p.bindMapStrings(expr, queryValues)
 }
@@ -111,7 +122,7 @@ func (p *paramInfo) bindJSON(expr *tagexpr.TagExpr, bodyBytes []byte) (bool, err
 	if err != nil || !v.IsValid() {
 		return false, err
 	}
-	gjsonassign.Assign(r, v)
+	jsonparam.Assign(r, v)
 	return true, nil
 }
 

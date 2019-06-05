@@ -46,30 +46,6 @@ func derefType(t reflect.Type) reflect.Type
 //go:linkname derefValue validator.derefValue
 func derefValue(v reflect.Value) reflect.Value
 
-// func derefInitValue(v reflect.Value) reflect.Value {
-// 	for v.Kind() == reflect.Ptr {
-// 		e := v.Elem()
-// 		if e.IsValid() {
-// 			e = reflect.New(e.Type())
-// 			v.Set(e)
-// 		}
-// 		v = e
-// 	}
-// 	return v
-// }
-
-// func safeIsNil(v reflect.Value) bool {
-// 	if !v.IsValid() {
-// 		return true
-// 	}
-// 	switch v.Kind() {
-// 	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr,
-// 		reflect.UnsafePointer, reflect.Interface, reflect.Slice:
-// 		return v.IsNil()
-// 	}
-// 	return false
-// }
-
 func stringsToInts(a []string) ([]int, error) {
 	r := make([]int, len(a))
 	for k, v := range a {
