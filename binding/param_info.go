@@ -1,6 +1,7 @@
 package binding
 
 import (
+	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -31,6 +32,17 @@ func (p *paramInfo) getField(expr *tagexpr.TagExpr) (reflect.Value, error) {
 
 func (p *paramInfo) bindQuery(v reflect.Value, queryValues url.Values) error {
 	r, ok := queryValues[p.name]
+	if !ok || len(r) == 0 {
+		if p.required {
+			return p.requiredError
+		}
+		return nil
+	}
+	return p.setStringSlice(v, r)
+}
+
+func (p *paramInfo) bindHeader(v reflect.Value, header http.Header) error {
+	r, ok := header[p.name]
 	if !ok || len(r) == 0 {
 		if p.required {
 			return p.requiredError

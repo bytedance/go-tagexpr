@@ -199,6 +199,7 @@ func (b *Binding) bind(req *http.Request, value reflect.Value) (hasVd bool, err 
 			err = param.bindQuery(v, queryValues)
 		case path:
 		case header:
+			err = param.bindHeader(v, req.Header)
 		case cookie:
 		case body:
 			_ = bodyCodec
