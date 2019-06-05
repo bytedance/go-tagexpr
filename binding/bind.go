@@ -107,21 +107,21 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	var errExprSelector tagexpr.ExprSelector
 	var errMsg string
 
-	expr.RangeFields(func(fh tagexpr.FieldHandler) bool {
-		fieldSelector := fh.Selector.String()
+	expr.RangeFields(func(fh *tagexpr.FieldHandler) bool {
+		fieldSelector := fh.StringSelector()
 
-		if !fh.GetValue(true).CanSet() {
+		if !fh.Value(true).CanSet() {
 			errMsg = "field cannot be set: " + fieldSelector
 			errExprSelector = tagexpr.ExprSelector(fieldSelector)
 			return false
 		}
 
-		p := recv.getOrAddParam(fieldSelector)
+		p := recv.getOrAddParam(fh)
 		in := auto
-		name := fh.Selector.Name()
+		name := fh.FieldSelector().Name()
 
 	L:
-		for es, eval := range fh.Evalers() {
+		for es, eval := range fh.EvalFuncs() {
 
 			switch es.Name() {
 			case validator.MatchExprName:
@@ -178,6 +178,9 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	if errMsg != "" {
 		return nil, b.bindErrFactory(errExprSelector.String(), errMsg)
 	}
+
+	recv.combNamePath()
+
 	b.recvs.Store(runtimeTypeID, recv)
 	return recv, nil
 }

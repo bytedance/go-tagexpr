@@ -7,11 +7,15 @@ import (
 	"strconv"
 
 	"github.com/bytedance/go-tagexpr"
+	"github.com/bytedance/go-tagexpr/binding/assign"
 	"github.com/henrylee2cn/goutil"
+	"github.com/tidwall/gjson"
 )
 
 type paramInfo struct {
 	fieldSelector string
+	structField   reflect.StructField
+	namePath      string
 	in            uint8
 	name          string
 	required      bool
@@ -20,9 +24,12 @@ type paramInfo struct {
 }
 
 func (p *paramInfo) getField(expr *tagexpr.TagExpr) (reflect.Value, error) {
-	v := expr.Field(p.fieldSelector, true)
-	if v.IsValid() {
-		return v, nil
+	fh, found := expr.Field(p.fieldSelector)
+	if found {
+		v := fh.Value(true)
+		if v.IsValid() {
+			return v, nil
+		}
 	}
 	if p.required {
 		return reflect.Value{}, p.cannotError
@@ -85,8 +92,27 @@ func (p *paramInfo) bindBody(expr *tagexpr.TagExpr, bodyCodec uint8, postForm ur
 	switch bodyCodec {
 	case formBody:
 		return p.bindMapStrings(expr, postForm)
+	case jsonBody:
+		return p.bindJSON(expr, bodyBytes)
 	}
 	return false, nil
+}
+
+func (p *paramInfo) bindJSON(expr *tagexpr.TagExpr, bodyBytes []byte) (bool, error) {
+	r := gjson.Parse(goutil.BytesToString(bodyBytes))
+	r = r.Get(p.namePath)
+	if !r.Exists() {
+		if p.required {
+			return false, p.requiredError
+		}
+		return false, nil
+	}
+	v, err := p.getField(expr)
+	if err != nil || !v.IsValid() {
+		return false, err
+	}
+	assign.Assign(r, v)
+	return true, nil
 }
 
 func (p *paramInfo) bindMapStrings(expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {

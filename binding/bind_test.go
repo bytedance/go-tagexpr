@@ -311,6 +311,43 @@ func TestFormNum(t *testing.T) {
 	}
 }
 
+func TestJSON(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			A []string  `api:"{body:'a'}"`
+			B int32     `api:""`
+			C *[]uint16 `api:"{required:true}"`
+			D *uint     `api:"{body:'d'}"`
+		}
+		Y string `api:"{body:'y'}{required:true}"`
+		Z *int64 `api:""`
+	}
+
+	bodyReader := strings.NewReader(`{
+		"X": {
+			"a": ["a1","a2"],
+			"B": 21,
+			"C": [31,32],
+			"d": 41
+		},
+		"y": "y1"
+	}`)
+
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	req := newRequest("", header, nil, bodyReader)
+	recv := new(Recv)
+	binder := New("api")
+	err := binder.BindAndValidate(req, recv)
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+	assert.Equal(t, int32(21), (**recv.X).B)
+	assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
+	assert.Equal(t, uint(41), *(**recv.X).D)
+	assert.Equal(t, "y1", recv.Y)
+	assert.Equal(t, (*int64)(nil), recv.Z)
+}
+
 func TestAuto(t *testing.T) {
 	type Recv struct {
 		X **struct {
