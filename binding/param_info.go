@@ -152,6 +152,29 @@ func (p *paramInfo) setStringSlice(v reflect.Value, a []string) error {
 		v.Set(reflect.ValueOf(a[0]))
 		return nil
 
+	case reflect.Bool:
+		bol, err := strconv.ParseBool(a[0])
+		if err == nil {
+			v.SetBool(bol)
+			return nil
+		}
+		return nil
+
+	case reflect.Float32:
+		f, err := strconv.ParseFloat(a[0], 32)
+		if err == nil {
+			v.SetFloat(f)
+			return nil
+		}
+		return nil
+	case reflect.Float64:
+		f, err := strconv.ParseFloat(a[0], 64)
+		if err == nil {
+			v.SetFloat(f)
+			return nil
+		}
+		return nil
+
 	case reflect.Int64, reflect.Int:
 		i, err := strconv.ParseInt(a[0], 10, 64)
 		if err == nil {

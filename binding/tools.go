@@ -46,6 +46,42 @@ func derefType(t reflect.Type) reflect.Type
 //go:linkname derefValue validator.derefValue
 func derefValue(v reflect.Value) reflect.Value
 
+func stringsToBools(a []string) ([]bool, error) {
+	r := make([]bool, len(a))
+	for k, v := range a {
+		i, err := strconv.ParseBool(v)
+		if err != nil {
+			return nil, err
+		}
+		r[k] = i
+	}
+	return r, nil
+}
+
+func stringsToFloat32s(a []string) ([]float32, error) {
+	r := make([]float32, len(a))
+	for k, v := range a {
+		i, err := strconv.ParseFloat(v, 32)
+		if err != nil {
+			return nil, err
+		}
+		r[k] = float32(i)
+	}
+	return r, nil
+}
+
+func stringsToFloat64s(a []string) ([]float64, error) {
+	r := make([]float64, len(a))
+	for k, v := range a {
+		i, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return nil, err
+		}
+		r[k] = i
+	}
+	return r, nil
+}
+
 func stringsToInts(a []string) ([]int, error) {
 	r := make([]int, len(a))
 	for k, v := range a {
@@ -174,6 +210,12 @@ func stringsToValue(elmeKind reflect.Kind, a []string) (reflect.Value, error) {
 	switch elmeKind {
 	case reflect.String:
 		i = a
+	case reflect.Bool:
+		i, err = stringsToBools(a)
+	case reflect.Float32:
+		i, err = stringsToFloat32s(a)
+	case reflect.Float64:
+		i, err = stringsToFloat64s(a)
 	case reflect.Int:
 		i, err = stringsToInts(a)
 	case reflect.Int64:
