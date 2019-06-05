@@ -107,60 +107,74 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	var errExprSelector tagexpr.ExprSelector
 	var errMsg string
 
-	expr.Range(func(es tagexpr.ExprSelector, eval func() interface{}) bool {
-		fieldSelector := es.Path()
-		if !expr.Field(fieldSelector, true).CanSet() {
+	expr.RangeFields(func(fh tagexpr.FieldHandler) bool {
+		fieldSelector := fh.Selector.String()
+
+		if !fh.GetValue(true).CanSet() {
 			errMsg = "field cannot be set: " + fieldSelector
-			errExprSelector = es
+			errExprSelector = tagexpr.ExprSelector(fieldSelector)
 			return false
 		}
-		var in uint8
-		switch es.Name() {
-		case validator.MatchExprName:
-			recv.hasVd = true
-			return true
-		case validator.ErrMsgExprName:
-			return true
-		case "raw_body":
-			recv.hasRawBody = true
-			in = raw_body
-		case "body":
-			recv.hasBody = true
-			in = body
-		case "query":
-			recv.hasQuery = true
-			in = query
-		case "path":
-			recv.hasPath = true
-			in = path
-		case "header":
-			in = header
-		case "cookie":
-			recv.hasCookie = true
-			in = cookie
-		case "required":
-			p := recv.getOrAddParam(fieldSelector)
-			p.required = tagexpr.FakeBool(eval())
-			return true
-		default:
+
+		p := recv.getOrAddParam(fieldSelector)
+		in := auto
+		name := fh.Selector.Name()
+
+	L:
+		for es, eval := range fh.Evalers() {
+
+			switch es.Name() {
+			case validator.MatchExprName:
+				recv.hasVd = true
+				continue L
+			case validator.ErrMsgExprName:
+				continue L
+
+			case "required":
+				p.required = tagexpr.FakeBool(eval())
+				continue L
+
+			case "raw_body":
+				recv.hasRawBody = true
+				in = raw_body
+			case "body":
+				recv.hasBody = true
+				in = body
+			case "query":
+				recv.hasQuery = true
+				in = query
+			case "path":
+				recv.hasPath = true
+				in = path
+			case "header":
+				in = header
+			case "cookie":
+				recv.hasCookie = true
+				in = cookie
+
+			default:
+				continue L
+			}
+
+			name, errMsg = getParamName(eval, name)
+			if errMsg != "" {
+				errExprSelector = es
+				return false
+			}
+		}
+
+		if in == auto {
 			recv.hasBody = true
 			recv.hasAuto = true
-			return true
 		}
-		name, errStr := getParamName(es, eval)
-		if errStr != "" {
-			errMsg = errStr
-			errExprSelector = es
-			return false
-		}
-		p := recv.getOrAddParam(fieldSelector)
+		p.in = in
 		p.name = name
 		p.requiredError = errors.New("missing required parameter: " + name)
 		p.typeError = errors.New("parameter type does not match binding data: " + name)
 		p.cannotError = errors.New("parameter cannot be bound: " + name)
-		p.in = in
 		return true
 	})
+
 	if errMsg != "" {
 		return nil, b.bindErrFactory(errExprSelector.String(), errMsg)
 	}

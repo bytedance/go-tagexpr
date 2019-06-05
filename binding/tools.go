@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"strconv"
 	_ "unsafe"
-
-	"github.com/bytedance/go-tagexpr"
 )
 
 func copyBody(req *http.Request) ([]byte, error) {
@@ -22,14 +20,12 @@ func copyBody(req *http.Request) ([]byte, error) {
 	return b, nil
 }
 
-func getParamName(es tagexpr.ExprSelector, eval func() interface{}) (name string, errStr string) {
+func getParamName(eval func() interface{}, defaultName string) (name string, errStr string) {
 	name, errStr = evalString(eval)
-	if errStr != "" {
+	if errStr == "" || name != "" {
 		return
 	}
-	if name == "" {
-		name = es.Field()
-	}
+	name = defaultName
 	return
 }
 

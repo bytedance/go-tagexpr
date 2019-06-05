@@ -311,6 +311,50 @@ func TestFormNum(t *testing.T) {
 	}
 }
 
+func TestAuto(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			A []string  `api:""`
+			B int32     `api:""`
+			C *[]uint16 `api:"{required:true}"`
+			D *uint     `api:""`
+		}
+		Y string `api:"{required:true}"`
+		Z *int64 `api:""`
+	}
+	query := make(url.Values)
+	query.Add("A", "a1")
+	query.Add("A", "a2")
+	query.Add("B", "21")
+	query.Add("Y", "y1")
+
+	form := make(url.Values)
+	form.Add("C", "31")
+	form.Add("C", "32")
+	form.Add("D", "41")
+	form.Add("D", "42")
+	for _, f := range []httpbody.Files{nil, {
+		"f1": []httpbody.File{
+			httpbody.NewFile("txt", strings.NewReader("f11 text.")),
+		},
+	}} {
+		contentType, bodyReader := httpbody.NewFormBody2(form, f)
+		header := make(http.Header)
+		header.Set("Content-Type", contentType)
+		req := newRequest("http://localhost/?"+query.Encode(), header, nil, bodyReader)
+		recv := new(Recv)
+		binder := New("api")
+		err := binder.BindAndValidate(req, recv)
+		assert.Nil(t, err)
+		assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+		assert.Equal(t, int32(21), (**recv.X).B)
+		assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
+		assert.Equal(t, uint(41), *(**recv.X).D)
+		assert.Equal(t, "y1", recv.Y)
+		assert.Equal(t, (*int64)(nil), recv.Z)
+	}
+}
+
 func newRequest(u string, header http.Header, cookies []*http.Cookie, bodyReader io.Reader) *http.Request {
 	if header == nil {
 		header = make(http.Header)
