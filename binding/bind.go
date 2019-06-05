@@ -12,14 +12,14 @@ import (
 	"github.com/henrylee2cn/goutil/tpack"
 )
 
-// Binding
+// Binding binding and verification tool for http request
 type Binding struct {
-	Validator      *validator.Validator
+	vd             *validator.Validator
 	bindErrFactory func(failField, msg string) error
 	recvs          goutil.Map
 }
 
-// New creates a binding recvect.
+// New creates a binding tool.
 // NOTE:
 //  If tagName=='', `api` is used
 func New(tagName string) *Binding {
@@ -27,7 +27,7 @@ func New(tagName string) *Binding {
 		tagName = "api"
 	}
 	return &Binding{
-		Validator:      validator.New(tagName).SetErrorFactory(defaultValidatingErrFactory),
+		vd:             validator.New(tagName).SetErrorFactory(defaultValidatingErrFactory),
 		bindErrFactory: defaultBindErrFactory,
 		recvs:          goutil.AtomicMap(),
 	}
@@ -47,10 +47,11 @@ func (b *Binding) SetErrorFactory(bindErrFactory, validatingErrFactory func(fail
 		validatingErrFactory = defaultValidatingErrFactory
 	}
 	b.bindErrFactory = bindErrFactory
-	b.Validator.SetErrorFactory(validatingErrFactory)
+	b.vd.SetErrorFactory(validatingErrFactory)
 	return b
 }
 
+// BindAndValidate binds the request parameters and validates them if needed.
 func (b *Binding) BindAndValidate(req *http.Request, structPointer interface{}) error {
 	v, err := b.structValueOf(structPointer)
 	if err != nil {
@@ -61,11 +62,12 @@ func (b *Binding) BindAndValidate(req *http.Request, structPointer interface{}) 
 		return err
 	}
 	if hasVd {
-		return b.Validator.Validate(v)
+		return b.vd.Validate(v)
 	}
 	return nil
 }
 
+// Bind binds the request parameters.
 func (b *Binding) Bind(req *http.Request, structPointer interface{}) error {
 	v, err := b.structValueOf(structPointer)
 	if err != nil {
@@ -73,6 +75,11 @@ func (b *Binding) Bind(req *http.Request, structPointer interface{}) error {
 	}
 	_, err = b.bind(req, v)
 	return err
+}
+
+// Validate validates whether the fields of v is valid.
+func (b *Binding) Validate(value interface{}) error {
+	return b.vd.Validate(value)
 }
 
 func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error) {
@@ -97,7 +104,7 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 		return i.(*receiver), nil
 	}
 
-	expr, err := b.Validator.VM().Run(reflect.New(value.Type()).Elem())
+	expr, err := b.vd.VM().Run(reflect.New(value.Type()).Elem())
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +198,7 @@ func (b *Binding) bind(req *http.Request, value reflect.Value) (hasVd bool, err 
 		return false, err
 	}
 
-	expr, err := b.Validator.VM().Run(value)
+	expr, err := b.vd.VM().Run(value)
 	if err != nil {
 		return false, err
 	}
