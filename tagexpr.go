@@ -649,7 +649,7 @@ func (t *TagExpr) FieldWithEvalers(fieldSelector string, initZero bool) (reflect
 
 // FieldHandler field handler
 type FieldHandler struct {
-	Selector string
+	Selector FieldSelector
 	GetValue func(initZero bool) reflect.Value
 	Evalers  func() map[ExprSelector]func() interface{}
 }
@@ -664,14 +664,15 @@ func (t *TagExpr) RangeFields(fn func(FieldHandler) bool) bool {
 			f := fields[fieldSelector]
 
 			if !fn(FieldHandler{
-				Selector: fieldSelector,
+				Selector: FieldSelector(fieldSelector),
 				GetValue: func(initZero bool) reflect.Value {
 					return f.reflectValueGetter(t.ptr, initZero)
 				},
 				Evalers: func() map[ExprSelector]func() interface{} {
 					targetTagExpr, _ := t.checkout(fieldSelector)
 					evalers := make(map[ExprSelector]func() interface{}, len(f.exprs))
-					for k, expr := range f.exprs {
+					for k, v := range f.exprs {
+						expr := v
 						exprSelector := ExprSelector(k)
 						evalers[exprSelector] = func() interface{} {
 							return expr.run(exprSelector.Name(), targetTagExpr)

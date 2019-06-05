@@ -257,7 +257,7 @@ func TestFieldNotInit(t *testing.T) {
 		b string
 		c struct {
 			_ int
-			d *bool
+			d *bool `expr:"{test:nil}"`
 		}
 		e *struct {
 			_ int
@@ -285,7 +285,7 @@ func TestFieldNotInit(t *testing.T) {
 		g: &g,
 		i: "12",
 	}
-	vm := New("")
+	vm := New("expr")
 	e, err := vm.Run(structure)
 	if err != nil {
 		t.Fatal(err)
@@ -321,6 +321,9 @@ func TestFieldNotInit(t *testing.T) {
 	var i int
 	e.RangeFields(func(fh FieldHandler) bool {
 		val := fh.GetValue(false).Interface()
+		if fh.Selector == "c.d" {
+			assert.NotNil(t, fh.Evalers()["c.d@test"])
+		}
 		assert.Equal(t, cases[i].value, val, fh.Selector)
 		i++
 		return true
