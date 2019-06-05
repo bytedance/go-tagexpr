@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func BenchmarkTagExpr(b *testing.B) {
@@ -295,10 +297,13 @@ func TestFieldNotInit(t *testing.T) {
 		{"A", structure.A},
 		{"b", structure.b},
 		{"c", structure.c},
+		{"c._", 0},
 		{"c.d", structure.c.d},
 		{"e", structure.e},
+		{"e._", 0},
 		{"e.f", structure.e.f},
 		{"g", structure.g},
+		{"g._", 0},
 		{"g.h", (*structure.g).h},
 		{"g.s", (*structure.g).s},
 		{"g.m", (*structure.g).m},
@@ -311,10 +316,15 @@ func TestFieldNotInit(t *testing.T) {
 	}
 	for _, c := range cases {
 		val := e.Field(c.fieldSelector, false).Interface()
-		if !reflect.DeepEqual(val, c.value) {
-			t.Fatalf("%s: got: %v(%[2]T), expect: %v(%[3]T)", c.fieldSelector, val, c.value)
-		}
+		assert.Equal(t, c.value, val, c.fieldSelector)
 	}
+	var i int
+	e.RangeFields(func(fh FieldHandler) bool {
+		val := fh.GetValue(false).Interface()
+		assert.Equal(t, cases[i].value, val, fh.Selector)
+		i++
+		return true
+	})
 	var wall uint64 = 1024
 	unix := time.Unix(1549186325, int64(wall))
 	e, err = vm.Run(&unix)
@@ -338,6 +348,7 @@ func TestFieldInitZero(t *testing.T) {
 		s: []string{"1"},
 		m: map[string][]string{"0": {"2"}},
 	}
+
 	structure := &struct {
 		A int
 		b string
@@ -377,22 +388,30 @@ func TestFieldInitZero(t *testing.T) {
 		g: &g,
 		i: "12",
 	}
+
 	vm := New("")
 	e, err := vm.Run(structure)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	cases := []struct {
 		fieldSelector string
 		value         interface{}
 	}{
 		{"A", structure.A},
 		{"b", structure.b},
-		{"c", structure.c},
+		{"c", struct {
+			_ int
+			d *bool
+		}{}},
+		{"c._", 0},
 		{"c.d", new(bool)},
 		{"e", structure.e},
+		{"e._", 0},
 		{"e.f", structure.e.f},
 		{"g", structure.g},
+		{"g._", 0},
 		{"g.h", (*structure.g).h},
 		{"g.s", (*structure.g).s},
 		{"g.m", (*structure.g).m},
@@ -406,9 +425,7 @@ func TestFieldInitZero(t *testing.T) {
 	}
 	for _, c := range cases {
 		val := e.Field(c.fieldSelector, true).Interface()
-		if !reflect.DeepEqual(val, c.value) {
-			t.Fatalf("%s: got: %#v(%[2]T), expect: %#v(%[3]T)", c.fieldSelector, val, c.value)
-		}
+		assert.Equal(t, c.value, val, c.fieldSelector)
 	}
 }
 
@@ -551,18 +568,10 @@ func TestStruct(t *testing.T) {
 	a.B.C.D.X = "xxx"
 	vm := New("vd")
 	expr := vm.MustRun(a)
-	if expr.EvalString("B.C2") != "xxx" {
-		t.FailNow()
-	}
-	if expr.EvalString("B.C3") != "xxx" {
-		t.FailNow()
-	}
-	if expr.EvalString("B.C") != "xxx" {
-		t.FailNow()
-	}
-	if expr.EvalString("B.C.D.X") != "xxx" {
-		t.FailNow()
-	}
+	assert.Equal(t, "xxx", expr.EvalString("B.C2"))
+	assert.Equal(t, "xxx", expr.EvalString("B.C3"))
+	assert.Equal(t, "xxx", expr.EvalString("B.C"))
+	assert.Equal(t, "xxx", expr.EvalString("B.C.D.X"))
 	expr.Range(func(es ExprSelector, eval func() interface{}) bool {
 		t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 		if eval().(string) != "xxx" {
