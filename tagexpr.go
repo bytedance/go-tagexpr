@@ -612,75 +612,22 @@ func FakeBool(v interface{}) bool {
 	}
 }
 
-// Field returns the field value specified by the selector.
-// NOTE:
-//  If initZero==true, initialize nil pointer to zero value;
-//  If the field is not exist, return reflect.Value{}
-func (t *TagExpr) Field(fieldSelector string, initZero bool) reflect.Value {
+// Field returns the field handler specified by the selector.
+func (t *TagExpr) Field(fieldSelector string) (fh *FieldHandler, found bool) {
 	f, ok := t.s.fields[fieldSelector]
 	if !ok {
-		return reflect.Value{}
+		return nil, false
 	}
-	return f.reflectValueGetter(t.ptr, initZero)
-}
-
-// FieldWithEvalers returns the field value and expression evalers specified by the selector.
-// NOTE:
-//  If initZero==true, initialize nil pointer to zero value;
-//  If the field is not exist, return reflect.Value{}
-func (t *TagExpr) FieldWithEvalers(fieldSelector string, initZero bool) (reflect.Value, map[ExprSelector]func() interface{}) {
-	f, ok := t.s.fields[fieldSelector]
-	if !ok {
-		return reflect.Value{}, nil
-	}
-	targetTagExpr, err := t.checkout(fieldSelector)
-	if err != nil {
-		return reflect.Value{}, nil
-	}
-	evalers := make(map[ExprSelector]func() interface{}, len(f.exprs))
-	for k, expr := range f.exprs {
-		exprSelector := ExprSelector(k)
-		evalers[exprSelector] = func() interface{} {
-			return expr.run(exprSelector.Name(), targetTagExpr)
-		}
-	}
-	return f.reflectValueGetter(t.ptr, initZero), evalers
-}
-
-// FieldHandler field handler
-type FieldHandler struct {
-	Selector FieldSelector
-	GetValue func(initZero bool) reflect.Value
-	Evalers  func() map[ExprSelector]func() interface{}
+	return newFieldHandler(t, fieldSelector, f), true
 }
 
 // RangeFields loop through each field.
 // When fn returns false, interrupt traversal and return false.
-func (t *TagExpr) RangeFields(fn func(FieldHandler) bool) bool {
+func (t *TagExpr) RangeFields(fn func(*FieldHandler) bool) bool {
 	if list := t.s.fieldSelectorList; len(list) > 0 {
 		fields := t.s.fields
-		for _, v := range list {
-			fieldSelector := v
-			f := fields[fieldSelector]
-
-			if !fn(FieldHandler{
-				Selector: FieldSelector(fieldSelector),
-				GetValue: func(initZero bool) reflect.Value {
-					return f.reflectValueGetter(t.ptr, initZero)
-				},
-				Evalers: func() map[ExprSelector]func() interface{} {
-					targetTagExpr, _ := t.checkout(fieldSelector)
-					evalers := make(map[ExprSelector]func() interface{}, len(f.exprs))
-					for k, v := range f.exprs {
-						expr := v
-						exprSelector := ExprSelector(k)
-						evalers[exprSelector] = func() interface{} {
-							return expr.run(exprSelector.Name(), targetTagExpr)
-						}
-					}
-					return evalers
-				},
-			}) {
+		for _, fieldSelector := range list {
+			if !fn(newFieldHandler(t, fieldSelector, fields[fieldSelector])) {
 				return false
 			}
 		}

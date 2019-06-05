@@ -315,16 +315,17 @@ func TestFieldNotInit(t *testing.T) {
 		{"p", structure.p},
 	}
 	for _, c := range cases {
-		val := e.Field(c.fieldSelector, false).Interface()
+		fh, _ := e.Field(c.fieldSelector)
+		val := fh.Value(false).Interface()
 		assert.Equal(t, c.value, val, c.fieldSelector)
 	}
 	var i int
-	e.RangeFields(func(fh FieldHandler) bool {
-		val := fh.GetValue(false).Interface()
-		if fh.Selector == "c.d" {
-			assert.NotNil(t, fh.Evalers()["c.d@test"])
+	e.RangeFields(func(fh *FieldHandler) bool {
+		val := fh.Value(false).Interface()
+		if fh.StringSelector() == "c.d" {
+			assert.NotNil(t, fh.EvalFuncs()["c.d@test"])
 		}
-		assert.Equal(t, cases[i].value, val, fh.Selector)
+		assert.Equal(t, cases[i].value, val, fh.StringSelector())
 		i++
 		return true
 	})
@@ -334,7 +335,8 @@ func TestFieldNotInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	val := e.Field("wall", false).Interface()
+	fh, _ := e.Field("wall")
+	val := fh.Value(false).Interface()
 	if !reflect.DeepEqual(val, wall) {
 		t.Fatalf("Time.wall: got: %v(%[1]T), expect: %v(%[2]T)", val, wall)
 	}
@@ -427,7 +429,8 @@ func TestFieldInitZero(t *testing.T) {
 		{"p", new(string)},
 	}
 	for _, c := range cases {
-		val := e.Field(c.fieldSelector, true).Interface()
+		fh, _ := e.Field(c.fieldSelector)
+		val := fh.Value(true).Interface()
 		assert.Equal(t, c.value, val, c.fieldSelector)
 	}
 }

@@ -18,6 +18,11 @@ const (
 // FieldSelector expression selector
 type FieldSelector string
 
+// JoinFieldSelector creates a field selector.
+func JoinFieldSelector(path ...string) string {
+	return strings.Join(path, FieldSeparator)
+}
+
 // Name returns the current field name.
 func (f FieldSelector) Name() string {
 	s := string(f)
