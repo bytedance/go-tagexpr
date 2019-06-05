@@ -47,7 +47,7 @@ func Example() {
 
 	// Output:
 	// request:
-	// POST /?year=2018&year=2019&AutoQuery=autoquery_test HTTP/1.1
+	// POST /info/henrylee2cn?year=2018&year=2019&AutoQuery=autoquery_test HTTP/1.1
 	// Host: localhost
 	// User-Agent: Go-http-client/1.1
 	// Transfer-Encoding: chunked

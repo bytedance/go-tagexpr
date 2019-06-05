@@ -40,7 +40,7 @@ func Example() {
 
 	// Output:
 	// request:
-	// POST /?year=2018&year=2019&AutoQuery=autoquery_test HTTP/1.1
+	// POST /info/henrylee2cn?year=2018&year=2019&AutoQuery=autoquery_test HTTP/1.1
 	// Host: localhost
 	// User-Agent: Go-http-client/1.1
 	// Transfer-Encoding: chunked
@@ -91,7 +91,7 @@ func requestExample() *http.Request {
 	cookies := []*http.Cookie{
 		{Name: "sessionid", Value: "987654"},
 	}
-	req := newRequest("http://localhost/?year=2018&year=2019&AutoQuery=autoquery_test", header, cookies, bodyReader)
+	req := newRequest("http://localhost/info/henrylee2cn?year=2018&year=2019&AutoQuery=autoquery_test", header, cookies, bodyReader)
 	req.Method = "POST"
 	var w bytes.Buffer
 	req.Write(&w)
