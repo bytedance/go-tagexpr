@@ -59,6 +59,11 @@ func TestQueryString(t *testing.T) {
 	err := binder.BindAndValidate(req, recv)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+	assert.Equal(t, "b1", (**recv.X).B)
+	assert.Equal(t, []string{"c1", "c2"}, *(**recv.X).C)
+	assert.Equal(t, "d1", *(**recv.X).D)
+	assert.Equal(t, "y1", recv.Y)
+	assert.Equal(t, (*string)(nil), recv.Z)
 }
 
 func TestQueryNum(t *testing.T) {
@@ -80,6 +85,9 @@ func TestQueryNum(t *testing.T) {
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
 	assert.Equal(t, int32(21), (**recv.X).B)
 	assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
+	assert.Equal(t, uint(41), *(**recv.X).D)
+	assert.Equal(t, int8(51), recv.Y)
+	assert.Equal(t, (*int64)(nil), recv.Z)
 }
 
 func TestHeaderString(t *testing.T) {
@@ -108,6 +116,11 @@ func TestHeaderString(t *testing.T) {
 	err := binder.BindAndValidate(req, recv)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+	assert.Equal(t, "b1", (**recv.X).B)
+	assert.Equal(t, []string{"c1", "c2"}, *(**recv.X).C)
+	assert.Equal(t, "d1", *(**recv.X).D)
+	assert.Equal(t, "y1", recv.Y)
+	assert.Equal(t, (*string)(nil), recv.Z)
 }
 
 func TestHeaderNum(t *testing.T) {
@@ -138,6 +151,77 @@ func TestHeaderNum(t *testing.T) {
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
 	assert.Equal(t, int32(21), (**recv.X).B)
 	assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
+	assert.Equal(t, uint(41), *(**recv.X).D)
+	assert.Equal(t, int8(51), recv.Y)
+	assert.Equal(t, (*int64)(nil), recv.Z)
+}
+
+func TestCookieString(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			A []string  `api:"{cookie:'a'}"`
+			B string    `api:"{cookie:'b'}"`
+			C *[]string `api:"{cookie:'c'}{required:true}"`
+			D *string   `api:"{cookie:'d'}"`
+		}
+		Y string  `api:"{cookie:'y'}{required:true}"`
+		Z *string `api:"{cookie:'z'}"`
+	}
+	cookies := []*http.Cookie{
+		{Name: "a", Value: "a1"},
+		{Name: "a", Value: "a2"},
+		{Name: "b", Value: "b1"},
+		{Name: "c", Value: "c1"},
+		{Name: "c", Value: "c2"},
+		{Name: "d", Value: "d1"},
+		{Name: "d", Value: "d2"},
+		{Name: "y", Value: "y1"},
+	}
+	req := newRequest("", nil, cookies, nil)
+	recv := new(Recv)
+	binder := New("api")
+	err := binder.BindAndValidate(req, recv)
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+	assert.Equal(t, "b1", (**recv.X).B)
+	assert.Equal(t, []string{"c1", "c2"}, *(**recv.X).C)
+	assert.Equal(t, "d1", *(**recv.X).D)
+	assert.Equal(t, "y1", recv.Y)
+	assert.Equal(t, (*string)(nil), recv.Z)
+}
+
+func TestCookieNum(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			A []int     `api:"{cookie:'a'}"`
+			B int32     `api:"{cookie:'b'}"`
+			C *[]uint16 `api:"{cookie:'c'}{required:true}"`
+			D *uint     `api:"{cookie:'d'}"`
+		}
+		Y int8   `api:"{cookie:'y'}{required:true}"`
+		Z *int64 `api:"{cookie:'z'}"`
+	}
+	cookies := []*http.Cookie{
+		{Name: "a", Value: "11"},
+		{Name: "a", Value: "12"},
+		{Name: "b", Value: "21"},
+		{Name: "c", Value: "31"},
+		{Name: "c", Value: "32"},
+		{Name: "d", Value: "41"},
+		{Name: "d", Value: "42"},
+		{Name: "y", Value: "51"},
+	}
+	req := newRequest("", nil, cookies, nil)
+	recv := new(Recv)
+	binder := New("api")
+	err := binder.BindAndValidate(req, recv)
+	assert.Nil(t, err)
+	assert.Equal(t, []int{11, 12}, (**recv.X).A)
+	assert.Equal(t, int32(21), (**recv.X).B)
+	assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
+	assert.Equal(t, uint(41), *(**recv.X).D)
+	assert.Equal(t, int8(51), recv.Y)
+	assert.Equal(t, (*int64)(nil), recv.Z)
 }
 
 func newRequest(u string, header http.Header, cookies []*http.Cookie, body []byte) *http.Request {

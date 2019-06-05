@@ -16,7 +16,7 @@ const (
 )
 
 type receiver struct {
-	hasAuto, hasQuery, hasPath, hasBody, hasRawBody, hasVd bool
+	hasAuto, hasQuery, hasCookie, hasPath, hasBody, hasRawBody, hasVd bool
 
 	params []*paramInfo
 }
@@ -43,6 +43,13 @@ func (r *receiver) getBodyBytes(req *http.Request) ([]byte, error) {
 func (r *receiver) getQuery(req *http.Request) url.Values {
 	if r.hasQuery {
 		return req.URL.Query()
+	}
+	return nil
+}
+
+func (r *receiver) getCookies(req *http.Request) []*http.Cookie {
+	if r.hasCookie {
+		return req.Cookies()
 	}
 	return nil
 }

@@ -136,6 +136,7 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 		case "header":
 			in = header
 		case "cookie":
+			recv.hasCookie = true
 			in = cookie
 		case "required":
 			p := recv.getOrAddParam(fieldSelector)
@@ -185,26 +186,21 @@ func (b *Binding) bind(req *http.Request, value reflect.Value) (hasVd bool, err 
 
 	bodyCodec := getBodyCodec(req)
 	queryValues := recv.getQuery(req)
+	cookies := recv.getCookies(req)
 
 	for _, param := range recv.params {
-		v, err := param.getField(expr)
-		if err != nil {
-			return recv.hasVd, err
-		}
-		if !v.IsValid() {
-			continue
-		}
 		switch param.in {
 		case query:
-			err = param.bindQuery(v, queryValues)
+			err = param.bindQuery(expr, queryValues)
 		case path:
 		case header:
-			err = param.bindHeader(v, req.Header)
+			err = param.bindHeader(expr, req.Header)
 		case cookie:
+			err = param.bindCookie(expr, cookies)
 		case body:
 			_ = bodyCodec
 		case raw_body:
-			err = param.bindRawBody(v, bodyBytes)
+			err = param.bindRawBody(expr, bodyBytes)
 		default:
 		}
 		if err != nil {

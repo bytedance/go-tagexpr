@@ -30,7 +30,34 @@ func (p *paramInfo) getField(expr *tagexpr.TagExpr) (reflect.Value, error) {
 	return reflect.Value{}, nil
 }
 
-func (p *paramInfo) bindQuery(v reflect.Value, queryValues url.Values) error {
+func (p *paramInfo) bindRawBody(expr *tagexpr.TagExpr, bodyBytes []byte) error {
+	if len(bodyBytes) == 0 {
+		if p.required {
+			return p.requiredError
+		}
+		return nil
+	}
+	v, err := p.getField(expr)
+	if err != nil || !v.IsValid() {
+		return err
+	}
+	v = derefValue(v)
+	switch v.Kind() {
+	case reflect.Slice:
+		if v.Type().Elem().Kind() != reflect.Uint8 {
+			return p.typeError
+		}
+		v.Set(reflect.ValueOf(bodyBytes))
+		return nil
+	case reflect.String:
+		v.Set(reflect.ValueOf(goutil.BytesToString(bodyBytes)))
+		return nil
+	default:
+		return p.typeError
+	}
+}
+
+func (p *paramInfo) bindQuery(expr *tagexpr.TagExpr, queryValues url.Values) error {
 	r, ok := queryValues[p.name]
 	if !ok || len(r) == 0 {
 		if p.required {
@@ -38,10 +65,10 @@ func (p *paramInfo) bindQuery(v reflect.Value, queryValues url.Values) error {
 		}
 		return nil
 	}
-	return p.setStringSlice(v, r)
+	return p.bindStringSlice(expr, r)
 }
 
-func (p *paramInfo) bindHeader(v reflect.Value, header http.Header) error {
+func (p *paramInfo) bindHeader(expr *tagexpr.TagExpr, header http.Header) error {
 	r, ok := header[p.name]
 	if !ok || len(r) == 0 {
 		if p.required {
@@ -49,7 +76,31 @@ func (p *paramInfo) bindHeader(v reflect.Value, header http.Header) error {
 		}
 		return nil
 	}
-	return p.setStringSlice(v, r)
+	return p.bindStringSlice(expr, r)
+}
+
+func (p *paramInfo) bindCookie(expr *tagexpr.TagExpr, cookies []*http.Cookie) error {
+	var r []string
+	for _, c := range cookies {
+		if c.Name == p.name {
+			r = append(r, c.Value)
+		}
+	}
+	if len(r) == 0 {
+		if p.required {
+			return p.requiredError
+		}
+		return nil
+	}
+	return p.bindStringSlice(expr, r)
+}
+
+func (p *paramInfo) bindStringSlice(expr *tagexpr.TagExpr, a []string) error {
+	v, err := p.getField(expr)
+	if err != nil || !v.IsValid() {
+		return err
+	}
+	return p.setStringSlice(v, a)
 }
 
 func (p *paramInfo) setStringSlice(v reflect.Value, a []string) error {
@@ -119,29 +170,6 @@ func (p *paramInfo) setStringSlice(v reflect.Value, a []string) error {
 	}
 
 	return p.typeError
-}
-
-func (p *paramInfo) bindRawBody(v reflect.Value, bodyBytes []byte) error {
-	if len(bodyBytes) == 0 {
-		if p.required {
-			return p.requiredError
-		}
-		return nil
-	}
-	v = derefValue(v)
-	switch v.Kind() {
-	case reflect.Slice:
-		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return p.typeError
-		}
-		v.Set(reflect.ValueOf(bodyBytes))
-		return nil
-	case reflect.String:
-		v.Set(reflect.ValueOf(goutil.BytesToString(bodyBytes)))
-		return nil
-	default:
-		return p.typeError
-	}
 }
 
 // func (p *paramInfo) newError(errStr string) error {
