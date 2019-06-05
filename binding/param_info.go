@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/bytedance/go-tagexpr"
-	"github.com/bytedance/go-tagexpr/binding/assign"
+	"github.com/bytedance/go-tagexpr/binding/gjsonassign"
 	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 )
@@ -111,7 +111,7 @@ func (p *paramInfo) bindJSON(expr *tagexpr.TagExpr, bodyBytes []byte) (bool, err
 	if err != nil || !v.IsValid() {
 		return false, err
 	}
-	assign.Assign(r, v)
+	gjsonassign.Assign(r, v)
 	return true, nil
 }
 
