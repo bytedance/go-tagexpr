@@ -1,7 +1,6 @@
 package binding
 
 import (
-	"errors"
 	"net/http"
 	"reflect"
 	_ "unsafe"
@@ -123,7 +122,7 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 			return false
 		}
 
-		p := recv.getOrAddParam(fh)
+		p := recv.getOrAddParam(fh, b.bindErrFactory)
 		in := auto
 		name := fh.FieldSelector().Name()
 
@@ -176,9 +175,6 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 		}
 		p.in = in
 		p.name = name
-		p.requiredError = errors.New("missing required parameter: " + name)
-		p.typeError = errors.New("parameter type does not match binding data: " + name)
-		p.cannotError = errors.New("parameter cannot be bound: " + name)
 		return true
 	})
 
@@ -186,7 +182,7 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 		return nil, b.bindErrFactory(errExprSelector.String(), errMsg)
 	}
 
-	recv.combNamePath()
+	recv.initParams()
 
 	b.recvs.Store(runtimeTypeID, recv)
 	return recv, nil

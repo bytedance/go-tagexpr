@@ -20,7 +20,9 @@ type paramInfo struct {
 	name          string
 	required      bool
 
-	requiredError, typeError, cannotError error
+	bindErrFactory func(failField, msg string) error
+
+	requiredError, typeError, cannotError, contentTypeError error
 }
 
 func (p *paramInfo) getField(expr *tagexpr.TagExpr) (reflect.Value, error) {
@@ -106,7 +108,7 @@ func (p *paramInfo) bindBody(expr *tagexpr.TagExpr, bodyCodec uint8, postForm ur
 	case jsonBody:
 		return p.bindJSON(expr, bodyBytes)
 	}
-	return false, nil
+	return false, p.contentTypeError
 }
 
 func (p *paramInfo) bindJSON(expr *tagexpr.TagExpr, bodyBytes []byte) (bool, error) {
@@ -236,7 +238,3 @@ func (p *paramInfo) setStringSlice(v reflect.Value, a []string) error {
 
 	return p.typeError
 }
-
-// func (p *paramInfo) newError(errStr string) error {
-// 	return errors.New("field type does not match binding data: " + p.fieldSelector)
-// }

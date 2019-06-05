@@ -39,7 +39,7 @@ func (r *receiver) getParam(fieldSelector string) *paramInfo {
 	return nil
 }
 
-func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler) *paramInfo {
+func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(failField, msg string) error) *paramInfo {
 	fieldSelector := fh.StringSelector()
 	p := r.getParam(fieldSelector)
 	if p != nil {
@@ -48,6 +48,7 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler) *paramInfo {
 	p = new(paramInfo)
 	p.fieldSelector = fieldSelector
 	p.structField = fh.StructField()
+	p.bindErrFactory = bindErrFactory
 	r.params = append(r.params, p)
 	return p
 }
@@ -103,15 +104,7 @@ func (r *receiver) getCookies(req *http.Request) []*http.Cookie {
 	return nil
 }
 
-// func (a *receiver) getPath(req *http.Request) *url.Values {
-// 	v := new(url.Values)
-// 	if a.hasQuery {
-// 		(*v) = req.URL.Query()
-// 	}
-// 	return v
-// }
-
-func (r *receiver) combNamePath() {
+func (r *receiver) initParams() {
 	if !r.hasBody {
 		return
 	}
@@ -136,5 +129,9 @@ func (r *receiver) combNamePath() {
 			}
 		}
 		p.namePath = namePath + p.name
+		p.requiredError = p.bindErrFactory(p.namePath, "missing required parameter")
+		p.typeError = p.bindErrFactory(p.namePath, "parameter type does not match binding data")
+		p.cannotError = p.bindErrFactory(p.namePath, "parameter cannot be bound")
+		p.contentTypeError = p.bindErrFactory(p.namePath, "does not support binding to the content type body")
 	}
 }
