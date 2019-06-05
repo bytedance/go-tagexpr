@@ -3,6 +3,7 @@ package binding
 import (
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -13,6 +14,12 @@ const (
 	cookie
 	body
 	raw_body
+)
+
+const (
+	unsupportBody uint8 = iota
+	jsonBody
+	formBody
 )
 
 type receiver struct {
@@ -33,9 +40,38 @@ func (r *receiver) getOrAddParam(fieldSelector string) *paramInfo {
 	return p
 }
 
-func (r *receiver) getBodyBytes(req *http.Request) ([]byte, error) {
-	if r.hasRawBody {
+func (r *receiver) getBodyCodec(req *http.Request) uint8 {
+	ct := req.Header.Get("Content-Type")
+	switch ct {
+	case "application/json":
+		return jsonBody
+	case "application/x-www-form-urlencoded":
+		return formBody
+	default:
+		if strings.HasPrefix(ct, "multipart/form-data") {
+			return formBody
+		}
+		return unsupportBody
+	}
+}
+
+func (r *receiver) getBodyBytes(req *http.Request, must bool) ([]byte, error) {
+	if must || r.hasRawBody {
 		return copyBody(req)
+	}
+	return nil, nil
+}
+
+const (
+	defaultMaxMemory = 32 << 20 // 32 MB
+)
+
+func (r *receiver) getPostForm(req *http.Request, must bool) (url.Values, error) {
+	if must {
+		if req.PostForm == nil {
+			req.ParseMultipartForm(defaultMaxMemory)
+		}
+		return req.Form, nil
 	}
 	return nil, nil
 }

@@ -2,11 +2,14 @@ package binding
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
+	"github.com/henrylee2cn/goutil/httpbody"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +26,7 @@ func TestRawBody(t *testing.T) {
 		S string `api:"{raw_body:nil}"`
 	}
 	bodyBytes := []byte("rawbody.............")
-	req := newRequest("", nil, nil, bodyBytes)
+	req := newRequest("", nil, nil, bytes.NewReader(bodyBytes))
 	recv := new(Recv)
 	binder := New("api")
 	err := binder.BindAndValidate(req, recv)
@@ -224,14 +227,108 @@ func TestCookieNum(t *testing.T) {
 	assert.Equal(t, (*int64)(nil), recv.Z)
 }
 
-func newRequest(u string, header http.Header, cookies []*http.Cookie, body []byte) *http.Request {
+func TestFormString(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			A []string  `api:"{body:'a'}"`
+			B string    `api:"{body:'b'}"`
+			C *[]string `api:"{body:'c'}{required:true}"`
+			D *string   `api:"{body:'d'}"`
+		}
+		Y string  `api:"{body:'y'}{required:true}"`
+		Z *string `api:"{body:'z'}"`
+	}
+	values := make(url.Values)
+	values.Add("a", "a1")
+	values.Add("a", "a2")
+	values.Add("b", "b1")
+	values.Add("c", "c1")
+	values.Add("c", "c2")
+	values.Add("d", "d1")
+	values.Add("d", "d2")
+	values.Add("y", "y1")
+	for _, f := range []httpbody.Files{nil, {
+		"f1": []httpbody.File{
+			httpbody.NewFile("txt", strings.NewReader("f11 text.")),
+		},
+	}} {
+		contentType, bodyReader := httpbody.NewFormBody2(values, f)
+		header := make(http.Header)
+		header.Set("Content-Type", contentType)
+		req := newRequest("", header, nil, bodyReader)
+		recv := new(Recv)
+		binder := New("api")
+		err := binder.BindAndValidate(req, recv)
+		assert.Nil(t, err)
+		assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+		assert.Equal(t, "b1", (**recv.X).B)
+		assert.Equal(t, []string{"c1", "c2"}, *(**recv.X).C)
+		assert.Equal(t, "d1", *(**recv.X).D)
+		assert.Equal(t, "y1", recv.Y)
+		assert.Equal(t, (*string)(nil), recv.Z)
+	}
+}
+
+func TestFormNum(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			A []int     `api:"{body:'a'}"`
+			B int32     `api:"{body:'b'}"`
+			C *[]uint16 `api:"{body:'c'}{required:true}"`
+			D *uint     `api:"{body:'d'}"`
+		}
+		Y int8   `api:"{body:'y'}{required:true}"`
+		Z *int64 `api:"{body:'z'}"`
+	}
+	values := make(url.Values)
+	values.Add("a", "11")
+	values.Add("a", "12")
+	values.Add("b", "21")
+	values.Add("c", "31")
+	values.Add("c", "32")
+	values.Add("d", "41")
+	values.Add("d", "42")
+	values.Add("y", "51")
+	for _, f := range []httpbody.Files{nil, {
+		"f1": []httpbody.File{
+			httpbody.NewFile("txt", strings.NewReader("f11 text.")),
+		},
+	}} {
+		contentType, bodyReader := httpbody.NewFormBody2(values, f)
+		header := make(http.Header)
+		header.Set("Content-Type", contentType)
+		req := newRequest("", header, nil, bodyReader)
+		recv := new(Recv)
+		binder := New("api")
+		err := binder.BindAndValidate(req, recv)
+		assert.Nil(t, err)
+		assert.Equal(t, []int{11, 12}, (**recv.X).A)
+		assert.Equal(t, int32(21), (**recv.X).B)
+		assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
+		assert.Equal(t, uint(41), *(**recv.X).D)
+		assert.Equal(t, int8(51), recv.Y)
+		assert.Equal(t, (*int64)(nil), recv.Z)
+	}
+}
+
+func newRequest(u string, header http.Header, cookies []*http.Cookie, bodyReader io.Reader) *http.Request {
 	if header == nil {
 		header = make(http.Header)
 	}
+	var method = "GET"
+	var body io.ReadCloser
+	if bodyReader != nil {
+		method = "POST"
+		body = ioutil.NopCloser(bodyReader)
+	}
+	if u == "" {
+		u = "http://localhost"
+	}
 	urlObj, _ := url.Parse(u)
 	req := &http.Request{
+		Method: method,
 		URL:    urlObj,
-		Body:   ioutil.NopCloser(bytes.NewReader(body)),
+		Body:   body,
 		Header: header,
 	}
 	for _, c := range cookies {

@@ -179,29 +179,40 @@ func (b *Binding) bind(req *http.Request, value reflect.Value) (hasVd bool, err 
 		return false, err
 	}
 
-	bodyBytes, err := recv.getBodyBytes(req)
+	bodyCodec := recv.getBodyCodec(req)
+
+	bodyBytes, err := recv.getBodyBytes(req, bodyCodec == jsonBody)
 	if err != nil {
 		return false, err
 	}
 
-	bodyCodec := getBodyCodec(req)
+	postForm, err := recv.getPostForm(req, bodyCodec == formBody)
+	if err != nil {
+		return false, err
+	}
+
 	queryValues := recv.getQuery(req)
 	cookies := recv.getCookies(req)
 
 	for _, param := range recv.params {
 		switch param.in {
 		case query:
-			err = param.bindQuery(expr, queryValues)
+			_, err = param.bindQuery(expr, queryValues)
 		case path:
 		case header:
-			err = param.bindHeader(expr, req.Header)
+			_, err = param.bindHeader(expr, req.Header)
 		case cookie:
 			err = param.bindCookie(expr, cookies)
 		case body:
-			_ = bodyCodec
+			_, err = param.bindBody(expr, bodyCodec, postForm, bodyBytes)
 		case raw_body:
 			err = param.bindRawBody(expr, bodyBytes)
 		default:
+			var found bool
+			found, err = param.bindBody(expr, bodyCodec, postForm, bodyBytes)
+			if !found {
+				_, err = param.bindQuery(expr, queryValues)
+			}
 		}
 		if err != nil {
 			return recv.hasVd, err

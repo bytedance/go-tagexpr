@@ -12,23 +12,6 @@ import (
 	"github.com/bytedance/go-tagexpr"
 )
 
-const (
-	unsupportBody = 0
-	jsonBody      = 1
-	formBody      = 1
-)
-
-func getBodyCodec(req *http.Request) uint8 {
-	switch req.Header.Get("Content-Type") {
-	case "application/json":
-		return jsonBody
-	case "application/x-www-form-urlencoded", "multipart/form-data":
-		return formBody
-	default:
-		return unsupportBody
-	}
-}
-
 func copyBody(req *http.Request) ([]byte, error) {
 	b, err := ioutil.ReadAll(req.Body)
 	req.Body.Close()

@@ -57,26 +57,12 @@ func (p *paramInfo) bindRawBody(expr *tagexpr.TagExpr, bodyBytes []byte) error {
 	}
 }
 
-func (p *paramInfo) bindQuery(expr *tagexpr.TagExpr, queryValues url.Values) error {
-	r, ok := queryValues[p.name]
-	if !ok || len(r) == 0 {
-		if p.required {
-			return p.requiredError
-		}
-		return nil
-	}
-	return p.bindStringSlice(expr, r)
+func (p *paramInfo) bindQuery(expr *tagexpr.TagExpr, queryValues url.Values) (bool, error) {
+	return p.bindMapStrings(expr, queryValues)
 }
 
-func (p *paramInfo) bindHeader(expr *tagexpr.TagExpr, header http.Header) error {
-	r, ok := header[p.name]
-	if !ok || len(r) == 0 {
-		if p.required {
-			return p.requiredError
-		}
-		return nil
-	}
-	return p.bindStringSlice(expr, r)
+func (p *paramInfo) bindHeader(expr *tagexpr.TagExpr, header http.Header) (bool, error) {
+	return p.bindMapStrings(expr, header)
 }
 
 func (p *paramInfo) bindCookie(expr *tagexpr.TagExpr, cookies []*http.Cookie) error {
@@ -93,6 +79,25 @@ func (p *paramInfo) bindCookie(expr *tagexpr.TagExpr, cookies []*http.Cookie) er
 		return nil
 	}
 	return p.bindStringSlice(expr, r)
+}
+
+func (p *paramInfo) bindBody(expr *tagexpr.TagExpr, bodyCodec uint8, postForm url.Values, bodyBytes []byte) (bool, error) {
+	switch bodyCodec {
+	case formBody:
+		return p.bindMapStrings(expr, postForm)
+	}
+	return false, nil
+}
+
+func (p *paramInfo) bindMapStrings(expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {
+	r, ok := values[p.name]
+	if !ok || len(r) == 0 {
+		if p.required {
+			return false, p.requiredError
+		}
+		return false, nil
+	}
+	return true, p.bindStringSlice(expr, r)
 }
 
 func (p *paramInfo) bindStringSlice(expr *tagexpr.TagExpr, a []string) error {
