@@ -18,7 +18,7 @@ func TestRawBody(t *testing.T) {
 			C **[]byte `api:"{raw_body:nil}"`
 			D string   `api:"{raw_body:nil}"`
 			E *string  `api:"{raw_body:nil}"`
-			F **string `api:"{raw_body:nil}"`
+			F **string `api:"{raw_body:nil}{@:len($)<3}{msg:'too long'}"`
 		}
 		S string `api:"{raw_body:nil}"`
 	}
@@ -27,7 +27,8 @@ func TestRawBody(t *testing.T) {
 	recv := new(Recv)
 	binder := New("api")
 	err := binder.BindAndValidate(req, recv)
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
+	assert.Equal(t, err.Error(), "too long")
 	for _, v := range []interface{}{
 		(**recv.rawBody).A,
 		*(**recv.rawBody).B,

@@ -18,16 +18,18 @@ const (
 type receiver struct {
 	hasAuto, hasQuery, hasPath, hasBody, hasRawBody, hasVd bool
 
-	params map[string]*paramInfo // key:fieldSelector
+	params []*paramInfo
 }
 
 func (r *receiver) getOrAddParam(fieldSelector string) *paramInfo {
-	p, ok := r.params[fieldSelector]
-	if !ok {
-		p = new(paramInfo)
-		p.fieldSelector = fieldSelector
-		r.params[fieldSelector] = p
+	for _, p := range r.params {
+		if p.fieldSelector == fieldSelector {
+			return p
+		}
 	}
+	p := new(paramInfo)
+	p.fieldSelector = fieldSelector
+	r.params = append(r.params, p)
 	return p
 }
 

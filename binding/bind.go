@@ -102,7 +102,7 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 		return nil, err
 	}
 	var recv = &receiver{
-		params: make(map[string]*paramInfo, 16),
+		params: make([]*paramInfo, 0, 16),
 	}
 	var errExprSelector tagexpr.ExprSelector
 	var errMsg string
