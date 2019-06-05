@@ -1,10 +1,3 @@
-# binding [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/bytedance/go-tagexpr/binding)
-
-A powerful HTTP request parameters binder that supports struct tag expression.
-
-## Example
-
-```go
 package binding_test
 
 import (
@@ -63,4 +56,20 @@ func Example() {
 	// 	"NotFound": null
 	// }
 }
-```
+
+func requestExample() *http.Request {
+	contentType, bodyReader, _ := httpbody.NewJSONBody(map[string]interface{}{
+		"email":    "henrylee2cn@gmail.com",
+		"friendly": true,
+		"pie":      3.1415926,
+		"hobby":    []string{"Coding", "Mountain climbing"},
+		"AutoBody": "autobody_test",
+	})
+	header := make(http.Header)
+	header.Add("Content-Type", contentType)
+	header.Add("Authorization", "Basic 123456")
+	cookies := []*http.Cookie{
+		{Name: "sessionid", Value: "987654"},
+	}
+	return newRequest("http://localhost/?year=2018&year=2019&AutoQuery=autoquery_test", header, cookies, bodyReader)
+}
