@@ -85,3 +85,33 @@ func Example() {
 }
 ...
 ```
+
+## Position
+
+The parameter position in HTTP request:
+
+|expression|description|
+|---------------|-----------|
+|`{path:'$name'}`|URL path parameter
+|`{query:'$name'}`|URL query parameter
+|`{body:'$name'}`|The field in body, support:<br>`application/json`,<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
+|`{header:'$name'}`|Header parameter
+|`{cookie:'$name'}`|Cookie parameter
+
+**NOTE:**
+
+- `'$name'` is variable placeholder
+- If `'$name'` is empty, use the name of field
+- If no position is tagged, use `body` first, followed by `query`
+- Expression `{required:true}` indicates that the parameter is required
+
+
+## Level
+
+The level of handling tags:
+
+|level|default|description|
+|-----|-------|-----------|
+|OnlyFirst|Yes|Handle only the first level field tags
+|FirstForUntagged|No|For untagged fields, only the first level is handled|
+|Any|No|Handle any level field tags|
