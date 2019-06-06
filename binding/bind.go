@@ -11,11 +11,24 @@ import (
 	"github.com/henrylee2cn/goutil/tpack"
 )
 
+// Level the level of handling tags
+type Level uint8
+
+const (
+	// OnlyFirst handle only the first level field tags
+	OnlyFirst Level = iota
+	// FirstForUntagged for untagged fields, only the first level is handled
+	FirstForUntagged
+	// Any handle any level field tags
+	Any
+)
+
 // Binding binding and verification tool for http request
 type Binding struct {
+	level          Level
 	vd             *validator.Validator
-	bindErrFactory func(failField, msg string) error
 	recvs          goutil.Map
+	bindErrFactory func(failField, msg string) error
 }
 
 // New creates a binding tool.
@@ -25,11 +38,24 @@ func New(tagName string) *Binding {
 	if tagName == "" {
 		tagName = "api"
 	}
-	return &Binding{
-		vd:             validator.New(tagName).SetErrorFactory(defaultValidatingErrFactory),
-		bindErrFactory: defaultBindErrFactory,
-		recvs:          goutil.AtomicMap(),
+	b := &Binding{
+		vd:    validator.New(tagName),
+		recvs: goutil.AtomicMap(),
 	}
+	return b.SetLevel(OnlyFirst).SetErrorFactory(nil, nil)
+}
+
+// SetLevel set the level of handling tags.
+// NOTE:
+//  default is First
+func (b *Binding) SetLevel(level Level) *Binding {
+	switch level {
+	case OnlyFirst, FirstForUntagged, Any:
+		b.level = level
+	default:
+		b.level = OnlyFirst
+	}
+	return b
 }
 
 var defaultValidatingErrFactory = newDefaultErrorFactory("invalid parameter")
@@ -114,21 +140,50 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	var errMsg string
 
 	expr.RangeFields(func(fh *tagexpr.FieldHandler) bool {
-		fieldSelector := fh.StringSelector()
+		paths, name := fh.FieldSelector().Split()
+		var evals map[tagexpr.ExprSelector]func() interface{}
+
+		switch b.level {
+		case OnlyFirst:
+			if len(paths) > 0 {
+				return true
+			}
+
+		case FirstForUntagged:
+			if len(paths) > 0 {
+				var canHandle bool
+				evals = fh.EvalFuncs()
+				for es := range evals {
+					switch v := es.Name(); v {
+					case "raw_body", "body", "query", "path", "header", "cookie", "required":
+						canHandle = true
+						break
+					}
+				}
+				if !canHandle {
+					return true
+				}
+			}
+
+		default:
+			// Any
+		}
 
 		if !fh.Value(true).CanSet() {
-			errMsg = "field cannot be set: " + fieldSelector
-			errExprSelector = tagexpr.ExprSelector(fieldSelector)
+			selector := fh.StringSelector()
+			errMsg = "field cannot be set: " + selector
+			errExprSelector = tagexpr.ExprSelector(selector)
 			return false
 		}
 
-		p := recv.getOrAddParam(fh, b.bindErrFactory)
 		in := auto
-		name := fh.FieldSelector().Name()
+		p := recv.getOrAddParam(fh, b.bindErrFactory)
+		if evals == nil {
+			evals = fh.EvalFuncs()
+		}
 
 	L:
-		for es, eval := range fh.EvalFuncs() {
-
+		for es, eval := range evals {
 			switch es.Name() {
 			case validator.MatchExprName:
 				recv.hasVd = true

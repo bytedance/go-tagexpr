@@ -29,7 +29,7 @@ func TestRawBody(t *testing.T) {
 	bodyBytes := []byte("rawbody.............")
 	req := newRequest("", nil, nil, bytes.NewReader(bodyBytes))
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "too long")
@@ -59,7 +59,7 @@ func TestQueryString(t *testing.T) {
 	}
 	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d2&y=y1", nil, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -83,7 +83,7 @@ func TestQueryNum(t *testing.T) {
 	}
 	req := newRequest("http://localhost:8080/?a=11&a=12&b=21&c=31&c=32&d=41&d=42&y=true", nil, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -116,7 +116,7 @@ func TestHeaderString(t *testing.T) {
 	header.Add("X-Y", "y1")
 	req := newRequest("", header, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -149,7 +149,7 @@ func TestHeaderNum(t *testing.T) {
 	header.Add("X-Y", "true")
 	req := newRequest("", header, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -183,7 +183,7 @@ func TestCookieString(t *testing.T) {
 	}
 	req := newRequest("", nil, cookies, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -217,7 +217,7 @@ func TestCookieNum(t *testing.T) {
 	}
 	req := newRequest("", nil, cookies, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -258,7 +258,7 @@ func TestFormString(t *testing.T) {
 		header.Set("Content-Type", contentType)
 		req := newRequest("", header, nil, bodyReader)
 		recv := new(Recv)
-		binder := binding.New("api")
+		binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 		err := binder.BindAndValidate(recv, req, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -300,7 +300,7 @@ func TestFormNum(t *testing.T) {
 		header.Set("Content-Type", contentType)
 		req := newRequest("", header, nil, bodyReader)
 		recv := new(Recv)
-		binder := binding.New("api")
+		binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 		err := binder.BindAndValidate(recv, req, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -338,7 +338,7 @@ func TestJSON(t *testing.T) {
 	header.Set("Content-Type", "application/json")
 	req := newRequest("", header, nil, bodyReader)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -384,7 +384,7 @@ func TestPath(t *testing.T) {
 
 	req := newRequest("", nil, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New("api").SetLevel(binding.FirstForUntagged)
 	err := binder.BindAndValidate(recv, req, new(testPathParams))
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1"}, (**recv.X).A)
@@ -401,10 +401,10 @@ func TestAuto(t *testing.T) {
 			A []string  `api:""`
 			B int32     `api:""`
 			C *[]uint16 `api:"{required:true}"`
-			D *float32  `api:""`
+			D *float32
 		}
 		Y string `api:"{required:true}"`
-		Z *int64 `api:""`
+		Z *int64
 	}
 	query := make(url.Values)
 	query.Add("A", "a1")
@@ -427,7 +427,7 @@ func TestAuto(t *testing.T) {
 		header.Set("Content-Type", contentType)
 		req := newRequest("http://localhost/?"+query.Encode(), header, nil, bodyReader)
 		recv := new(Recv)
-		binder := binding.New("api")
+		binder := binding.New("api").SetLevel(binding.Any)
 		err := binder.BindAndValidate(recv, req, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
