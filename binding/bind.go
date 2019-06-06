@@ -15,11 +15,11 @@ import (
 type Level uint8
 
 const (
-	// OnlyFirst handle only the first level field tags
+	// OnlyFirst handle only the first level fields
 	OnlyFirst Level = iota
-	// FirstForUntagged for untagged fields, only the first level is handled
-	FirstForUntagged
-	// Any handle any level field tags
+	// FirstAndTagged handle the first level fields and all the tagged fields
+	FirstAndTagged
+	// Any handle any level fields
 	Any
 )
 
@@ -42,7 +42,7 @@ func New(tagName string) *Binding {
 		vd:    validator.New(tagName),
 		recvs: goutil.AtomicMap(),
 	}
-	return b.SetLevel(OnlyFirst).SetErrorFactory(nil, nil)
+	return b.SetLevel(FirstAndTagged).SetErrorFactory(nil, nil)
 }
 
 // SetLevel set the level of handling tags.
@@ -50,10 +50,10 @@ func New(tagName string) *Binding {
 //  default is First
 func (b *Binding) SetLevel(level Level) *Binding {
 	switch level {
-	case OnlyFirst, FirstForUntagged, Any:
+	case OnlyFirst, FirstAndTagged, Any:
 		b.level = level
 	default:
-		b.level = OnlyFirst
+		b.level = FirstAndTagged
 	}
 	return b
 }
@@ -149,7 +149,7 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 				return true
 			}
 
-		case FirstForUntagged:
+		case FirstAndTagged:
 			if len(paths) > 0 {
 				var canHandle bool
 				evals = fh.EvalFuncs()

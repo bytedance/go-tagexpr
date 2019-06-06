@@ -112,6 +112,6 @@ The level of handling tags:
 
 |level|default|description|
 |-----|-------|-----------|
-|OnlyFirst|Yes|Handle only the first level field tags
-|FirstForUntagged|No|For untagged fields, only the first level is handled|
-|Any|No|Handle any level field tags|
+|OnlyFirst|No|Handle only the first level fields
+|FirstAndTagged|Yes|Handle the first level fields and all the tagged fields|
+|Any|No|Handle any level fields|
