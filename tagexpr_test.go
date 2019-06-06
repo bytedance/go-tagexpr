@@ -94,19 +94,19 @@ func Test(t *testing.T) {
 			tagName: "tagexpr",
 			structure: &struct {
 				A     int              `tagexpr:"$>0&&$<10&&!''&&!!!0&&!nil&&$"`
-				A2    int              `tagexpr:"{@:$>0&&$<10}"`
-				b     string           `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
+				A2    int              `tagexpr:"@:$>0&&$<10"`
+				b     string           `tagexpr:"is:$=='test';msg:sprintf('expect: test, but got: %s',$)"`
 				c     float32          `tagexpr:"(A)$+$"`
 				d     *string          `tagexpr:"$"`
 				e     **int            `tagexpr:"$"`
-				f     *[3]int          `tagexpr:"{x:len($)}"`
-				g     string           `tagexpr:"{x:!regexp('xxx',$)}{y:regexp('g\\d{3}$')}"`
-				h     []string         `tagexpr:"{x:$[1]}{y:$[10]}"`
-				i     map[string]int   `tagexpr:"{x:$['a']}{y:$[0]} {z:$==nil}"`
-				i2    *map[string]int  `tagexpr:"{x:$['a']}{y:$[0]} {z:$}"`
-				j, j2 iface            `tagexpr:"{@:$==1} {y:$}"`
+				f     *[3]int          `tagexpr:"x:len($)"`
+				g     string           `tagexpr:"x:!regexp('xxx',$);y:regexp('g\\d{3}$')"`
+				h     []string         `tagexpr:"x:$[1];y:$[10]"`
+				i     map[string]int   `tagexpr:"x:$['a'];y:$[0];z:$==nil"`
+				i2    *map[string]int  `tagexpr:"x:$['a'];y:$[0];z:$"`
+				j, j2 iface            `tagexpr:"@:$==1;y:$"`
 				k     *iface           `tagexpr:"$==nil"`
-				m     *struct{ i int } `tagexpr:"{@:$}{x:$['a']['x']}"`
+				m     *struct{ i int } `tagexpr:"@:$;x:$['a']['x']"`
 			}{
 				A:  5.0,
 				A2: 5.0,
@@ -153,7 +153,7 @@ func Test(t *testing.T) {
 			tagName: "tagexpr",
 			structure: &struct {
 				A int    `tagexpr:"$>0&&$<10"`
-				b string `tagexpr:"{is:$=='test'}{msg:sprintf('expect: test, but got: %s',$)}"`
+				b string `tagexpr:"is:$=='test';msg:sprintf('expect: test, but got: %s',$)"`
 				c struct {
 					_ int
 					d bool `tagexpr:"$"`
@@ -257,7 +257,7 @@ func TestFieldNotInit(t *testing.T) {
 		b string
 		c struct {
 			_ int
-			d *bool `expr:"{test:nil}"`
+			d *bool `expr:"test:nil"`
 		}
 		e *struct {
 			_ int
@@ -454,8 +454,8 @@ func TestOperator(t *testing.T) {
 		C int             `tagexpr:"-$+(M)$*(N)$/$%(D.B)$[2]+$==1"`
 		D *Tmp1           `tagexpr:"(D.A)$!=nil"`
 		E string          `tagexpr:"((D.A)$=='1'&&len($)>1)||((D.A)$=='2'&&len($)>2)||((D.A)$=='3'&&len($)>3)"`
-		F map[string]int  `tagexpr:"{x:len($)}{y:$['a']>10&&$['b']>1}"`
-		G *map[string]int `tagexpr:"{x:$['a']+(F)$['a']>20}"`
+		F map[string]int  `tagexpr:"x:len($);y:$['a']>10&&$['b']>1"`
+		G *map[string]int `tagexpr:"x:$['a']+(F)$['a']>20"`
 		H []string        `tagexpr:"len($)>=1&&len($)<10&&$[0]=='123'&&$[1]!='456'"`
 		I interface{}     `tagexpr:"$!=nil"`
 		K *string         `tagexpr:"len((D.A)$)+len($)<10&&len((D.A)$+$)<10"`
@@ -463,8 +463,8 @@ func TestOperator(t *testing.T) {
 		M float64         `tagexpr:"$/2>10&&$%2==0"`
 		N *float64        `tagexpr:"($+$*$-$/$+1)/$==$+1"`
 		O *[3]float64     `tagexpr:"$[0]>10&&$[0]<20||$[0]>20&&$[0]<30"`
-		P *Tmp2           `tagexpr:"{x:$!=nil}{y:len((P.A.A)$)<=1&&(P.A.B)$[0]==1}{z:$['A']['C']==nil}{w:$['A']['B'][0]==1}{r:$[0][1][2]==3}{s1:$[2]==nil}{s2:$[0][3]==nil}{s3:(ZZ)$}{s4:(P.B)$!=nil}"`
-		Q *Tmp2           `tagexpr:"{s1:$['A']['B']!=nil}{s2:(Q.A)$['B']!=nil}{s3:$['A']['C']==nil}{s4:(Q.A)$['C']==nil}{s5:(Q.A)$['B'][0]==1}{s6:$['X']['Z']==nil}"`
+		P *Tmp2           `tagexpr:"x:$!=nil;y:len((P.A.A)$)<=1&&(P.A.B)$[0]==1;z:$['A']['C']==nil;w:$['A']['B'][0]==1;r:$[0][1][2]==3;s1:$[2]==nil;s2:$[0][3]==nil;s3:(ZZ)$;s4:(P.B)$!=nil"`
+		Q *Tmp2           `tagexpr:"s1:$['A']['B']!=nil;s2:(Q.A)$['B']!=nil;s3:$['A']['C']==nil;s4:(Q.A)$['C']==nil;s5:(Q.A)$['B'][0]==1;s6:$['X']['Z']==nil"`
 	}
 
 	k := "123456"
@@ -565,9 +565,9 @@ func TestStruct(t *testing.T) {
 				D struct {
 					X string `vd:"$"`
 				}
-			} `vd:"{@:$['D']['X']}"`
-			C2 string `vd:"{@:(C)$['D']['X']}"`
-			C3 string `vd:"{@:(C.D.X)$}"`
+			} `vd:"@:$['D']['X']"`
+			C2 string `vd:"@:(C)$['D']['X']"`
+			C3 string `vd:"@:(C.D.X)$"`
 		}
 	}
 	a := new(A)

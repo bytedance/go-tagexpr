@@ -57,14 +57,14 @@ func Example() {
 	fmt.Println(vd.Validate(b) == nil)
 
 	type C struct {
-		C bool `vd:"{@:(S.A)$>0 && !$}{msg:'C must be false when S.A>0'}"`
+		C bool `vd:"@:(S.A)$>0 && !$; msg:'C must be false when S.A>0'"`
 		S *A
 	}
 	c := &C{C: true, S: a}
 	fmt.Println(vd.Validate(c))
 
 	type D struct {
-		d []string `vd:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('invalid d: %v',$)}"`
+		d []string `vd:"@:len($)>0 && $[0]=='D'; msg:sprintf('invalid d: %v',$)"`
 	}
 	d := &D{d: []string{"x", "y"}}
 	fmt.Println(vd.Validate(d))
@@ -122,7 +122,7 @@ type T struct {
 	// Simple model
     Field1 T1 `tagName:"expression"`
 	// Specify error message mode
-    Field2 T2 `tagName:"{@:expression}{msg:expression2}"`
+    Field2 T2 `tagName:"@:expression; msg:expression2"`
     ...
 }
 ```

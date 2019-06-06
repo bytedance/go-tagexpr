@@ -6,66 +6,119 @@ import (
 	"unicode"
 )
 
+type namedTagExpr struct {
+	exprSelector string
+	expr         *Expr
+}
+
 func (f *fieldVM) parseExprs(tag string) error {
-	raw := tag
-	tag = strings.TrimSpace(tag)
-	if tag == "" {
-		return nil
+	kvs, err := parseTag(tag)
+	if err != nil {
+		return err
 	}
-	if tag[0] != '{' {
-		expr, err := parseExpr(tag)
+	exprSelectorPrefix := f.structField.Name
+
+	for exprSelector, exprString := range kvs {
+		expr, err := parseExpr(exprString)
 		if err != nil {
 			return err
 		}
-		exprSelector := f.structField.Name
+		if exprSelector == ExprNameSeparator {
+			exprSelector = exprSelectorPrefix
+		} else {
+			exprSelector = exprSelectorPrefix + ExprNameSeparator + exprSelector
+		}
 		f.exprs[exprSelector] = expr
 		f.origin.exprs[exprSelector] = expr
 		f.origin.exprSelectorList = append(f.origin.exprSelectorList, exprSelector)
-		return nil
 	}
-	var subtag *string
-	var idx int
-	var exprSelector, exprStr string
+	return nil
+}
+
+func parseTag(tag string) (map[string]string, error) {
+	s := tag
+	ptr := &s
+	kvs := make(map[string]string)
 	for {
-		subtag = readPairedSymbol(&tag, '{', '}')
-		if subtag != nil {
-			idx = strings.Index(*subtag, ":")
-			if idx > 0 {
-				exprSelector = strings.TrimSpace((*subtag)[:idx])
-				switch exprSelector {
-				case "":
-					continue
-				case ExprNameSeparator:
-					exprSelector = f.structField.Name
-				default:
-					exprSelector = f.structField.Name + ExprNameSeparator + exprSelector
-				}
-				if _, had := f.origin.exprs[exprSelector]; had {
-					return fmt.Errorf("duplicate expression name: %s", exprSelector)
-				}
-				exprStr = strings.TrimSpace((*subtag)[idx+1:])
-				if exprStr != "" {
-					if expr, err := parseExpr(exprStr); err == nil {
-						f.exprs[exprSelector] = expr
-						f.origin.exprs[exprSelector] = expr
-						f.origin.exprSelectorList = append(f.origin.exprSelectorList, exprSelector)
-					} else {
-						return err
-					}
-					trimLeftSpace(&tag)
-					if tag == "" {
-						return nil
-					}
-					continue
-				}
-			}
+		one, err := readOneExpr(ptr)
+		if err != nil {
+			return nil, err
 		}
-		return fmt.Errorf("syntax incorrect: %q", raw)
+		if one == "" {
+			return kvs, nil
+		}
+		key, val := splitExpr(one)
+		if val == "" {
+			return nil, fmt.Errorf("%q (syntax error): expression string can not be empty", tag)
+		}
+		if _, ok := kvs[key]; ok {
+			return nil, fmt.Errorf("%q (syntax error): duplicate expression name %q", tag, key)
+		}
+		kvs[key] = val
 	}
+}
+
+func splitExpr(one string) (key, val string) {
+	one = strings.TrimSpace(one)
+	if one == "" {
+		return DefaultExprName, ""
+	}
+	var rs []rune
+	for _, r := range one {
+		if r == '@' ||
+			r == '_' ||
+			(r >= '0' && r <= '9') ||
+			(r >= 'A' && r <= 'Z') ||
+			(r >= 'a' && r <= 'z') {
+			rs = append(rs, r)
+		} else {
+			break
+		}
+	}
+	key = string(rs)
+	val = strings.TrimSpace(one[len(key):])
+	if val == "" || val[0] != ':' {
+		return DefaultExprName, one
+	}
+	val = val[1:]
+	if key == "" {
+		key = DefaultExprName
+	}
+	return key, val
+}
+
+func readOneExpr(tag *string) (string, error) {
+	var s = *(trimRightSpace(trimLeftSpace(tag)))
+	s = strings.TrimLeft(s, ";")
+	if s == "" {
+		return "", nil
+	}
+	if s[len(s)-1] != ';' {
+		s += ";"
+	}
+	a := strings.SplitAfter(strings.Replace(s, "\\'", "##", -1), ";")
+	var idx = -1
+	var patch int
+	for _, v := range a {
+		idx += len(v)
+		if (strings.Count(v, "'")+patch)%2 == 0 {
+			*tag = s[idx+1:]
+			return s[:idx], nil
+		}
+		if strings.Contains(v, "'") {
+			patch++
+		}
+	}
+	return "", fmt.Errorf("%q (syntax error): unclosed single quote \"'\"", s)
 }
 
 func trimLeftSpace(p *string) *string {
 	*p = strings.TrimLeftFunc(*p, unicode.IsSpace)
+	return p
+}
+
+func trimRightSpace(p *string) *string {
+	*p = strings.TrimRightFunc(*p, unicode.IsSpace)
 	return p
 }
 

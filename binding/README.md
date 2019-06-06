@@ -20,15 +20,15 @@ import (
 
 func Example() {
 	type InfoRequest struct {
-		Name          string   `api:"{path:'name'}"`
-		Year          []int    `api:"{query:'year'}"`
-		Email         *string  `api:"{body:'email'}{@:email($)}"`
-		Friendly      bool     `api:"{body:'friendly'}"`
-		Pie           float32  `api:"{body:'pie'}{required:true}"`
-		Hobby         []string `api:"{body:'hobby'}"`
-		BodyNotFound  *int     `api:"{body:'xxx'}"`
-		Authorization string   `api:"{header:'Authorization'}{required:true}{@:$=='Basic 123456'}"`
-		SessionID     string   `api:"{cookie:'sessionid'}{required:true}"`
+		Name          string   `api:"path:'name'"`
+		Year          []int    `api:"query:'year'"`
+		Email         *string  `api:"body:'email'; @:email($)"`
+		Friendly      bool     `api:"body:'friendly'"`
+		Pie           float32  `api:"body:'pie'; required:true"`
+		Hobby         []string `api:"body:'hobby'"`
+		BodyNotFound  *int     `api:"body:'xxx'"`
+		Authorization string   `api:"header:'Authorization'; required:true; @:$=='Basic 123456'"`
+		SessionID     string   `api:"cookie:'sessionid'; required:true"`
 		AutoBody      string
 		AutoQuery     string
 		AutoNotFound  *string
@@ -92,18 +92,18 @@ The parameter position in HTTP request:
 
 |expression|description|
 |---------------|-----------|
-|`{path:'$name'}`|URL path parameter
-|`{query:'$name'}`|URL query parameter
-|`{body:'$name'}`|The field in body, support:<br>`application/json`,<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
-|`{header:'$name'}`|Header parameter
-|`{cookie:'$name'}`|Cookie parameter
+|`path:'$name'`|URL path parameter
+|`query:'$name'`|URL query parameter
+|`body:'$name'`|The field in body, support:<br>`application/json`,<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
+|`header:'$name'`|Header parameter
+|`cookie:'$name'`|Cookie parameter
 
 **NOTE:**
 
 - `'$name'` is variable placeholder
 - If `'$name'` is empty, use the name of field
 - If no position is tagged, use `body` first, followed by `query`
-- Expression `{required:true}` indicates that the parameter is required
+- Expression `required:true` indicates that the parameter is required
 
 
 ## Level

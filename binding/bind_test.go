@@ -17,14 +17,14 @@ import (
 func TestRawBody(t *testing.T) {
 	type Recv struct {
 		rawBody **struct {
-			A []byte   `api:"{raw_body:nil}"`
-			B *[]byte  `api:"{raw_body:nil}"`
-			C **[]byte `api:"{raw_body:nil}"`
-			D string   `api:"{raw_body:nil}"`
-			E *string  `api:"{raw_body:nil}"`
-			F **string `api:"{raw_body:nil}{@:len($)<3}{msg:'too long'}"`
+			A []byte   `api:"raw_body:nil"`
+			B *[]byte  `api:"raw_body:nil"`
+			C **[]byte `api:"raw_body:nil"`
+			D string   `api:"raw_body:nil"`
+			E *string  `api:"raw_body:nil"`
+			F **string `api:"raw_body:nil; @:len($)<3; msg:'too long'"`
 		}
-		S string `api:"{raw_body:nil}"`
+		S string `api:"raw_body:nil"`
 	}
 	bodyBytes := []byte("rawbody.............")
 	req := newRequest("", nil, nil, bytes.NewReader(bodyBytes))
@@ -49,13 +49,13 @@ func TestRawBody(t *testing.T) {
 func TestQueryString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"{query:'a'}"`
-			B string    `api:"{query:'b'}"`
-			C *[]string `api:"{query:'c'}{required:true}"`
-			D *string   `api:"{query:'d'}"`
+			A []string  `api:"query:'a'"`
+			B string    `api:"query:'b'"`
+			C *[]string `api:"query:'c'; required:true"`
+			D *string   `api:"query:'d'"`
 		}
-		Y string  `api:"{query:'y'}{required:true}"`
-		Z *string `api:"{query:'z'}"`
+		Y string  `api:"query:'y'; required:true"`
+		Z *string `api:"query:'z'"`
 	}
 	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d2&y=y1", nil, nil, nil)
 	recv := new(Recv)
@@ -73,13 +73,13 @@ func TestQueryString(t *testing.T) {
 func TestQueryNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"{query:'a'}"`
-			B int32     `api:"{query:'b'}"`
-			C *[]uint16 `api:"{query:'c'}{required:true}"`
-			D *float32  `api:"{query:'d'}"`
+			A []int     `api:"query:'a'"`
+			B int32     `api:"query:'b'"`
+			C *[]uint16 `api:"query:'c'; required:true"`
+			D *float32  `api:"query:'d'"`
 		}
-		Y bool   `api:"{query:'y'}{required:true}"`
-		Z *int64 `api:"{query:'z'}"`
+		Y bool   `api:"query:'y'; required:true"`
+		Z *int64 `api:"query:'z'"`
 	}
 	req := newRequest("http://localhost:8080/?a=11&a=12&b=21&c=31&c=32&d=41&d=42&y=true", nil, nil, nil)
 	recv := new(Recv)
@@ -97,13 +97,13 @@ func TestQueryNum(t *testing.T) {
 func TestHeaderString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"{header:'X-A'}"`
-			B string    `api:"{header:'X-B'}"`
-			C *[]string `api:"{header:'X-C'}{required:true}"`
-			D *string   `api:"{header:'X-D'}"`
+			A []string  `api:"header:'X-A'"`
+			B string    `api:"header:'X-B'"`
+			C *[]string `api:"header:'X-C'; required:true"`
+			D *string   `api:"header:'X-D'"`
 		}
-		Y string  `api:"{header:'X-Y'}{required:true}"`
-		Z *string `api:"{header:'X-Z'}"`
+		Y string  `api:"header:'X-Y'; required:true"`
+		Z *string `api:"header:'X-Z'"`
 	}
 	header := make(http.Header)
 	header.Add("X-A", "a1")
@@ -130,13 +130,13 @@ func TestHeaderString(t *testing.T) {
 func TestHeaderNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"{header:'X-A'}"`
-			B int32     `api:"{header:'X-B'}"`
-			C *[]uint16 `api:"{header:'X-C'}{required:true}"`
-			D *float32  `api:"{header:'X-D'}"`
+			A []int     `api:"header:'X-A'"`
+			B int32     `api:"header:'X-B'"`
+			C *[]uint16 `api:"header:'X-C'; required:true"`
+			D *float32  `api:"header:'X-D'"`
 		}
-		Y bool   `api:"{header:'X-Y'}{required:true}"`
-		Z *int64 `api:"{header:'X-Z'}"`
+		Y bool   `api:"header:'X-Y'; required:true"`
+		Z *int64 `api:"header:'X-Z'"`
 	}
 	header := make(http.Header)
 	header.Add("X-A", "11")
@@ -163,13 +163,13 @@ func TestHeaderNum(t *testing.T) {
 func TestCookieString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"{cookie:'a'}"`
-			B string    `api:"{cookie:'b'}"`
-			C *[]string `api:"{cookie:'c'}{required:true}"`
-			D *string   `api:"{cookie:'d'}"`
+			A []string  `api:"cookie:'a'"`
+			B string    `api:"cookie:'b'"`
+			C *[]string `api:"cookie:'c'; required:true"`
+			D *string   `api:"cookie:'d'"`
 		}
-		Y string  `api:"{cookie:'y'}{required:true}"`
-		Z *string `api:"{cookie:'z'}"`
+		Y string  `api:"cookie:'y'; required:true"`
+		Z *string `api:"cookie:'z'"`
 	}
 	cookies := []*http.Cookie{
 		{Name: "a", Value: "a1"},
@@ -197,13 +197,13 @@ func TestCookieString(t *testing.T) {
 func TestCookieNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"{cookie:'a'}"`
-			B int32     `api:"{cookie:'b'}"`
-			C *[]uint16 `api:"{cookie:'c'}{required:true}"`
-			D *float32  `api:"{cookie:'d'}"`
+			A []int     `api:"cookie:'a'"`
+			B int32     `api:"cookie:'b'"`
+			C *[]uint16 `api:"cookie:'c'; required:true"`
+			D *float32  `api:"cookie:'d'"`
 		}
-		Y bool   `api:"{cookie:'y'}{required:true}"`
-		Z *int64 `api:"{cookie:'z'}"`
+		Y bool   `api:"cookie:'y'; required:true"`
+		Z *int64 `api:"cookie:'z'"`
 	}
 	cookies := []*http.Cookie{
 		{Name: "a", Value: "11"},
@@ -231,13 +231,13 @@ func TestCookieNum(t *testing.T) {
 func TestFormString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"{body:'a'}"`
-			B string    `api:"{body:'b'}"`
-			C *[]string `api:"{body:'c'}{required:true}"`
-			D *string   `api:"{body:'d'}"`
+			A []string  `api:"body:'a'"`
+			B string    `api:"body:'b'"`
+			C *[]string `api:"body:'c'; required:true"`
+			D *string   `api:"body:'d'"`
 		}
-		Y string  `api:"{body:'y'}{required:true}"`
-		Z *string `api:"{body:'z'}"`
+		Y string  `api:"body:'y'; required:true"`
+		Z *string `api:"body:'z'"`
 	}
 	values := make(url.Values)
 	values.Add("a", "a1")
@@ -273,13 +273,13 @@ func TestFormString(t *testing.T) {
 func TestFormNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"{body:'a'}"`
-			B int32     `api:"{body:'b'}"`
-			C *[]uint16 `api:"{body:'c'}{required:true}"`
-			D *float32  `api:"{body:'d'}"`
+			A []int     `api:"body:'a'"`
+			B int32     `api:"body:'b'"`
+			C *[]uint16 `api:"body:'c'; required:true"`
+			D *float32  `api:"body:'d'"`
 		}
-		Y bool   `api:"{body:'y'}{required:true}"`
-		Z *int64 `api:"{body:'z'}"`
+		Y bool   `api:"body:'y'; required:true"`
+		Z *int64 `api:"body:'z'"`
 	}
 	values := make(url.Values)
 	values.Add("a", "11")
@@ -315,12 +315,12 @@ func TestFormNum(t *testing.T) {
 func TestJSON(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"{body:'a'}"`
+			A []string  `api:"body:'a'"`
 			B int32     `api:""`
-			C *[]uint16 `api:"{required:true}"`
-			D *float32  `api:"{body:'d'}"`
+			C *[]uint16 `api:"required:true"`
+			D *float32  `api:"body:'d'"`
 		}
-		Y string `api:"{body:'y'}{required:true}"`
+		Y string `api:"body:'y'; required:true"`
 		Z *int64 `api:""`
 	}
 
@@ -373,12 +373,12 @@ func (testPathParams) Get(name string) (string, bool) {
 func TestPath(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"{path:'a'}"`
-			B int32     `api:"{path:'b'}"`
-			C *[]uint16 `api:"{path:'c'}{required:true}"`
-			D *float32  `api:"{path:'d'}"`
+			A []string  `api:"path:'a'"`
+			B int32     `api:"path:'b'"`
+			C *[]uint16 `api:"path:'c'; required:true"`
+			D *float32  `api:"path:'d'"`
 		}
-		Y string `api:"{path:'y'}{required:true}"`
+		Y string `api:"path:'y'; required:true"`
 		Z *int64
 	}
 
@@ -400,10 +400,10 @@ func TestAuto(t *testing.T) {
 		X **struct {
 			A []string  `api:""`
 			B int32     `api:""`
-			C *[]uint16 `api:"{required:true}"`
+			C *[]uint16 `api:"required:true"`
 			D *float32
 		}
-		Y string `api:"{required:true}"`
+		Y string `api:"required:true"`
 		Z *int64
 	}
 	query := make(url.Values)

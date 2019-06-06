@@ -13,15 +13,15 @@ import (
 
 func Example() {
 	type InfoRequest struct {
-		Name          string   `api:"{path:'name'}"`
-		Year          []int    `api:"{query:'year'}"`
-		Email         *string  `api:"{body:'email'}{@:email($)}"`
-		Friendly      bool     `api:"{body:'friendly'}"`
-		Pie           float32  `api:"{body:'pie'}{required:true}"`
-		Hobby         []string `api:"{body:'hobby'}"`
-		BodyNotFound  *int     `api:"{body:'xxx'}"`
-		Authorization string   `api:"{header:'Authorization'}{required:true}{@:$=='Basic 123456'}"`
-		SessionID     string   `api:"{cookie:'sessionid'}{required:true}"`
+		Name          string   `api:"path:'name'"`
+		Year          []int    `api:"query:'year'"`
+		Email         *string  `api:"body:'email'; @:email($)"`
+		Friendly      bool     `api:"body:'friendly'"`
+		Pie           float32  `api:"body:'pie'; required:true"`
+		Hobby         []string `api:"body:'hobby'"`
+		BodyNotFound  *int     `api:"body:'xxx'"`
+		Authorization string   `api:"header:'Authorization'; required:true; @:$=='Basic 123456'"`
+		SessionID     string   `api:"cookie:'sessionid'; required:true"`
 		AutoBody      string
 		AutoQuery     string
 		AutoNotFound  *string

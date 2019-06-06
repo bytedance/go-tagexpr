@@ -32,7 +32,7 @@ func parseExpr(expr string) (*Expr, error) {
 	s := expr
 	_, err := p.parseExprNode(&s, e)
 	if err != nil {
-		return nil, fmt.Errorf("%q (syntax incorrect): %s", expr, err.Error())
+		return nil, fmt.Errorf("%q (syntax error): %s", expr, err.Error())
 	}
 	sortPriority(e.RightOperand())
 	err = p.checkSyntax()

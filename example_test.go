@@ -24,8 +24,8 @@ func Example() {
 	type T struct {
 		A  int             `tagexpr:"$<0||$>=100"`
 		B  string          `tagexpr:"len($)>1 && regexp('^\\w*$')"`
-		C  bool            `tagexpr:"{expr1:(f.g)$>0 && $}{expr2:'C must be true when T.f.g>0'}"`
-		d  []string        `tagexpr:"{@:len($)>0 && $[0]=='D'} {msg:sprintf('invalid d: %v',$)}"`
+		C  bool            `tagexpr:"expr1:(f.g)$>0 && $; expr2:'C must be true when T.f.g>0'"`
+		d  []string        `tagexpr:"@:len($)>0 && $[0]=='D'; msg:sprintf('invalid d: %v',$)"`
 		e  map[string]int  `tagexpr:"len($)==$['len']"`
 		e2 map[string]*int `tagexpr:"len($)==$['len']"`
 		f  struct {
