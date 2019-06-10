@@ -1,12 +1,17 @@
 package binding
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/bytedance/go-tagexpr"
+	"github.com/bytedance/go-tagexpr/binding/jsonparam"
+	"github.com/gogo/protobuf/proto"
 	"github.com/henrylee2cn/goutil"
+	"github.com/tidwall/gjson"
 )
 
 const (
@@ -15,18 +20,20 @@ const (
 	path
 	header
 	cookie
-	body
-	raw_body
+	rawBody
+	form
+	otherBody
 )
 
 const (
-	unsupportBody uint8 = iota
-	jsonBody
-	formBody
+	bodyUnsupport int8 = iota
+	bodyForm
+	bodyJSON
+	bodyProtobuf
 )
 
 type receiver struct {
-	hasAuto, hasQuery, hasCookie, hasPath, hasBody, hasRawBody, hasVd bool
+	hasAuto, hasQuery, hasCookie, hasPath, hasForm, hasBody, hasVd bool
 
 	params []*paramInfo
 }
@@ -47,14 +54,16 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(f
 		return p
 	}
 	p = new(paramInfo)
+	p.in = auto
 	p.fieldSelector = fieldSelector
 	p.structField = fh.StructField()
+	p.name = p.structField.Name
 	p.bindErrFactory = bindErrFactory
 	r.params = append(r.params, p)
 	return p
 }
 
-func (r *receiver) getBodyCodec(req *http.Request) uint8 {
+func (r *receiver) getBodyCodec(req *http.Request) int8 {
 	ct := req.Header.Get("Content-Type")
 	idx := strings.Index(ct, ";")
 	if idx != -1 {
@@ -62,16 +71,18 @@ func (r *receiver) getBodyCodec(req *http.Request) uint8 {
 	}
 	switch ct {
 	case "application/json":
-		return jsonBody
+		return bodyJSON
+	case "application/x-protobuf":
+		return bodyProtobuf
 	case "application/x-www-form-urlencoded", "multipart/form-data":
-		return formBody
+		return bodyForm
 	default:
-		return unsupportBody
+		return bodyUnsupport
 	}
 }
 
-func (r *receiver) getBody(req *http.Request, must bool) ([]byte, string, error) {
-	if must || r.hasRawBody {
+func (r *receiver) getBody(req *http.Request) ([]byte, string, error) {
+	if r.hasBody {
 		bodyBytes, err := copyBody(req)
 		if err == nil {
 			return bodyBytes, goutil.BytesToString(bodyBytes), nil
@@ -81,12 +92,28 @@ func (r *receiver) getBody(req *http.Request, must bool) ([]byte, string, error)
 	return nil, "", nil
 }
 
+func (r *receiver) bindOtherBody(structPointer interface{}, value reflect.Value, bodyCodec int8, bodyBytes []byte) error {
+	switch bodyCodec {
+	case bodyJSON:
+		jsonparam.Assign(gjson.Parse(goutil.BytesToString(bodyBytes)), value)
+	case bodyProtobuf:
+		msg, ok := structPointer.(proto.Message)
+		if !ok {
+			return errors.New("protobuf content type is not supported")
+		}
+		if err := proto.Unmarshal(bodyBytes, msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 const (
 	defaultMaxMemory = 32 << 20 // 32 MB
 )
 
-func (r *receiver) getPostForm(req *http.Request, must bool) (url.Values, error) {
-	if must {
+func (r *receiver) getPostForm(req *http.Request, bodyCodec int8) (url.Values, error) {
+	if bodyCodec == bodyForm && (r.hasForm || r.hasBody) {
 		if req.PostForm == nil {
 			req.ParseMultipartForm(defaultMaxMemory)
 		}

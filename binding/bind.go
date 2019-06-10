@@ -11,52 +11,29 @@ import (
 	"github.com/henrylee2cn/goutil/tpack"
 )
 
-// Level the level of handling tags
-type Level uint8
-
-const (
-	// OnlyFirst handle only the first level fields
-	OnlyFirst Level = iota
-	// FirstAndTagged handle the first level fields and all the tagged fields
-	FirstAndTagged
-	// Any handle any level fields
-	Any
-)
-
 // Binding binding and verification tool for http request
 type Binding struct {
-	level          Level
 	vd             *validator.Validator
 	recvs          map[int32]*receiver
 	lock           sync.RWMutex
 	bindErrFactory func(failField, msg string) error
+	tagNames       TagNames
 }
 
 // New creates a binding tool.
 // NOTE:
-//  If tagName=='', `api` is used
-func New(tagName string) *Binding {
-	if tagName == "" {
-		tagName = "api"
+//  Use default tag name for tagNames fields that are empty
+func New(tagNames *TagNames) *Binding {
+	if tagNames == nil {
+		tagNames = new(TagNames)
 	}
 	b := &Binding{
-		vd:    validator.New(tagName),
-		recvs: make(map[int32]*receiver, 1024),
+		recvs:    make(map[int32]*receiver, 1024),
+		tagNames: *tagNames,
 	}
-	return b.SetLevel(FirstAndTagged).SetErrorFactory(nil, nil)
-}
-
-// SetLevel set the level of handling tags.
-// NOTE:
-//  default is First
-func (b *Binding) SetLevel(level Level) *Binding {
-	switch level {
-	case OnlyFirst, FirstAndTagged, Any:
-		b.level = level
-	default:
-		b.level = FirstAndTagged
-	}
-	return b
+	b.tagNames.init()
+	b.vd = validator.New(b.tagNames.Validator)
+	return b.SetErrorFactory(nil, nil)
 }
 
 var defaultValidatingErrFactory = newDefaultErrorFactory("invalid parameter")
@@ -79,11 +56,7 @@ func (b *Binding) SetErrorFactory(bindErrFactory, validatingErrFactory func(fail
 
 // BindAndValidate binds the request parameters and validates them if needed.
 func (b *Binding) BindAndValidate(structPointer interface{}, req *http.Request, pathParams PathParams) error {
-	v, err := b.structValueOf(structPointer)
-	if err != nil {
-		return err
-	}
-	hasVd, err := b.bind(v, req, pathParams)
+	v, hasVd, err := b.bind(structPointer, req, pathParams)
 	if err != nil {
 		return err
 	}
@@ -95,11 +68,7 @@ func (b *Binding) BindAndValidate(structPointer interface{}, req *http.Request, 
 
 // Bind binds the request parameters.
 func (b *Binding) Bind(structPointer interface{}, req *http.Request, pathParams PathParams) error {
-	v, err := b.structValueOf(structPointer)
-	if err != nil {
-		return err
-	}
-	_, err = b.bind(v, req, pathParams)
+	_, _, err := b.bind(structPointer, req, pathParams)
 	return err
 }
 
@@ -143,35 +112,6 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	var errMsg string
 
 	expr.RangeFields(func(fh *tagexpr.FieldHandler) bool {
-		paths, name := fh.FieldSelector().Split()
-		var evals map[tagexpr.ExprSelector]func() interface{}
-
-		switch b.level {
-		case OnlyFirst:
-			if len(paths) > 0 {
-				return true
-			}
-
-		case FirstAndTagged:
-			if len(paths) > 0 {
-				var canHandle bool
-				evals = fh.EvalFuncs()
-				for es := range evals {
-					switch v := es.Name(); v {
-					case "raw_body", "body", "query", "path", "header", "cookie", "required":
-						canHandle = true
-						break
-					}
-				}
-				if !canHandle {
-					return true
-				}
-			}
-
-		default:
-			// Any
-		}
-
 		if !fh.Value(true).CanSet() {
 			selector := fh.StringSelector()
 			errMsg = "field cannot be set: " + selector
@@ -179,60 +119,48 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 			return false
 		}
 
-		in := auto
+		tagKVs := b.tagNames.parse(fh.StructField())
 		p := recv.getOrAddParam(fh, b.bindErrFactory)
-		if evals == nil {
-			evals = fh.EvalFuncs()
-		}
-
 	L:
-		for es, eval := range evals {
-			switch es.Name() {
-			case validator.MatchExprName:
+		for _, tagKV := range tagKVs {
+			switch tagKV.name {
+			case b.tagNames.Validator:
 				recv.hasVd = true
 				continue L
-			case validator.ErrMsgExprName:
-				continue L
 
-			case "required":
-				p.required = tagexpr.FakeBool(eval())
-				continue L
-
-			case "raw_body":
-				recv.hasRawBody = true
-				in = raw_body
-			case "body":
-				recv.hasBody = true
-				in = body
-			case "query":
+			case b.tagNames.Query:
 				recv.hasQuery = true
-				in = query
-			case "path":
+				p.in = query
+			case b.tagNames.PathParam:
 				recv.hasPath = true
-				in = path
-			case "header":
-				in = header
-			case "cookie":
+				p.in = path
+			case b.tagNames.Header:
+				p.in = header
+			case b.tagNames.Cookie:
 				recv.hasCookie = true
-				in = cookie
-
+				p.in = cookie
+			case b.tagNames.RawBody:
+				recv.hasBody = true
+				p.in = rawBody
+			case b.tagNames.FormBody:
+				recv.hasForm = true
+				p.in = form
+			case b.tagNames.protobufBody, b.tagNames.jsonBody:
+				recv.hasBody = true
+				p.in = otherBody
 			default:
 				continue L
 			}
-
-			name, errMsg = getParamName(eval, name)
-			if errMsg != "" {
-				errExprSelector = es
-				return false
-			}
+			p.name, p.required = tagKV.defaultSplit()
+			break L
 		}
-
-		if in == auto {
+		if !recv.hasVd {
+			_, recv.hasVd = tagKVs.lookup(b.tagNames.Validator)
+		}
+		if p.in == auto {
 			recv.hasBody = true
 			recv.hasAuto = true
 		}
-		p.in = in
-		p.name = name
 		return true
 	})
 
@@ -249,27 +177,35 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	return recv, nil
 }
 
-func (b *Binding) bind(value reflect.Value, req *http.Request, pathParams PathParams) (hasVd bool, err error) {
+func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams PathParams) (value reflect.Value, hasVd bool, err error) {
+	value, err = b.structValueOf(structPointer)
+	if err != nil {
+		return
+	}
 	recv, err := b.getObjOrPrepare(value)
 	if err != nil {
-		return false, err
+		return
 	}
 
 	expr, err := b.vd.VM().Run(value)
 	if err != nil {
-		return false, err
+		return
 	}
 
 	bodyCodec := recv.getBodyCodec(req)
 
-	bodyBytes, bodyString, err := recv.getBody(req, bodyCodec == jsonBody)
+	bodyBytes, bodyString, err := recv.getBody(req)
 	if err != nil {
-		return false, err
+		return
+	}
+	err = recv.bindOtherBody(structPointer, value, bodyCodec, bodyBytes)
+	if err != nil {
+		return
 	}
 
-	postForm, err := recv.getPostForm(req, bodyCodec == formBody)
+	postForm, err := recv.getPostForm(req, bodyCodec)
 	if err != nil {
-		return false, err
+		return
 	}
 
 	queryValues := recv.getQuery(req)
@@ -285,32 +221,33 @@ func (b *Binding) bind(value reflect.Value, req *http.Request, pathParams PathPa
 			_, err = param.bindHeader(expr, req.Header)
 		case cookie:
 			err = param.bindCookie(expr, cookies)
-		case body:
+		case rawBody:
+			err = param.bindRawBody(expr, bodyBytes)
+		case otherBody:
 			switch bodyCodec {
-			case formBody:
+			case bodyForm:
 				_, err = param.bindMapStrings(expr, postForm)
-			case jsonBody:
-				_, err = param.bindJSON(expr, bodyString)
+			case bodyJSON:
+				err = param.requireJSON(expr, bodyString)
+			case bodyProtobuf:
 			default:
 				err = param.contentTypeError
 			}
-		case raw_body:
-			err = param.bindRawBody(expr, bodyBytes)
 		default:
 			var found bool
-			switch bodyCodec {
-			case formBody:
+			if bodyCodec == bodyForm {
 				found, err = param.bindMapStrings(expr, postForm)
-			case jsonBody:
-				found, err = param.bindJSON(expr, bodyString)
 			}
 			if !found {
+				if queryValues == nil {
+					queryValues = req.URL.Query()
+				}
 				_, err = param.bindQuery(expr, queryValues)
 			}
 		}
 		if err != nil {
-			return recv.hasVd, err
+			return value, recv.hasVd, err
 		}
 	}
-	return recv.hasVd, nil
+	return value, recv.hasVd, nil
 }

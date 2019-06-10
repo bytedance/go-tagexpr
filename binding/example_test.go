@@ -13,22 +13,22 @@ import (
 
 func Example() {
 	type InfoRequest struct {
-		Name          string   `api:"path:'name'"`
-		Year          []int    `api:"query:'year'"`
-		Email         *string  `api:"body:'email'; @:email($)"`
-		Friendly      bool     `api:"body:'friendly'"`
-		Pie           float32  `api:"body:'pie'; required:true"`
-		Hobby         []string `api:"body:'hobby'"`
-		BodyNotFound  *int     `api:"body:'xxx'"`
-		Authorization string   `api:"header:'Authorization'; required:true; @:$=='Basic 123456'"`
-		SessionID     string   `api:"cookie:'sessionid'; required:true"`
+		Name          string   `path:"name"`
+		Year          []int    `query:"year"`
+		Email         *string  `json:"email" vd:"email($)"`
+		Friendly      bool     `json:"friendly"`
+		Pie           float32  `json:"pie,required"`
+		Hobby         []string `json:",required"`
+		BodyNotFound  *int     `json:"BodyNotFound"`
+		Authorization string   `header:"Authorization,required" vd:"$=='Basic 123456'"`
+		SessionID     string   `cookie:"sessionid,required"`
 		AutoBody      string
 		AutoQuery     string
 		AutoNotFound  *string
 	}
 
 	args := new(InfoRequest)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(args, requestExample(), new(testPathParams))
 
 	fmt.Println("bind and validate result:")
@@ -49,7 +49,7 @@ func Example() {
 	// Cookie: sessionid=987654
 	//
 	// 83
-	// {"AutoBody":"autobody_test","email":"henrylee2cn@gmail.com","friendly":true,"hobby":["Coding","Mountain climbing"],"pie":3.1415926}
+	// {"AutoBody":"autobody_test","Hobby":["Coding","Mountain climbing"],"email":"henrylee2cn@gmail.com","friendly":true,"pie":3.1415926}
 	// 0
 	//
 	// bind and validate result:
@@ -61,9 +61,9 @@ func Example() {
 	// 		2018,
 	// 		2019
 	// 	],
-	// 	"Email": "henrylee2cn@gmail.com",
-	// 	"Friendly": true,
-	// 	"Pie": 3.1415925,
+	// 	"email": "henrylee2cn@gmail.com",
+	// 	"friendly": true,
+	// 	"pie": 3.1415925,
 	// 	"Hobby": [
 	// 		"Coding",
 	// 		"Mountain climbing"
@@ -82,7 +82,7 @@ func requestExample() *http.Request {
 		"email":    "henrylee2cn@gmail.com",
 		"friendly": true,
 		"pie":      3.1415926,
-		"hobby":    []string{"Coding", "Mountain climbing"},
+		"Hobby":    []string{"Coding", "Mountain climbing"},
 		"AutoBody": "autobody_test",
 	})
 	header := make(http.Header)

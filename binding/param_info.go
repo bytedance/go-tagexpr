@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/bytedance/go-tagexpr"
-	"github.com/bytedance/go-tagexpr/binding/jsonparam"
 	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 )
@@ -101,20 +100,14 @@ func (p *paramInfo) bindCookie(expr *tagexpr.TagExpr, cookies []*http.Cookie) er
 	return p.bindStringSlice(expr, r)
 }
 
-func (p *paramInfo) bindJSON(expr *tagexpr.TagExpr, bodyString string) (bool, error) {
-	r := gjson.Get(bodyString, p.namePath)
-	if !r.Exists() {
-		if p.required {
-			return false, p.requiredError
+func (p *paramInfo) requireJSON(expr *tagexpr.TagExpr, bodyString string) error {
+	if p.required {
+		r := gjson.Get(bodyString, p.namePath)
+		if !r.Exists() {
+			return p.requiredError
 		}
-		return false, nil
 	}
-	v, err := p.getField(expr)
-	if err != nil || !v.IsValid() {
-		return false, err
-	}
-	jsonparam.Assign(r, v)
-	return true, nil
+	return nil
 }
 
 func (p *paramInfo) bindMapStrings(expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {

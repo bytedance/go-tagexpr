@@ -18,19 +18,19 @@ import (
 func TestRawBody(t *testing.T) {
 	type Recv struct {
 		rawBody **struct {
-			A []byte   `api:"raw_body:nil"`
-			B *[]byte  `api:"raw_body:nil"`
-			C **[]byte `api:"raw_body:nil"`
-			D string   `api:"raw_body:nil"`
-			E *string  `api:"raw_body:nil"`
-			F **string `api:"raw_body:nil; @:len($)<3; msg:'too long'"`
+			A []byte   `raw_body:""`
+			B *[]byte  `raw_body:""`
+			C **[]byte `raw_body:""`
+			D string   `raw_body:""`
+			E *string  `raw_body:""`
+			F **string `raw_body:"" vd:"@:len($)<3; msg:'too long'"`
 		}
-		S string `api:"raw_body:nil"`
+		S string `raw_body:""`
 	}
 	bodyBytes := []byte("rawbody.............")
 	req := newRequest("", nil, nil, bytes.NewReader(bodyBytes))
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "too long")
@@ -50,17 +50,17 @@ func TestRawBody(t *testing.T) {
 func TestQueryString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"query:'a'"`
-			B string    `api:"query:'b'"`
-			C *[]string `api:"query:'c'; required:true"`
-			D *string   `api:"query:'d'"`
+			A []string  `query:"a"`
+			B string    `query:"b"`
+			C *[]string `query:"c,required"`
+			D *string   `query:"d"`
 		}
-		Y string  `api:"query:'y'; required:true"`
-		Z *string `api:"query:'z'"`
+		Y string  `query:"y,required"`
+		Z *string `query:"z"`
 	}
 	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d2&y=y1", nil, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -74,17 +74,17 @@ func TestQueryString(t *testing.T) {
 func TestQueryNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"query:'a'"`
-			B int32     `api:"query:'b'"`
-			C *[]uint16 `api:"query:'c'; required:true"`
-			D *float32  `api:"query:'d'"`
+			A []int     `query:"a"`
+			B int32     `query:"b"`
+			C *[]uint16 `query:"c,required"`
+			D *float32  `query:"d"`
 		}
-		Y bool   `api:"query:'y'; required:true"`
-		Z *int64 `api:"query:'z'"`
+		Y bool   `query:"y,required"`
+		Z *int64 `query:"z"`
 	}
 	req := newRequest("http://localhost:8080/?a=11&a=12&b=21&c=31&c=32&d=41&d=42&y=true", nil, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -98,13 +98,13 @@ func TestQueryNum(t *testing.T) {
 func TestHeaderString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"header:'X-A'"`
-			B string    `api:"header:'X-B'"`
-			C *[]string `api:"header:'X-C'; required:true"`
-			D *string   `api:"header:'X-D'"`
+			A []string  `header:"X-A"`
+			B string    `header:"X-B"`
+			C *[]string `header:"X-C,required"`
+			D *string   `header:"X-D"`
 		}
-		Y string  `api:"header:'X-Y'; required:true"`
-		Z *string `api:"header:'X-Z'"`
+		Y string  `header:"X-Y,required"`
+		Z *string `header:"X-Z"`
 	}
 	header := make(http.Header)
 	header.Add("X-A", "a1")
@@ -117,7 +117,7 @@ func TestHeaderString(t *testing.T) {
 	header.Add("X-Y", "y1")
 	req := newRequest("", header, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -131,13 +131,13 @@ func TestHeaderString(t *testing.T) {
 func TestHeaderNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"header:'X-A'"`
-			B int32     `api:"header:'X-B'"`
-			C *[]uint16 `api:"header:'X-C'; required:true"`
-			D *float32  `api:"header:'X-D'"`
+			A []int     `header:"X-A"`
+			B int32     `header:"X-B"`
+			C *[]uint16 `header:"X-C,required"`
+			D *float32  `header:"X-D"`
 		}
-		Y bool   `api:"header:'X-Y'; required:true"`
-		Z *int64 `api:"header:'X-Z'"`
+		Y bool   `header:"X-Y,required"`
+		Z *int64 `header:"X-Z"`
 	}
 	header := make(http.Header)
 	header.Add("X-A", "11")
@@ -150,7 +150,7 @@ func TestHeaderNum(t *testing.T) {
 	header.Add("X-Y", "true")
 	req := newRequest("", header, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -164,13 +164,13 @@ func TestHeaderNum(t *testing.T) {
 func TestCookieString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"cookie:'a'"`
-			B string    `api:"cookie:'b'"`
-			C *[]string `api:"cookie:'c'; required:true"`
-			D *string   `api:"cookie:'d'"`
+			A []string  `cookie:"a"`
+			B string    `cookie:"b"`
+			C *[]string `cookie:"c,required"`
+			D *string   `cookie:"d"`
 		}
-		Y string  `api:"cookie:'y'; required:true"`
-		Z *string `api:"cookie:'z'"`
+		Y string  `cookie:"y,required"`
+		Z *string `cookie:"z"`
 	}
 	cookies := []*http.Cookie{
 		{Name: "a", Value: "a1"},
@@ -184,7 +184,7 @@ func TestCookieString(t *testing.T) {
 	}
 	req := newRequest("", nil, cookies, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -198,13 +198,13 @@ func TestCookieString(t *testing.T) {
 func TestCookieNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"cookie:'a'"`
-			B int32     `api:"cookie:'b'"`
-			C *[]uint16 `api:"cookie:'c'; required:true"`
-			D *float32  `api:"cookie:'d'"`
+			A []int     `cookie:"a"`
+			B int32     `cookie:"b"`
+			C *[]uint16 `cookie:"c,required"`
+			D *float32  `cookie:"d"`
 		}
-		Y bool   `api:"cookie:'y'; required:true"`
-		Z *int64 `api:"cookie:'z'"`
+		Y bool   `cookie:"y,required"`
+		Z *int64 `cookie:"z"`
 	}
 	cookies := []*http.Cookie{
 		{Name: "a", Value: "11"},
@@ -218,7 +218,7 @@ func TestCookieNum(t *testing.T) {
 	}
 	req := newRequest("", nil, cookies, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -232,13 +232,13 @@ func TestCookieNum(t *testing.T) {
 func TestFormString(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"body:'a'"`
-			B string    `api:"body:'b'"`
-			C *[]string `api:"body:'c'; required:true"`
-			D *string   `api:"body:'d'"`
+			A []string  `form:"a"`
+			B string    `form:"b"`
+			C *[]string `form:"c,required"`
+			D *string   `form:"d"`
 		}
-		Y string  `api:"body:'y'; required:true"`
-		Z *string `api:"body:'z'"`
+		Y string  `form:"y,required"`
+		Z *string `form:"z"`
 	}
 	values := make(url.Values)
 	values.Add("a", "a1")
@@ -259,7 +259,7 @@ func TestFormString(t *testing.T) {
 		header.Set("Content-Type", contentType)
 		req := newRequest("", header, nil, bodyReader)
 		recv := new(Recv)
-		binder := binding.New("api")
+		binder := binding.New(nil)
 		err := binder.BindAndValidate(recv, req, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -274,13 +274,13 @@ func TestFormString(t *testing.T) {
 func TestFormNum(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []int     `api:"body:'a'"`
-			B int32     `api:"body:'b'"`
-			C *[]uint16 `api:"body:'c'; required:true"`
-			D *float32  `api:"body:'d'"`
+			A []int     `form:"a"`
+			B int32     `form:"b"`
+			C *[]uint16 `form:"c,required"`
+			D *float32  `form:"d"`
 		}
-		Y bool   `api:"body:'y'; required:true"`
-		Z *int64 `api:"body:'z'"`
+		Y bool   `form:"y,required"`
+		Z *int64 `form:"z"`
 	}
 	values := make(url.Values)
 	values.Add("a", "11")
@@ -301,7 +301,7 @@ func TestFormNum(t *testing.T) {
 		header.Set("Content-Type", contentType)
 		req := newRequest("", header, nil, bodyReader)
 		recv := new(Recv)
-		binder := binding.New("api")
+		binder := binding.New(nil)
 		err := binder.BindAndValidate(recv, req, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, []int{11, 12}, (**recv.X).A)
@@ -316,13 +316,13 @@ func TestFormNum(t *testing.T) {
 func TestJSON(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"body:'a'"`
-			B int32     `api:""`
-			C *[]uint16 `api:"required:true"`
-			D *float32  `api:"body:'d'"`
+			A []string  `json:"a"`
+			B int32     `json:""`
+			C *[]uint16 `json:",required"`
+			D *float32  `json:"d"`
 		}
-		Y string `api:"body:'y'; required:true"`
-		Z *int64 `api:""`
+		Y string `json:"y,required"`
+		Z *int64
 	}
 
 	bodyReader := strings.NewReader(`{
@@ -332,35 +332,36 @@ func TestJSON(t *testing.T) {
 			"C": [31,32],
 			"d": 41
 		},
-		"y": "y1"
+		"Z": 6
 	}`)
 
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 	req := newRequest("", header, nil, bodyReader)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
+	assert.Equal(t, "missing required parameter", err.Error())
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
 	assert.Equal(t, int32(21), (**recv.X).B)
 	assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
 	assert.Equal(t, float32(41), *(**recv.X).D)
-	assert.Equal(t, "y1", recv.Y)
-	assert.Equal(t, (*int64)(nil), recv.Z)
+	assert.Equal(t, "", recv.Y)
+	assert.Equal(t, (int64)(6), *recv.Z)
 }
 
 func BenchmarkBindJSON(b *testing.B) {
 	type Recv struct {
 		X **struct {
-			A []string `api:"body:'a'"`
+			A []string `form:"a"`
 			B int32
 			C *[]uint16
-			D *float32 `api:"body:'d'"`
+			D *float32 `form:"d"`
 		}
-		Y string `api:"body:'y'"`
+		Y string `form:"y"`
 	}
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 	test := func() {
@@ -455,18 +456,18 @@ func (testPathParams) Get(name string) (string, bool) {
 func TestPath(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:"path:'a'"`
-			B int32     `api:"path:'b'"`
-			C *[]uint16 `api:"path:'c'; required:true"`
-			D *float32  `api:"path:'d'"`
+			A []string  `path:"a"`
+			B int32     `path:"b"`
+			C *[]uint16 `path:"c,required"`
+			D *float32  `path:"d"`
 		}
-		Y string `api:"path:'y'; required:true"`
+		Y string `path:"y,required"`
 		Z *int64
 	}
 
 	req := newRequest("", nil, nil, nil)
 	recv := new(Recv)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, new(testPathParams))
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a1"}, (**recv.X).A)
@@ -480,12 +481,12 @@ func TestPath(t *testing.T) {
 func TestAuto(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string  `api:""`
-			B int32     `api:""`
-			C *[]uint16 `api:"required:true"`
+			A []string
+			B int32
+			C *[]uint16 `vd:"$!=nil"`
 			D *float32
 		}
-		Y string `api:"required:true"`
+		Y string `vd:"$!=''"`
 		Z *int64
 	}
 	query := make(url.Values)
@@ -509,7 +510,7 @@ func TestAuto(t *testing.T) {
 		header.Set("Content-Type", contentType)
 		req := newRequest("http://localhost/?"+query.Encode(), header, nil, bodyReader)
 		recv := new(Recv)
-		binder := binding.New("api").SetLevel(binding.Any)
+		binder := binding.New(nil)
 		err := binder.BindAndValidate(recv, req, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)

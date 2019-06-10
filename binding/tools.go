@@ -11,6 +11,9 @@ import (
 )
 
 func copyBody(req *http.Request) ([]byte, error) {
+	if req.Body == nil {
+		return nil, nil
+	}
 	b, err := ioutil.ReadAll(req.Body)
 	req.Body.Close()
 	if err != nil {

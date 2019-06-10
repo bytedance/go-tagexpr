@@ -20,22 +20,22 @@ import (
 
 func Example() {
 	type InfoRequest struct {
-		Name          string   `api:"path:'name'"`
-		Year          []int    `api:"query:'year'"`
-		Email         *string  `api:"body:'email'; @:email($)"`
-		Friendly      bool     `api:"body:'friendly'"`
-		Pie           float32  `api:"body:'pie'; required:true"`
-		Hobby         []string `api:"body:'hobby'"`
-		BodyNotFound  *int     `api:"body:'xxx'"`
-		Authorization string   `api:"header:'Authorization'; required:true; @:$=='Basic 123456'"`
-		SessionID     string   `api:"cookie:'sessionid'; required:true"`
+		Name          string   `path:"name"`
+		Year          []int    `query:"year"`
+		Email         *string  `json:"email" vd:"email($)"`
+		Friendly      bool     `json:"friendly"`
+		Pie           float32  `json:"pie,required"`
+		Hobby         []string `json:",required"`
+		BodyNotFound  *int     `json:"BodyNotFound"`
+		Authorization string   `header:"Authorization,required" vd:"$=='Basic 123456'"`
+		SessionID     string   `cookie:"sessionid,required"`
 		AutoBody      string
 		AutoQuery     string
 		AutoNotFound  *string
 	}
 
 	args := new(InfoRequest)
-	binder := binding.New("api")
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(args, requestExample(), new(testPathParams))
 
 	fmt.Println("bind and validate result:")
@@ -56,7 +56,7 @@ func Example() {
 	// Cookie: sessionid=987654
 	//
 	// 83
-	// {"AutoBody":"autobody_test","email":"henrylee2cn@gmail.com","friendly":true,"hobby":["Coding","Mountain climbing"],"pie":3.1415926}
+	// {"AutoBody":"autobody_test","Hobby":["Coding","Mountain climbing"],"email":"henrylee2cn@gmail.com","friendly":true,"pie":3.1415926}
 	// 0
 	//
 	// bind and validate result:
@@ -68,9 +68,9 @@ func Example() {
 	// 		2018,
 	// 		2019
 	// 	],
-	// 	"Email": "henrylee2cn@gmail.com",
-	// 	"Friendly": true,
-	// 	"Pie": 3.1415925,
+	// 	"email": "henrylee2cn@gmail.com",
+	// 	"friendly": true,
+	// 	"pie": 3.1415925,
 	// 	"Hobby": [
 	// 		"Coding",
 	// 		"Mountain climbing"
@@ -86,32 +86,23 @@ func Example() {
 ...
 ```
 
-## Position
+## Syntax
 
 The parameter position in HTTP request:
 
-|expression|description|
-|---------------|-----------|
-|`path:'$name'`|URL path parameter
-|`query:'$name'`|URL query parameter
-|`body:'$name'`|The field in body, support:<br>`application/json`,<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
-|`header:'$name'`|Header parameter
-|`cookie:'$name'`|Cookie parameter
+|expression|renameable|description|
+|----------|----------|-----------|
+|`path:"$name"`|Yes|URL path parameter
+|`query:"$name"`|Yes|URL query parameter
+|`header:"$name"`|Yes|Header parameter
+|`cookie:"$name"`|Yes|Cookie parameter
+|`form:"$name"`|Yes|The field in body, support:<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
+|`json:"$name"`|No|The field in body, support:<br>`application/json`
+|`protobuf:"$name"`|No|The field in body, support:<br>`application/x-protobuf`
 
 **NOTE:**
 
-- `'$name'` is variable placeholder
-- If `'$name'` is empty, use the name of field
-- If no position is tagged, use `body` first, followed by `query`
-- Expression `required:true` indicates that the parameter is required
-
-
-## Level
-
-The level of handling tags:
-
-|level|default|description|
-|-----|-------|-----------|
-|OnlyFirst|No|Handle only the first level fields
-|FirstAndTagged|Yes|Handle the first level fields and all the tagged fields|
-|Any|No|Handle any level fields|
+- `"$name"` is variable placeholder
+- If `"$name"` is empty, use the name of field
+- Expression `$tagname:"$name,required"` indicates that the parameter is required
+- If no position is tagged, binding from body first, followed by URL query
