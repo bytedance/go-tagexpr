@@ -101,11 +101,12 @@ func readOneExpr(tag *string) (string, error) {
 	var patch int
 	for _, v := range a {
 		idx += len(v)
-		if (strings.Count(v, "'")+patch)%2 == 0 {
+		count := strings.Count(v, "'")
+		if (count+patch)%2 == 0 {
 			*tag = s[idx+1:]
 			return s[:idx], nil
 		}
-		if strings.Contains(v, "'") {
+		if count > 0 {
 			patch++
 		}
 	}
