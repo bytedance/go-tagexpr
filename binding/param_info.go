@@ -101,19 +101,8 @@ func (p *paramInfo) bindCookie(expr *tagexpr.TagExpr, cookies []*http.Cookie) er
 	return p.bindStringSlice(expr, r)
 }
 
-func (p *paramInfo) bindBody(expr *tagexpr.TagExpr, bodyCodec uint8, postForm url.Values, bodyBytes []byte) (bool, error) {
-	switch bodyCodec {
-	case formBody:
-		return p.bindMapStrings(expr, postForm)
-	case jsonBody:
-		return p.bindJSON(expr, bodyBytes)
-	}
-	return false, p.contentTypeError
-}
-
-func (p *paramInfo) bindJSON(expr *tagexpr.TagExpr, bodyBytes []byte) (bool, error) {
-	r := gjson.Parse(goutil.BytesToString(bodyBytes))
-	r = r.Get(p.namePath)
+func (p *paramInfo) bindJSON(expr *tagexpr.TagExpr, bodyString string) (bool, error) {
+	r := gjson.Get(bodyString, p.namePath)
 	if !r.Exists() {
 		if p.required {
 			return false, p.requiredError

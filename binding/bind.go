@@ -3,11 +3,11 @@ package binding
 import (
 	"net/http"
 	"reflect"
+	"sync"
 	_ "unsafe"
 
 	"github.com/bytedance/go-tagexpr"
 	"github.com/bytedance/go-tagexpr/validator"
-	"github.com/henrylee2cn/goutil"
 	"github.com/henrylee2cn/goutil/tpack"
 )
 
@@ -27,7 +27,8 @@ const (
 type Binding struct {
 	level          Level
 	vd             *validator.Validator
-	recvs          goutil.Map
+	recvs          map[int32]*receiver
+	lock           sync.RWMutex
 	bindErrFactory func(failField, msg string) error
 }
 
@@ -40,7 +41,7 @@ func New(tagName string) *Binding {
 	}
 	b := &Binding{
 		vd:    validator.New(tagName),
-		recvs: goutil.AtomicMap(),
+		recvs: make(map[int32]*receiver, 1024),
 	}
 	return b.SetLevel(FirstAndTagged).SetErrorFactory(nil, nil)
 }
@@ -124,16 +125,18 @@ func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error
 
 func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	runtimeTypeID := tpack.From(value).RuntimeTypeID()
-	i, ok := b.recvs.Load(runtimeTypeID)
+	b.lock.RLock()
+	recv, ok := b.recvs[runtimeTypeID]
+	b.lock.RUnlock()
 	if ok {
-		return i.(*receiver), nil
+		return recv, nil
 	}
 
 	expr, err := b.vd.VM().Run(reflect.New(value.Type()).Elem())
 	if err != nil {
 		return nil, err
 	}
-	var recv = &receiver{
+	recv = &receiver{
 		params: make([]*paramInfo, 0, 16),
 	}
 	var errExprSelector tagexpr.ExprSelector
@@ -239,7 +242,10 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 
 	recv.initParams()
 
-	b.recvs.Store(runtimeTypeID, recv)
+	b.lock.Lock()
+	b.recvs[runtimeTypeID] = recv
+	b.lock.Unlock()
+
 	return recv, nil
 }
 
@@ -256,7 +262,7 @@ func (b *Binding) bind(value reflect.Value, req *http.Request, pathParams PathPa
 
 	bodyCodec := recv.getBodyCodec(req)
 
-	bodyBytes, err := recv.getBodyBytes(req, bodyCodec == jsonBody)
+	bodyBytes, bodyString, err := recv.getBody(req, bodyCodec == jsonBody)
 	if err != nil {
 		return false, err
 	}
@@ -280,12 +286,24 @@ func (b *Binding) bind(value reflect.Value, req *http.Request, pathParams PathPa
 		case cookie:
 			err = param.bindCookie(expr, cookies)
 		case body:
-			_, err = param.bindBody(expr, bodyCodec, postForm, bodyBytes)
+			switch bodyCodec {
+			case formBody:
+				_, err = param.bindMapStrings(expr, postForm)
+			case jsonBody:
+				_, err = param.bindJSON(expr, bodyString)
+			default:
+				err = param.contentTypeError
+			}
 		case raw_body:
 			err = param.bindRawBody(expr, bodyBytes)
 		default:
 			var found bool
-			found, err = param.bindBody(expr, bodyCodec, postForm, bodyBytes)
+			switch bodyCodec {
+			case formBody:
+				found, err = param.bindMapStrings(expr, postForm)
+			case jsonBody:
+				found, err = param.bindJSON(expr, bodyString)
+			}
 			if !found {
 				_, err = param.bindQuery(expr, queryValues)
 			}

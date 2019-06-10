@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bytedance/go-tagexpr"
+	"github.com/henrylee2cn/goutil"
 )
 
 const (
@@ -69,11 +70,15 @@ func (r *receiver) getBodyCodec(req *http.Request) uint8 {
 	}
 }
 
-func (r *receiver) getBodyBytes(req *http.Request, must bool) ([]byte, error) {
+func (r *receiver) getBody(req *http.Request, must bool) ([]byte, string, error) {
 	if must || r.hasRawBody {
-		return copyBody(req)
+		bodyBytes, err := copyBody(req)
+		if err == nil {
+			return bodyBytes, goutil.BytesToString(bodyBytes), nil
+		}
+		return bodyBytes, "", nil
 	}
-	return nil, nil
+	return nil, "", nil
 }
 
 const (

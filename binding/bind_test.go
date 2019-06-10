@@ -2,6 +2,7 @@ package binding_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -347,6 +348,87 @@ func TestJSON(t *testing.T) {
 	assert.Equal(t, float32(41), *(**recv.X).D)
 	assert.Equal(t, "y1", recv.Y)
 	assert.Equal(t, (*int64)(nil), recv.Z)
+}
+
+func BenchmarkBindJSON(b *testing.B) {
+	type Recv struct {
+		X **struct {
+			A []string `api:"body:'a'"`
+			B int32
+			C *[]uint16
+			D *float32 `api:"body:'d'"`
+		}
+		Y string `api:"body:'y'"`
+	}
+	binder := binding.New("api")
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	test := func() {
+		bodyReader := strings.NewReader(`{
+		"X": {
+			"a": ["a1","a2"],
+			"B": 21,
+			"C": [31,32],
+			"d": 41
+		},
+		"y": "y1"
+	}`)
+		req := newRequest("", header, nil, bodyReader)
+		recv := new(Recv)
+		err := binder.Bind(recv, req, nil)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+	test()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		test()
+	}
+}
+
+func BenchmarkStdJSON(b *testing.B) {
+	type Recv struct {
+		X **struct {
+			A []string `json:"a"`
+			B int32
+			C *[]uint16
+			D *float32 `json:"d"`
+		}
+		Y string `json:"y"`
+	}
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		bodyReader := strings.NewReader(`{
+			"X": {
+				"a": ["a1","a2"],
+				"B": 21,
+				"C": [31,32],
+				"d": 41
+			},
+			"y": "y1"
+		}`)
+
+		req := newRequest("", header, nil, bodyReader)
+		recv := new(Recv)
+		body, err := ioutil.ReadAll(req.Body)
+		req.Body.Close()
+		if err != nil {
+			b.Fatal(err)
+		}
+		err = json.Unmarshal(body, recv)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
 }
 
 type testPathParams struct{}

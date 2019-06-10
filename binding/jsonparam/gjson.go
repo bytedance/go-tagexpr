@@ -28,17 +28,23 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/henrylee2cn/goutil/tpack"
 	"github.com/tidwall/gjson"
 )
 
 var fieldsmu sync.RWMutex
-var fields = make(map[string]map[string]int)
+var fields = make(map[int32]map[string]int)
+
+func init() {
+	gjson.DisableModifiers = true
+}
 
 // Assign unmarshal
 func Assign(jsval gjson.Result, goval reflect.Value) {
 	if jsval.Type == gjson.Null {
 		return
 	}
+	t := goval.Type()
 	switch goval.Kind() {
 	default:
 	case reflect.Ptr:
@@ -47,19 +53,21 @@ func Assign(jsval gjson.Result, goval reflect.Value) {
 			Assign(jsval, newval.Elem())
 			goval.Elem().Set(newval.Elem())
 		} else {
-			newval := reflect.New(goval.Type().Elem())
+			newval := reflect.New(t.Elem())
 			Assign(jsval, newval.Elem())
 			goval.Set(newval)
 		}
 	case reflect.Struct:
+		runtimeTypeID := tpack.From(goval).RuntimeTypeID()
 		fieldsmu.RLock()
-		sf := fields[goval.Type().String()]
+		sf := fields[runtimeTypeID]
 		fieldsmu.RUnlock()
 		if sf == nil {
 			fieldsmu.Lock()
 			sf = make(map[string]int)
-			for i := 0; i < goval.Type().NumField(); i++ {
-				f := goval.Type().Field(i)
+			numField := t.NumField()
+			for i := 0; i < numField; i++ {
+				f := t.Field(i)
 				tag := strings.Split(f.Tag.Get("json"), ",")[0]
 				if tag != "-" {
 					if tag != "" {
@@ -70,7 +78,7 @@ func Assign(jsval gjson.Result, goval reflect.Value) {
 					}
 				}
 			}
-			fields[goval.Type().String()] = sf
+			fields[runtimeTypeID] = sf
 			fieldsmu.Unlock()
 		}
 		jsval.ForEach(func(key, value gjson.Result) bool {
@@ -83,12 +91,12 @@ func Assign(jsval gjson.Result, goval reflect.Value) {
 			return true
 		})
 	case reflect.Slice:
-		if goval.Type().Elem().Kind() == reflect.Uint8 && jsval.Type == gjson.String {
+		if t.Elem().Kind() == reflect.Uint8 && jsval.Type == gjson.String {
 			data, _ := base64.StdEncoding.DecodeString(jsval.String())
 			goval.Set(reflect.ValueOf(data))
 		} else {
 			jsvals := jsval.Array()
-			slice := reflect.MakeSlice(goval.Type(), len(jsvals), len(jsvals))
+			slice := reflect.MakeSlice(t, len(jsvals), len(jsvals))
 			for i := 0; i < len(jsvals); i++ {
 				Assign(jsvals[i], slice.Index(i))
 			}
@@ -105,7 +113,7 @@ func Assign(jsval gjson.Result, goval reflect.Value) {
 			return true
 		})
 	case reflect.Map:
-		if goval.Type().Key().Kind() == reflect.String && goval.Type().Elem().Kind() == reflect.Interface {
+		if t.Key().Kind() == reflect.String && t.Elem().Kind() == reflect.Interface {
 			goval.Set(reflect.ValueOf(jsval.Value()))
 		}
 	case reflect.Interface:
@@ -121,7 +129,7 @@ func Assign(jsval gjson.Result, goval reflect.Value) {
 	case reflect.String:
 		goval.SetString(jsval.String())
 	}
-	if len(goval.Type().PkgPath()) > 0 {
+	if len(t.PkgPath()) > 0 {
 		v := goval.Addr()
 		if v.Type().NumMethod() > 0 {
 			if u, ok := v.Interface().(json.Unmarshaler); ok {
