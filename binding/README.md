@@ -92,17 +92,17 @@ The parameter position in HTTP request:
 
 |expression|renameable|description|
 |----------|----------|-----------|
-|`path:"$name"`|Yes|URL path parameter
-|`query:"$name"`|Yes|URL query parameter
-|`header:"$name"`|Yes|Header parameter
-|`cookie:"$name"`|Yes|Cookie parameter
-|`form:"$name"`|Yes|The field in body, support:<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
-|`json:"$name"`|No|The field in body, support:<br>`application/json`
-|`protobuf:"$name"`|No|The field in body, support:<br>`application/x-protobuf`
+|`path:"$name"` or `path:"$name,required"`|Yes|URL path parameter
+|`query:"$name"` or `query:"$name,required"`|Yes|URL query parameter
+|`header:"$name"` or `header:"$name,required"`|Yes|Header parameter
+|`cookie:"$name"` or `cookie:"$name,required"`|Yes|Cookie parameter
+|`form:"$name"` or `form:"$name,required"`|Yes|The field in body, support:<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
+|`json:"$name"` or `json:"$name,required"`|No|The field in body, support:<br>`application/json`
+|`protobuf:"...(raw syntax)"`|No|The field in body, support:<br>`application/x-protobuf`
 
 **NOTE:**
 
 - `"$name"` is variable placeholder
 - If `"$name"` is empty, use the name of field
-- Expression `$tagname:"$name,required"` indicates that the parameter is required
+- Expression `required` indicates that the parameter is required
 - If no position is tagged, binding from body first, followed by URL query

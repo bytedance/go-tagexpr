@@ -342,7 +342,7 @@ func TestJSON(t *testing.T) {
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.NotNil(t, err)
-	assert.Equal(t, "missing required parameter", err.Error())
+	assert.Equal(t, &binding.Error{ErrType: "binding failed", FailField: "y", Msg: "missing required parameter"}, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
 	assert.Equal(t, int32(21), (**recv.X).B)
 	assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
@@ -354,12 +354,12 @@ func TestJSON(t *testing.T) {
 func BenchmarkBindJSON(b *testing.B) {
 	type Recv struct {
 		X **struct {
-			A []string `form:"a"`
+			A []string `json:"a"`
 			B int32
 			C *[]uint16
-			D *float32 `form:"d"`
+			D *float32 `json:"d"`
 		}
-		Y string `form:"y"`
+		Y string `json:"y"`
 	}
 	binder := binding.New(nil)
 	header := make(http.Header)
