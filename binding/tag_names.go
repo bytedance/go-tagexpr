@@ -6,6 +6,19 @@ import (
 	"strings"
 )
 
+const (
+	tagRequired         = "required"
+	defaultTagPath      = "path"
+	defaultTagQuery     = "query"
+	defaultTagHeader    = "header"
+	defaultTagCookie    = "cookie"
+	defaultTagRawbody   = "rawbody"
+	defaultTagForm      = "form"
+	defaultTagValidator = "vd"
+	tagProtobuf         = "protobuf"
+	tagJSON             = "json"
+)
+
 // TagNames struct tag naming
 type TagNames struct {
 	// PathParam use 'path' by default when empty
@@ -31,32 +44,24 @@ type TagNames struct {
 }
 
 func (t *TagNames) init() {
-	setDefault(&t.PathParam, "path")
-	setDefault(&t.Query, "query")
-	setDefault(&t.Header, "header")
-	setDefault(&t.Cookie, "cookie")
-	setDefault(&t.RawBody, "raw_body")
-	setDefault(&t.FormBody, "form")
-	setDefault(&t.Validator, "vd")
-	setDefault(&t.protobufBody, "protobuf")
-	setDefault(&t.jsonBody, "json")
 	t.list = []string{
-		t.PathParam,
-		t.Query,
-		t.Header,
-		t.Cookie,
-		t.RawBody,
-		t.FormBody,
-		t.Validator,
-		t.protobufBody,
-		t.jsonBody,
+		getAndSet(&t.PathParam, defaultTagPath),
+		getAndSet(&t.Query, defaultTagQuery),
+		getAndSet(&t.Header, defaultTagHeader),
+		getAndSet(&t.Cookie, defaultTagCookie),
+		getAndSet(&t.RawBody, defaultTagRawbody),
+		getAndSet(&t.FormBody, defaultTagForm),
+		getAndSet(&t.Validator, defaultTagValidator),
+		getAndSet(&t.protobufBody, tagProtobuf),
+		getAndSet(&t.jsonBody, tagJSON),
 	}
 }
 
-func setDefault(s *string, def string) {
+func getAndSet(s *string, def string) string {
 	if *s == "" {
 		*s = def
 	}
+	return *s
 }
 
 func (t *TagNames) parse(field reflect.StructField) tagKVs {
@@ -74,7 +79,8 @@ func (t *TagNames) parse(field reflect.StructField) tagKVs {
 		value = strings.Replace(strings.TrimSpace(value), " ", "", -1)
 		value = strings.Replace(value, "\t", "", -1)
 		if name == t.RawBody {
-			if _, required := defaultSplitTag(value); required {
+			paramName, required := defaultSplitTag(value)
+			if required || paramName == tagRequired {
 				value = "," + tagRequired
 			}
 		} else if value == "" {
@@ -93,8 +99,6 @@ type tagKV struct {
 	value string
 	pos   int
 }
-
-const tagRequired = "required"
 
 func (t *tagKV) defaultSplit() (paramName string, required bool) {
 	return defaultSplitTag(t.value)

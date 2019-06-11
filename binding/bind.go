@@ -77,6 +77,81 @@ func (b *Binding) Validate(value interface{}) error {
 	return b.vd.Validate(value)
 }
 
+func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams PathParams) (value reflect.Value, hasVd bool, err error) {
+	value, err = b.structValueOf(structPointer)
+	if err != nil {
+		return
+	}
+	recv, err := b.getObjOrPrepare(value)
+	if err != nil {
+		return
+	}
+
+	expr, err := b.vd.VM().Run(value)
+	if err != nil {
+		return
+	}
+
+	bodyCodec := recv.getBodyCodec(req)
+
+	bodyBytes, bodyString, err := recv.getBody(req)
+	if err != nil {
+		return
+	}
+	err = recv.bindOtherBody(structPointer, value, bodyCodec, bodyBytes)
+	if err != nil {
+		return
+	}
+
+	postForm, err := recv.getPostForm(req, bodyCodec)
+	if err != nil {
+		return
+	}
+
+	queryValues := recv.getQuery(req)
+	cookies := recv.getCookies(req)
+
+	for _, param := range recv.params {
+		switch param.in {
+		case query:
+			_, err = param.bindQuery(expr, queryValues)
+		case path:
+			_, err = param.bindPath(expr, pathParams)
+		case header:
+			_, err = param.bindHeader(expr, req.Header)
+		case cookie:
+			err = param.bindCookie(expr, cookies)
+		case rawBody:
+			err = param.bindRawBody(expr, bodyBytes)
+		case otherBody:
+			switch bodyCodec {
+			case bodyForm:
+				_, err = param.bindMapStrings(expr, postForm)
+			case bodyJSON:
+				err = param.requireJSON(expr, bodyString)
+			case bodyProtobuf:
+			default:
+				err = param.contentTypeError
+			}
+		default:
+			var found bool
+			if bodyCodec == bodyForm {
+				found, err = param.bindMapStrings(expr, postForm)
+			}
+			if !found {
+				if queryValues == nil {
+					queryValues = req.URL.Query()
+				}
+				_, err = param.bindQuery(expr, queryValues)
+			}
+		}
+		if err != nil {
+			return value, recv.hasVd, err
+		}
+	}
+	return value, recv.hasVd, nil
+}
+
 func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error) {
 	v, ok := structPointer.(reflect.Value)
 	if !ok {
@@ -175,79 +250,4 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 	b.lock.Unlock()
 
 	return recv, nil
-}
-
-func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams PathParams) (value reflect.Value, hasVd bool, err error) {
-	value, err = b.structValueOf(structPointer)
-	if err != nil {
-		return
-	}
-	recv, err := b.getObjOrPrepare(value)
-	if err != nil {
-		return
-	}
-
-	expr, err := b.vd.VM().Run(value)
-	if err != nil {
-		return
-	}
-
-	bodyCodec := recv.getBodyCodec(req)
-
-	bodyBytes, bodyString, err := recv.getBody(req)
-	if err != nil {
-		return
-	}
-	err = recv.bindOtherBody(structPointer, value, bodyCodec, bodyBytes)
-	if err != nil {
-		return
-	}
-
-	postForm, err := recv.getPostForm(req, bodyCodec)
-	if err != nil {
-		return
-	}
-
-	queryValues := recv.getQuery(req)
-	cookies := recv.getCookies(req)
-
-	for _, param := range recv.params {
-		switch param.in {
-		case query:
-			_, err = param.bindQuery(expr, queryValues)
-		case path:
-			_, err = param.bindPath(expr, pathParams)
-		case header:
-			_, err = param.bindHeader(expr, req.Header)
-		case cookie:
-			err = param.bindCookie(expr, cookies)
-		case rawBody:
-			err = param.bindRawBody(expr, bodyBytes)
-		case otherBody:
-			switch bodyCodec {
-			case bodyForm:
-				_, err = param.bindMapStrings(expr, postForm)
-			case bodyJSON:
-				err = param.requireJSON(expr, bodyString)
-			case bodyProtobuf:
-			default:
-				err = param.contentTypeError
-			}
-		default:
-			var found bool
-			if bodyCodec == bodyForm {
-				found, err = param.bindMapStrings(expr, postForm)
-			}
-			if !found {
-				if queryValues == nil {
-					queryValues = req.URL.Query()
-				}
-				_, err = param.bindQuery(expr, queryValues)
-			}
-		}
-		if err != nil {
-			return value, recv.hasVd, err
-		}
-	}
-	return value, recv.hasVd, nil
 }

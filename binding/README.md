@@ -97,6 +97,8 @@ The parameter position in HTTP request:
 |`header:"$name"` or `header:"$name,required"`|Yes|Header parameter
 |`cookie:"$name"` or `cookie:"$name,required"`|Yes|Cookie parameter
 |`form:"$name"` or `form:"$name,required"`|Yes|The field in body, support:<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`
+|`rawbody:""` or `rawbody:"required"`|Yes|The raw bytes of body
+|`vd:"...(tagexpr validator syntax)"`|Yes|The tagexpr expression of validator
 |`json:"$name"` or `json:"$name,required"`|No|The field in body, support:<br>`application/json`
 |`protobuf:"...(raw syntax)"`|No|The field in body, support:<br>`application/x-protobuf`
 
