@@ -121,12 +121,11 @@ func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, body
 }
 
 func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, checkOpt bool) error {
-	if info.required {
-		return nil
-	}
-	v, err := p.getField(expr, false)
-	if checkOpt && (err != nil || !v.IsValid()) {
-		return info.requiredError
+	if checkOpt && !info.required {
+		v, err := p.getField(expr, false)
+		if err != nil || !v.IsValid() {
+			return info.requiredError
+		}
 	}
 	return nil
 }
@@ -137,10 +136,10 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 		if !r.Exists() {
 			return info.requiredError
 		}
-	}
-	v, err := p.getField(expr, false)
-	if err != nil || !v.IsValid() {
-		return info.requiredError
+		v, err := p.getField(expr, false)
+		if err != nil || !v.IsValid() {
+			return info.requiredError
+		}
 	}
 	return nil
 }
