@@ -72,7 +72,7 @@ func (b *Binding) Bind(structPointer interface{}, req *http.Request, pathParams 
 	return err
 }
 
-// Validate validates whether the fields of v is valid.
+// Validate validates whether the fields of value is valid.
 func (b *Binding) Validate(value interface{}) error {
 	return b.vd.Validate(value)
 }
