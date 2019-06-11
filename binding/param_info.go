@@ -12,40 +12,45 @@ import (
 )
 
 type paramInfo struct {
-	fieldSelector string
-	structField   reflect.StructField
-	namePath      string
-	in            uint8
-	name          string
-	required      bool
-
+	fieldSelector  string
+	structField    reflect.StructField
+	tagInfos       []*tagInfo
 	bindErrFactory func(failField, msg string) error
-
-	requiredError, typeError, cannotError, contentTypeError error
 }
 
-func (p *paramInfo) getField(expr *tagexpr.TagExpr) (reflect.Value, error) {
+func (p *paramInfo) name(paramIn in) string {
+	var name string
+	for _, info := range p.tagInfos {
+		if info.paramIn == json {
+			name = info.paramName
+			break
+		}
+	}
+	if name == "" {
+		return p.structField.Name
+	}
+	return name
+}
+
+func (p *paramInfo) getField(expr *tagexpr.TagExpr, initZero bool) (reflect.Value, error) {
 	fh, found := expr.Field(p.fieldSelector)
 	if found {
-		v := fh.Value(true)
+		v := fh.Value(initZero)
 		if v.IsValid() {
 			return v, nil
 		}
 	}
-	if p.required {
-		return reflect.Value{}, p.cannotError
-	}
 	return reflect.Value{}, nil
 }
 
-func (p *paramInfo) bindRawBody(expr *tagexpr.TagExpr, bodyBytes []byte) error {
+func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes []byte) error {
 	if len(bodyBytes) == 0 {
-		if p.required {
-			return p.requiredError
+		if info.required {
+			return info.requiredError
 		}
 		return nil
 	}
-	v, err := p.getField(expr)
+	v, err := p.getField(expr, true)
 	if err != nil || !v.IsValid() {
 		return err
 	}
@@ -53,7 +58,7 @@ func (p *paramInfo) bindRawBody(expr *tagexpr.TagExpr, bodyBytes []byte) error {
 	switch v.Kind() {
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return p.typeError
+			return info.typeError
 		}
 		v.Set(reflect.ValueOf(bodyBytes))
 		return nil
@@ -61,75 +66,105 @@ func (p *paramInfo) bindRawBody(expr *tagexpr.TagExpr, bodyBytes []byte) error {
 		v.Set(reflect.ValueOf(goutil.BytesToString(bodyBytes)))
 		return nil
 	default:
-		return p.typeError
+		return info.typeError
 	}
 }
 
-func (p *paramInfo) bindPath(expr *tagexpr.TagExpr, pathParams PathParams) (bool, error) {
-	r, found := pathParams.Get(p.name)
+func (p *paramInfo) bindPath(info *tagInfo, expr *tagexpr.TagExpr, pathParams PathParams) (bool, error) {
+	r, found := pathParams.Get(info.paramName)
 	if !found {
-		if p.required {
-			return false, p.requiredError
+		if info.required {
+			return false, info.requiredError
 		}
 		return false, nil
 	}
-	return true, p.bindStringSlice(expr, []string{r})
+	return true, p.bindStringSlice(info, expr, []string{r})
 }
 
-func (p *paramInfo) bindQuery(expr *tagexpr.TagExpr, queryValues url.Values) (bool, error) {
-	return p.bindMapStrings(expr, queryValues)
+func (p *paramInfo) bindQuery(info *tagInfo, expr *tagexpr.TagExpr, queryValues url.Values) (bool, error) {
+	return p.bindMapStrings(info, expr, queryValues)
 }
 
-func (p *paramInfo) bindHeader(expr *tagexpr.TagExpr, header http.Header) (bool, error) {
-	return p.bindMapStrings(expr, header)
+func (p *paramInfo) bindHeader(info *tagInfo, expr *tagexpr.TagExpr, header http.Header) (bool, error) {
+	return p.bindMapStrings(info, expr, header)
 }
 
-func (p *paramInfo) bindCookie(expr *tagexpr.TagExpr, cookies []*http.Cookie) error {
+func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*http.Cookie) error {
 	var r []string
 	for _, c := range cookies {
-		if c.Name == p.name {
+		if c.Name == info.paramName {
 			r = append(r, c.Value)
 		}
 	}
 	if len(r) == 0 {
-		if p.required {
-			return p.requiredError
+		if info.required {
+			return info.requiredError
 		}
 		return nil
 	}
-	return p.bindStringSlice(expr, r)
+	return p.bindStringSlice(info, expr, r)
 }
 
-func (p *paramInfo) requireJSON(expr *tagexpr.TagExpr, bodyString string) error {
-	if p.required {
-		r := gjson.Get(bodyString, p.namePath)
-		if !r.Exists() {
-			return p.requiredError
-		}
+func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string, checkOpt bool) (bool, error) {
+	switch bodyCodec {
+	case bodyForm:
+		return p.bindMapStrings(info, expr, postForm)
+	case bodyJSON:
+		err := p.checkRequireJSON(info, expr, bodyString, checkOpt)
+		return err == nil, err
+	case bodyProtobuf:
+		err := p.checkRequireProtobuf(info, expr, checkOpt)
+		return err == nil, err
+	default:
+		return false, info.contentTypeError
+	}
+}
+
+func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, checkOpt bool) error {
+	if info.required {
+		return nil
+	}
+	v, err := p.getField(expr, false)
+	if checkOpt && (err != nil || !v.IsValid()) {
+		return info.requiredError
 	}
 	return nil
 }
 
-func (p *paramInfo) bindMapStrings(expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {
-	r, ok := values[p.name]
+func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) error {
+	if checkOpt || info.required {
+		r := gjson.Get(bodyString, info.namePath)
+		if !r.Exists() {
+			return info.requiredError
+		}
+	}
+	v, err := p.getField(expr, false)
+	if err != nil || !v.IsValid() {
+		return info.requiredError
+	}
+	return nil
+}
+
+func (p *paramInfo) bindMapStrings(info *tagInfo, expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {
+	r, ok := values[info.paramName]
 	if !ok || len(r) == 0 {
-		if p.required {
-			return false, p.requiredError
+		if info.required {
+			return false, info.requiredError
 		}
 		return false, nil
 	}
-	return true, p.bindStringSlice(expr, r)
+	return true, p.bindStringSlice(info, expr, r)
 }
 
-func (p *paramInfo) bindStringSlice(expr *tagexpr.TagExpr, a []string) error {
-	v, err := p.getField(expr)
+func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []string) error {
+	v, err := p.getField(expr, true)
 	if err != nil || !v.IsValid() {
 		return err
 	}
-	return p.setStringSlice(v, a)
+	return setStringSlice(info, v, a)
 }
 
-func (p *paramInfo) setStringSlice(v reflect.Value, a []string) error {
+func setStringSlice(info *tagInfo, v reflect.Value, a []string) error {
 	v = derefValue(v)
 	switch v.Kind() {
 	case reflect.String:
@@ -218,5 +253,5 @@ func (p *paramInfo) setStringSlice(v reflect.Value, a []string) error {
 		}
 	}
 
-	return p.typeError
+	return info.typeError
 }

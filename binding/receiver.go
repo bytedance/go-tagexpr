@@ -14,26 +14,44 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+type in uint8
+
 const (
-	auto uint8 = iota
-	query
+	auto in = iota
 	path
+	query
 	header
 	cookie
 	rawBody
 	form
-	otherBody
+	json
+	protobuf
+	maxIn
 )
 
+var allIn = []in{
+	auto,
+	path,
+	query,
+	header,
+	cookie,
+	rawBody,
+	form,
+	json,
+	protobuf,
+}
+
+type codec in
+
 const (
-	bodyUnsupport int8 = iota
-	bodyForm
-	bodyJSON
-	bodyProtobuf
+	bodyUnsupport = codec(0)
+	bodyForm      = codec(form)
+	bodyJSON      = codec(json)
+	bodyProtobuf  = codec(protobuf)
 )
 
 type receiver struct {
-	hasAuto, hasQuery, hasCookie, hasPath, hasForm, hasBody, hasVd bool
+	hasQuery, hasCookie, hasPath, hasBody, hasVd bool
 
 	params []*paramInfo
 }
@@ -54,16 +72,14 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(f
 		return p
 	}
 	p = new(paramInfo)
-	p.in = auto
 	p.fieldSelector = fieldSelector
 	p.structField = fh.StructField()
-	p.name = p.structField.Name
 	p.bindErrFactory = bindErrFactory
 	r.params = append(r.params, p)
 	return p
 }
 
-func (r *receiver) getBodyCodec(req *http.Request) int8 {
+func (r *receiver) getBodyCodec(req *http.Request) codec {
 	ct := req.Header.Get("Content-Type")
 	idx := strings.Index(ct, ";")
 	if idx != -1 {
@@ -92,7 +108,7 @@ func (r *receiver) getBody(req *http.Request) ([]byte, string, error) {
 	return nil, "", nil
 }
 
-func (r *receiver) bindOtherBody(structPointer interface{}, value reflect.Value, bodyCodec int8, bodyBytes []byte) error {
+func (r *receiver) prebindBody(structPointer interface{}, value reflect.Value, bodyCodec codec, bodyBytes []byte) error {
 	switch bodyCodec {
 	case bodyJSON:
 		jsonparam.Assign(gjson.Parse(goutil.BytesToString(bodyBytes)), value)
@@ -112,8 +128,8 @@ const (
 	defaultMaxMemory = 32 << 20 // 32 MB
 )
 
-func (r *receiver) getPostForm(req *http.Request, bodyCodec int8) (url.Values, error) {
-	if bodyCodec == bodyForm && (r.hasForm || r.hasBody) {
+func (r *receiver) getPostForm(req *http.Request, bodyCodec codec) (url.Values, error) {
+	if bodyCodec == bodyForm && (r.hasBody) {
 		if req.PostForm == nil {
 			req.ParseMultipartForm(defaultMaxMemory)
 		}
@@ -137,33 +153,38 @@ func (r *receiver) getCookies(req *http.Request) []*http.Cookie {
 }
 
 func (r *receiver) initParams() {
-	if !r.hasBody {
-		return
-	}
-	names := make(map[string]string, len(r.params))
+	names := make(map[string][maxIn]string, len(r.params))
 	for _, p := range r.params {
-		if !p.structField.Anonymous {
-			names[p.fieldSelector] = p.name
+		if p.structField.Anonymous {
+			continue
 		}
+		a := [maxIn]string{}
+		for _, paramIn := range allIn {
+			a[paramIn] = p.name(paramIn)
+		}
+		names[p.fieldSelector] = a
 	}
+
 	for _, p := range r.params {
 		paths, _ := tagexpr.FieldSelector(p.fieldSelector).Split()
-		var fs, namePath string
-		for _, s := range paths {
-			if fs == "" {
-				fs = s
-			} else {
-				fs = tagexpr.JoinFieldSelector(fs, s)
+		for _, info := range p.tagInfos {
+			var fs string
+			for _, s := range paths {
+				if fs == "" {
+					fs = s
+				} else {
+					fs = tagexpr.JoinFieldSelector(fs, s)
+				}
+				name := names[fs][info.paramIn]
+				if name != "" {
+					info.namePath = name + "."
+				}
 			}
-			name := names[fs]
-			if name != "" {
-				namePath = name + "."
-			}
+			info.namePath = info.namePath + p.name(info.paramIn)
+			info.requiredError = p.bindErrFactory(info.namePath, "missing required parameter")
+			info.typeError = p.bindErrFactory(info.namePath, "parameter type does not match binding data")
+			info.cannotError = p.bindErrFactory(info.namePath, "parameter cannot be bound")
+			info.contentTypeError = p.bindErrFactory(info.namePath, "does not support binding to the content type body")
 		}
-		p.namePath = namePath + p.name
-		p.requiredError = p.bindErrFactory(p.namePath, "missing required parameter")
-		p.typeError = p.bindErrFactory(p.namePath, "parameter type does not match binding data")
-		p.cannotError = p.bindErrFactory(p.namePath, "parameter cannot be bound")
-		p.contentTypeError = p.bindErrFactory(p.namePath, "does not support binding to the content type body")
 	}
 }

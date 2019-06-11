@@ -79,8 +79,8 @@ func (t *TagNames) parse(field reflect.StructField) tagKVs {
 		value = strings.Replace(strings.TrimSpace(value), " ", "", -1)
 		value = strings.Replace(value, "\t", "", -1)
 		if name == t.RawBody {
-			paramName, required := defaultSplitTag(value)
-			if required || paramName == tagRequired {
+			info := defaultSplitTag(value)
+			if info.required || info.paramName == tagRequired {
 				value = "," + tagRequired
 			}
 		} else if value == "" {
@@ -100,22 +100,32 @@ type tagKV struct {
 	pos   int
 }
 
-func (t *tagKV) defaultSplit() (paramName string, required bool) {
+type tagInfo struct {
+	paramIn   in
+	paramName string
+	required  bool
+	namePath  string
+
+	requiredError, typeError, cannotError, contentTypeError error
+}
+
+func (t *tagKV) defaultSplit() *tagInfo {
 	return defaultSplitTag(t.value)
 }
 
-func defaultSplitTag(value string) (paramName string, required bool) {
+func defaultSplitTag(value string) *tagInfo {
+	info := new(tagInfo)
 	for i, v := range strings.Split(value, ",") {
 		v = strings.TrimSpace(v)
 		if i == 0 {
-			paramName = v
+			info.paramName = v
 		} else {
 			if v == tagRequired {
-				required = true
+				info.required = true
 			}
 		}
 	}
-	return paramName, required
+	return info
 }
 
 type tagKVs []*tagKV

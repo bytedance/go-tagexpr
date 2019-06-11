@@ -98,7 +98,7 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 	if err != nil {
 		return
 	}
-	err = recv.bindOtherBody(structPointer, value, bodyCodec, bodyBytes)
+	err = recv.prebindBody(structPointer, value, bodyCodec, bodyBytes)
 	if err != nil {
 		return
 	}
@@ -112,41 +112,35 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 	cookies := recv.getCookies(req)
 
 	for _, param := range recv.params {
-		switch param.in {
-		case query:
-			_, err = param.bindQuery(expr, queryValues)
-		case path:
-			_, err = param.bindPath(expr, pathParams)
-		case header:
-			_, err = param.bindHeader(expr, req.Header)
-		case cookie:
-			err = param.bindCookie(expr, cookies)
-		case rawBody:
-			err = param.bindRawBody(expr, bodyBytes)
-		case otherBody:
-			switch bodyCodec {
-			case bodyForm:
-				_, err = param.bindMapStrings(expr, postForm)
-			case bodyJSON:
-				err = param.requireJSON(expr, bodyString)
-			case bodyProtobuf:
-			default:
-				err = param.contentTypeError
-			}
-		default:
-			var found bool
-			if bodyCodec == bodyForm {
-				found, err = param.bindMapStrings(expr, postForm)
-			}
-			if !found {
-				if queryValues == nil {
-					queryValues = req.URL.Query()
+		for _, info := range param.tagInfos {
+			switch info.paramIn {
+			case query:
+				_, err = param.bindQuery(info, expr, queryValues)
+			case path:
+				_, err = param.bindPath(info, expr, pathParams)
+			case header:
+				_, err = param.bindHeader(info, expr, req.Header)
+			case cookie:
+				err = param.bindCookie(info, expr, cookies)
+			case rawBody:
+				err = param.bindRawBody(info, expr, bodyBytes)
+			case form, json, protobuf:
+				if info.paramIn == in(bodyCodec) {
+					_, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, false)
 				}
-				_, err = param.bindQuery(expr, queryValues)
+			case auto:
+				var found bool
+				found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, true)
+				if !found || err != nil {
+					if queryValues == nil {
+						queryValues = req.URL.Query()
+					}
+					_, err = param.bindQuery(info, expr, queryValues)
+				}
 			}
-		}
-		if err != nil {
-			return value, recv.hasVd, err
+			if err != nil {
+				return value, recv.hasVd, err
+			}
 		}
 	}
 	return value, recv.hasVd, nil
@@ -196,8 +190,10 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 
 		tagKVs := b.tagNames.parse(fh.StructField())
 		p := recv.getOrAddParam(fh, b.bindErrFactory)
+		tagInfos := [maxIn]*tagInfo{}
 	L:
 		for _, tagKV := range tagKVs {
+			paramIn := auto
 			switch tagKV.name {
 			case b.tagNames.Validator:
 				recv.hasVd = true
@@ -205,36 +201,48 @@ func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
 
 			case b.tagNames.Query:
 				recv.hasQuery = true
-				p.in = query
+				paramIn = query
 			case b.tagNames.PathParam:
 				recv.hasPath = true
-				p.in = path
+				paramIn = path
 			case b.tagNames.Header:
-				p.in = header
+				paramIn = header
 			case b.tagNames.Cookie:
 				recv.hasCookie = true
-				p.in = cookie
+				paramIn = cookie
 			case b.tagNames.RawBody:
 				recv.hasBody = true
-				p.in = rawBody
+				paramIn = rawBody
 			case b.tagNames.FormBody:
-				recv.hasForm = true
-				p.in = form
-			case b.tagNames.protobufBody, b.tagNames.jsonBody:
 				recv.hasBody = true
-				p.in = otherBody
+				paramIn = form
+			case b.tagNames.protobufBody:
+				recv.hasBody = true
+				paramIn = protobuf
+			case b.tagNames.jsonBody:
+				recv.hasBody = true
+				paramIn = json
+
 			default:
 				continue L
 			}
-			p.name, p.required = tagKV.defaultSplit()
-			break L
+			tagInfos[paramIn] = tagKV.defaultSplit()
+		}
+		for i, info := range tagInfos {
+			if info != nil {
+				info.paramIn = in(i)
+				p.tagInfos = append(p.tagInfos, info)
+			}
+		}
+		if len(p.tagInfos) == 0 {
+			p.tagInfos = append(p.tagInfos, &tagInfo{
+				paramIn:   auto,
+				paramName: p.structField.Name,
+			})
+			recv.hasBody = true
 		}
 		if !recv.hasVd {
 			_, recv.hasVd = tagKVs.lookup(b.tagNames.Validator)
-		}
-		if p.in == auto {
-			recv.hasBody = true
-			recv.hasAuto = true
 		}
 		return true
 	})
