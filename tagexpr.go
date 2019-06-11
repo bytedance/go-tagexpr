@@ -65,7 +65,7 @@ type fieldVM struct {
 //  If no tagName is specified, no tag expression will be interpreted,
 //  but still can operate the various fields.
 func New(tagName ...string) *VM {
-	if len(tagName) > 0 {
+	if len(tagName) == 0 {
 		tagName = append(tagName, "")
 	}
 	return &VM{
