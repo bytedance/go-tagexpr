@@ -884,7 +884,11 @@ func safeIsNil(v reflect.Value) bool {
 }
 
 func uintptrElem(ptr uintptr) uintptr {
-	return *(*uintptr)(unsafe.Pointer(ptr))
+	p := (*uintptr)(unsafe.Pointer(ptr))
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 func derefType(t reflect.Type) reflect.Type {

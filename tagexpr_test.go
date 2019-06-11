@@ -680,3 +680,21 @@ func TestStruct3(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestNilField(t *testing.T) {
+	type P struct {
+		X **struct {
+			A *[]uint16 `tagexpr:"$"`
+		} `tagexpr:"$"`
+		Y **struct{} `tagexpr:"$"`
+	}
+	vm := New("tagexpr")
+	te := vm.MustRun(P{})
+	te.Range(func(es ExprSelector, eval func() interface{}) bool {
+		r := eval()
+		if r != nil {
+			t.Fatal(r)
+		}
+		return true
+	})
+}
