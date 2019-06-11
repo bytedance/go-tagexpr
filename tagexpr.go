@@ -60,10 +60,16 @@ type fieldVM struct {
 	mapOrSliceElemStructVM *structVM
 }
 
-// New creates a tag expression interpreter that uses @tagName as the tag name.
-func New(tagName string) *VM {
+// New creates a tag expression interpreter that uses tagName as the tag name.
+// NOTE:
+//  If no tagName is specified, no tag expression will be interpreted,
+//  but still can operate the various fields.
+func New(tagName ...string) *VM {
+	if len(tagName) > 0 {
+		tagName = append(tagName, "")
+	}
 	return &VM{
-		tagName:   tagName,
+		tagName:   tagName[0],
 		structJar: make(map[int32]*structVM, 256),
 	}
 }
