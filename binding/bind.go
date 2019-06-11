@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"reflect"
 	"sync"
-	_ "unsafe"
 
 	"github.com/bytedance/go-tagexpr"
 	"github.com/bytedance/go-tagexpr/validator"
+	"github.com/henrylee2cn/goutil"
 	"github.com/henrylee2cn/goutil/tpack"
 )
 
@@ -154,7 +154,7 @@ func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error
 	if v.Kind() != reflect.Ptr {
 		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
 	}
-	v = derefValue(v)
+	v = goutil.DereferenceValue(v)
 	if v.Kind() != reflect.Struct || !v.CanAddr() || !v.IsValid() {
 		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
 	}

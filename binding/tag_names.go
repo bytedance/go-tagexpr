@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/henrylee2cn/goutil"
 )
 
 const (
@@ -45,23 +47,16 @@ type TagNames struct {
 
 func (t *TagNames) init() {
 	t.list = []string{
-		getAndSet(&t.PathParam, defaultTagPath),
-		getAndSet(&t.Query, defaultTagQuery),
-		getAndSet(&t.Header, defaultTagHeader),
-		getAndSet(&t.Cookie, defaultTagCookie),
-		getAndSet(&t.RawBody, defaultTagRawbody),
-		getAndSet(&t.FormBody, defaultTagForm),
-		getAndSet(&t.Validator, defaultTagValidator),
-		getAndSet(&t.protobufBody, tagProtobuf),
-		getAndSet(&t.jsonBody, tagJSON),
+		goutil.InitAndGetString(&t.PathParam, defaultTagPath),
+		goutil.InitAndGetString(&t.Query, defaultTagQuery),
+		goutil.InitAndGetString(&t.Header, defaultTagHeader),
+		goutil.InitAndGetString(&t.Cookie, defaultTagCookie),
+		goutil.InitAndGetString(&t.RawBody, defaultTagRawbody),
+		goutil.InitAndGetString(&t.FormBody, defaultTagForm),
+		goutil.InitAndGetString(&t.Validator, defaultTagValidator),
+		goutil.InitAndGetString(&t.protobufBody, tagProtobuf),
+		goutil.InitAndGetString(&t.jsonBody, tagJSON),
 	}
-}
-
-func getAndSet(s *string, def string) string {
-	if *s == "" {
-		*s = def
-	}
-	return *s
 }
 
 func (t *TagNames) parse(field reflect.StructField) tagKVs {

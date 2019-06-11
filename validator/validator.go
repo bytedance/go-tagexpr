@@ -22,6 +22,7 @@ import (
 	_ "unsafe"
 
 	tagexpr "github.com/bytedance/go-tagexpr"
+	"github.com/henrylee2cn/goutil"
 )
 
 const (
@@ -62,7 +63,7 @@ func (v *Validator) Validate(value interface{}) error {
 }
 
 func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
-	rv := derefValue(value)
+	rv := goutil.DereferenceValue(value)
 	switch rv.Kind() {
 	case reflect.Struct:
 		break
@@ -72,7 +73,7 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 		if count == 0 {
 			return nil
 		}
-		switch derefType(rv.Type().Elem()).Kind() {
+		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			for i := count - 1; i >= 0; i-- {
 				if err := v.validate(selectorPrefix+strconv.Itoa(i)+"/", rv.Index(i)); err != nil {
@@ -89,11 +90,11 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 		}
 		var canKey, canValue bool
 		rt := rv.Type()
-		switch derefType(rt.Key()).Kind() {
+		switch goutil.DereferenceType(rt.Key()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			canKey = true
 		}
-		switch derefType(rt.Elem()).Kind() {
+		switch goutil.DereferenceType(rt.Elem()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			canValue = true
 		}
@@ -113,7 +114,7 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 			}
 		}
 	default:
-		if derefType(value.Type()).Kind() != reflect.Struct {
+		if goutil.DereferenceType(value.Type()).Kind() != reflect.Struct {
 			return nil
 		}
 	}
@@ -173,22 +174,4 @@ func defaultErrorFactory(failPath, msg string) error {
 		FailPath: failPath,
 		Msg:      msg,
 	}
-}
-
-//go:linkname derefType validator.derefType
-//go:nosplit
-func derefType(t reflect.Type) reflect.Type {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return t
-}
-
-//go:linkname derefValue validator.derefValue
-//go:nosplit
-func derefValue(v reflect.Value) reflect.Value {
-	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
-		v = v.Elem()
-	}
-	return v
 }

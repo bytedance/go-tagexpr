@@ -54,7 +54,7 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 	if err != nil || !v.IsValid() {
 		return err
 	}
-	v = derefValue(v)
+	v = goutil.DereferenceValue(v)
 	switch v.Kind() {
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
@@ -164,7 +164,7 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 }
 
 func setStringSlice(info *tagInfo, v reflect.Value, a []string) error {
-	v = derefValue(v)
+	v = goutil.DereferenceValue(v)
 	switch v.Kind() {
 	case reflect.String:
 		v.Set(reflect.ValueOf(a[0]))
