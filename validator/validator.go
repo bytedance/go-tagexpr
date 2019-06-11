@@ -52,7 +52,7 @@ func (v *Validator) VM() *tagexpr.VM {
 	return v.vm
 }
 
-// Validate validates whether the fields of v is valid.
+// Validate validates whether the fields of value is valid.
 func (v *Validator) Validate(value interface{}) error {
 	rv, ok := value.(reflect.Value)
 	if !ok {
