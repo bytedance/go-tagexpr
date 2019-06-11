@@ -82,7 +82,7 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 	if err != nil {
 		return
 	}
-	recv, err := b.getObjOrPrepare(value)
+	recv, err := b.getOrPrepareReceiver(value)
 	if err != nil {
 		return
 	}
@@ -161,7 +161,7 @@ func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error
 	return v, nil
 }
 
-func (b *Binding) getObjOrPrepare(value reflect.Value) (*receiver, error) {
+func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 	runtimeTypeID := tpack.From(value).RuntimeTypeID()
 	b.lock.RLock()
 	recv, ok := b.recvs[runtimeTypeID]
