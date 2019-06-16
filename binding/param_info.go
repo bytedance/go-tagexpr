@@ -15,6 +15,7 @@ type paramInfo struct {
 	fieldSelector  string
 	structField    reflect.StructField
 	tagInfos       []*tagInfo
+	omitIns        map[in]bool
 	bindErrFactory func(failField, msg string) error
 }
 
@@ -105,15 +106,15 @@ func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*
 	return p.bindStringSlice(info, expr, r)
 }
 
-func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string, checkOpt bool) (bool, error) {
+func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string) (bool, error) {
 	switch bodyCodec {
 	case bodyForm:
 		return p.bindMapStrings(info, expr, postForm)
 	case bodyJSON:
-		err := p.checkRequireJSON(info, expr, bodyString, checkOpt)
+		err := p.checkRequireJSON(info, expr, bodyString, false)
 		return err == nil, err
 	case bodyProtobuf:
-		err := p.checkRequireProtobuf(info, expr, checkOpt)
+		err := p.checkRequireProtobuf(info, expr, false)
 		return err == nil, err
 	default:
 		return false, info.contentTypeError

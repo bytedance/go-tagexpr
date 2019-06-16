@@ -71,17 +71,19 @@ func (t *TagNames) parse(field reflect.StructField) tagKVs {
 		if !ok {
 			continue
 		}
-		value = strings.Replace(strings.TrimSpace(value), " ", "", -1)
-		value = strings.Replace(value, "\t", "", -1)
-		if name == t.RawBody {
-			info := defaultSplitTag(value)
-			if info.required || info.paramName == tagRequired {
-				value = "," + tagRequired
+		if value != "-" {
+			value = strings.Replace(strings.TrimSpace(value), " ", "", -1)
+			value = strings.Replace(value, "\t", "", -1)
+			if name == t.RawBody {
+				info := defaultSplitTag(value)
+				if info.required || info.paramName == tagRequired {
+					value = "," + tagRequired
+				}
+			} else if value == "" {
+				value = fieldName
+			} else if value == ","+tagRequired {
+				value = fieldName + value
 			}
-		} else if value == "" {
-			value = fieldName
-		} else if value == ","+tagRequired {
-			value = fieldName + value
 		}
 		kvs = append(kvs, &tagKV{name: name, value: value, pos: strings.Index(s, name)})
 	}

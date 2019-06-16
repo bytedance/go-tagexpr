@@ -481,7 +481,7 @@ func TestPath(t *testing.T) {
 func TestAuto(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			A []string
+			A []string `json:"-"`
 			B int32
 			C *[]uint16 `vd:"$!=nil"`
 			D *float32

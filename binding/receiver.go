@@ -74,6 +74,7 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(f
 	p = new(paramInfo)
 	p.fieldSelector = fieldSelector
 	p.structField = fh.StructField()
+	p.omitIns = make(map[in]bool, maxIn)
 	p.bindErrFactory = bindErrFactory
 	r.params = append(r.params, p)
 	return p

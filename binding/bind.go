@@ -126,16 +126,33 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 				err = param.bindRawBody(info, expr, bodyBytes)
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
-					_, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, false)
+					_, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)
 				}
 			case auto:
 				var found bool
-				found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, true)
-				if !found || err != nil {
-					if queryValues == nil {
-						queryValues = req.URL.Query()
+				switch bodyCodec {
+				case bodyForm:
+					if !param.omitIns[form] {
+						found, err = param.bindMapStrings(info, expr, postForm)
 					}
-					_, err = param.bindQuery(info, expr, queryValues)
+				case bodyJSON:
+					if !param.omitIns[json] {
+						err = param.checkRequireJSON(info, expr, bodyString, true)
+						found = err == nil
+					}
+				case bodyProtobuf:
+					if !param.omitIns[protobuf] {
+						err = param.checkRequireProtobuf(info, expr, true)
+						found = err == nil
+					}
+				}
+				if !found || err != nil {
+					if !param.omitIns[query] {
+						if queryValues == nil {
+							queryValues = req.URL.Query()
+						}
+						_, err = param.bindQuery(info, expr, queryValues)
+					}
 				}
 			}
 			if err != nil {
@@ -230,8 +247,12 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 		}
 		for i, info := range tagInfos {
 			if info != nil {
-				info.paramIn = in(i)
-				p.tagInfos = append(p.tagInfos, info)
+				if info.paramName == "-" {
+					p.omitIns[in(i)] = true
+				} else {
+					info.paramIn = in(i)
+					p.tagInfos = append(p.tagInfos, info)
+				}
 			}
 		}
 		if len(p.tagInfos) == 0 {

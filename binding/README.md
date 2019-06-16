@@ -106,5 +106,6 @@ The parameter position in HTTP request:
 
 - `"$name"` is variable placeholder
 - If `"$name"` is empty, use the name of field
+- If `"$name"` is `-`, omit the field
 - Expression `required` indicates that the parameter is required
 - If no position is tagged, binding from body first, followed by URL query
