@@ -23,7 +23,6 @@ func Example() {
 		Authorization string   `header:"Authorization,required" vd:"$=='Basic 123456'"`
 		SessionID     string   `cookie:"sessionid,required"`
 		AutoBody      string
-		AutoQuery     string
 		AutoNotFound  *string
 	}
 
@@ -40,7 +39,7 @@ func Example() {
 
 	// Output:
 	// request:
-	// POST /info/henrylee2cn?year=2018&year=2019&AutoQuery=autoquery_test HTTP/1.1
+	// POST /info/henrylee2cn?year=2018&year=2019 HTTP/1.1
 	// Host: localhost
 	// User-Agent: Go-http-client/1.1
 	// Transfer-Encoding: chunked
@@ -72,7 +71,6 @@ func Example() {
 	// 	"Authorization": "Basic 123456",
 	// 	"SessionID": "987654",
 	// 	"AutoBody": "autobody_test",
-	// 	"AutoQuery": "autoquery_test",
 	// 	"AutoNotFound": null
 	// }
 }
@@ -91,7 +89,7 @@ func requestExample() *http.Request {
 	cookies := []*http.Cookie{
 		{Name: "sessionid", Value: "987654"},
 	}
-	req := newRequest("http://localhost/info/henrylee2cn?year=2018&year=2019&AutoQuery=autoquery_test", header, cookies, bodyReader)
+	req := newRequest("http://localhost/info/henrylee2cn?year=2018&year=2019", header, cookies, bodyReader)
 	req.Method = "POST"
 	var w bytes.Buffer
 	req.Write(&w)

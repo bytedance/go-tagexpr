@@ -8,9 +8,9 @@ type Error struct {
 // Error implements error interface.
 func (e *Error) Error() string {
 	if e.Msg != "" {
-		return e.Msg
+		return e.ErrType + " " + e.FailField + ": " + e.Msg
 	}
-	return e.ErrType + ": " + e.FailField
+	return e.ErrType + " " + e.FailField + ": fail"
 }
 
 func newDefaultErrorFactory(errType string) func(string, string) error {

@@ -36,8 +36,8 @@ func New(tagNames *TagNames) *Binding {
 	return b.SetErrorFactory(nil, nil)
 }
 
-var defaultValidatingErrFactory = newDefaultErrorFactory("invalid parameter")
-var defaultBindErrFactory = newDefaultErrorFactory("binding failed")
+var defaultValidatingErrFactory = newDefaultErrorFactory("validating")
+var defaultBindErrFactory = newDefaultErrorFactory("binding")
 
 // SetErrorFactory customizes the factory of validation error.
 // NOTE:
@@ -129,29 +129,29 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 					_, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)
 				}
 			case auto:
-				var found bool
-				switch bodyCodec {
-				case bodyForm:
-					if !param.omitIns[form] {
-						found, err = param.bindMapStrings(info, expr, postForm)
-					}
-				case bodyJSON:
-					if !param.omitIns[json] {
-						err = param.checkRequireJSON(info, expr, bodyString, true)
-						found = err == nil
-					}
-				case bodyProtobuf:
-					if !param.omitIns[protobuf] {
-						err = param.checkRequireProtobuf(info, expr, true)
-						found = err == nil
-					}
-				}
-				if !found || err != nil {
+				// Try bind parameters from the body when the request has body,
+				// otherwise try bind from the URL query
+				if len(bodyBytes) == 0 {
 					if !param.omitIns[query] {
 						if queryValues == nil {
 							queryValues = req.URL.Query()
 						}
 						_, err = param.bindQuery(info, expr, queryValues)
+					}
+				} else {
+					switch bodyCodec {
+					case bodyForm:
+						if !param.omitIns[form] {
+							_, err = param.bindMapStrings(info, expr, postForm)
+						}
+					case bodyJSON:
+						if !param.omitIns[json] {
+							err = param.checkRequireJSON(info, expr, bodyString, false)
+						}
+					case bodyProtobuf:
+						if !param.omitIns[protobuf] {
+							err = param.checkRequireProtobuf(info, expr, false)
+						}
 					}
 				}
 			}

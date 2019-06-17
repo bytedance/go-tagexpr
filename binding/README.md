@@ -30,7 +30,6 @@ func Example() {
 		Authorization string   `header:"Authorization,required" vd:"$=='Basic 123456'"`
 		SessionID     string   `cookie:"sessionid,required"`
 		AutoBody      string
-		AutoQuery     string
 		AutoNotFound  *string
 	}
 
@@ -47,7 +46,7 @@ func Example() {
 
 	// Output:
 	// request:
-	// POST /info/henrylee2cn?year=2018&year=2019&AutoQuery=autoquery_test HTTP/1.1
+	// POST /info/henrylee2cn?year=2018&year=2019 HTTP/1.1
 	// Host: localhost
 	// User-Agent: Go-http-client/1.1
 	// Transfer-Encoding: chunked
@@ -79,7 +78,6 @@ func Example() {
 	// 	"Authorization": "Basic 123456",
 	// 	"SessionID": "987654",
 	// 	"AutoBody": "autobody_test",
-	// 	"AutoQuery": "autoquery_test",
 	// 	"AutoNotFound": null
 	// }
 }
@@ -107,5 +105,6 @@ The parameter position in HTTP request:
 - `"$name"` is variable placeholder
 - If `"$name"` is empty, use the name of field
 - If `"$name"` is `-`, omit the field
-- Expression `required` indicates that the parameter is required
-- If no position is tagged, binding from body first, followed by URL query
+- Expression `required` or `req` indicates that the parameter is required
+- If no position is tagged, try bind parameters from the body when the request has body,
+<br>otherwise try bind from the URL query

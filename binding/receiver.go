@@ -99,7 +99,7 @@ func (r *receiver) getBodyCodec(req *http.Request) codec {
 }
 
 func (r *receiver) getBody(req *http.Request) ([]byte, string, error) {
-	if r.hasBody {
+	if r.hasBody && (req.Method == "POST" || req.Method == "PUT" || req.Method == "PATCH") {
 		bodyBytes, err := copyBody(req)
 		if err == nil {
 			return bodyBytes, goutil.BytesToString(bodyBytes), nil

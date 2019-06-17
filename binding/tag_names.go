@@ -10,6 +10,7 @@ import (
 
 const (
 	tagRequired         = "required"
+	tagRequired2        = "req"
 	defaultTagPath      = "path"
 	defaultTagQuery     = "query"
 	defaultTagHeader    = "header"
@@ -117,7 +118,7 @@ func defaultSplitTag(value string) *tagInfo {
 		if i == 0 {
 			info.paramName = v
 		} else {
-			if v == tagRequired {
+			if v == tagRequired || v == tagRequired2 {
 				info.required = true
 			}
 		}
