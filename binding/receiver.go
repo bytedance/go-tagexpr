@@ -134,7 +134,7 @@ func (r *receiver) getPostForm(req *http.Request, bodyCodec codec) (url.Values, 
 		if req.PostForm == nil {
 			req.ParseMultipartForm(defaultMaxMemory)
 		}
-		return req.Form, nil
+		return req.PostForm, nil
 	}
 	return nil, nil
 }
