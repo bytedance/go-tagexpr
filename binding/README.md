@@ -92,12 +92,12 @@ The parameter position in HTTP request:
 |----------|----------|-----------|
 |`path:"$name"` or `path:"$name,required"`|Yes|URL path parameter|
 |`query:"$name"` or `query:"$name,required"`|Yes|URL query parameter|
+|`rawbody:""` or `rawbody:"required"`|Yes|The raw bytes of body|
+|`form:"$name"` or `form:"$name,required"`|Yes|The field in body, support:<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`|
+|`protobuf:"...(raw syntax)"`|No|The field in body, support:<br>`application/x-protobuf`|
+|`json:"$name"` or `json:"$name,required"`|No|The field in body, support:<br>`application/json`|
 |`header:"$name"` or `header:"$name,required"`|Yes|Header parameter|
 |`cookie:"$name"` or `cookie:"$name,required"`|Yes|Cookie parameter|
-|`form:"$name"` or `form:"$name,required"`|Yes|The field in body, support:<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`|
-|`json:"$name"` or `json:"$name,required"`|No|The field in body, support:<br>`application/json`|
-|`protobuf:"...(raw syntax)"`|No|The field in body, support:<br>`application/x-protobuf`|
-|`rawbody:""` or `rawbody:"required"`|Yes|The raw bytes of body|
 |`vd:"...(tagexpr validator syntax)"`|Yes|The tagexpr expression of validator|
 
 **NOTE:**
@@ -109,11 +109,11 @@ The parameter position in HTTP request:
 - If no position is tagged, try bind parameters from the body when the request has body,
 <br>otherwise try bind from the URL query
 - When there are multiple tags, the order in which to try to bind is:
-  - path
-  - query
-  - header
-  - cookie
-  - form
-  - json
-  - protobuf
-  - rawBody
+  1. path
+  2. query
+  3. rawbody
+  4. form
+  5. protobuf
+  6. json
+  7. header
+  8. cookie

@@ -17,7 +17,7 @@ import (
 
 func TestRawBody(t *testing.T) {
 	type Recv struct {
-		rawBody **struct {
+		rawbody **struct {
 			A []byte   `rawbody:""`
 			B *[]byte  `rawbody:",required"`
 			C **[]byte `rawbody:"required"`
@@ -33,14 +33,14 @@ func TestRawBody(t *testing.T) {
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
 	assert.NotNil(t, err)
-	assert.Equal(t, "validating rawBody.F: too long", err.Error())
+	assert.Equal(t, "validating rawbody.F: too long", err.Error())
 	for _, v := range []interface{}{
-		(**recv.rawBody).A,
-		*(**recv.rawBody).B,
-		**(**recv.rawBody).C,
-		[]byte((**recv.rawBody).D),
-		[]byte(*(**recv.rawBody).E),
-		[]byte(**(**recv.rawBody).F),
+		(**recv.rawbody).A,
+		*(**recv.rawbody).B,
+		**(**recv.rawbody).C,
+		[]byte((**recv.rawbody).D),
+		[]byte(*(**recv.rawbody).E),
+		[]byte(**(**recv.rawbody).F),
 		[]byte(recv.S),
 	} {
 		assert.Equal(t, bodyBytes, v)

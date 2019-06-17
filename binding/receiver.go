@@ -20,12 +20,12 @@ const (
 	auto in = iota
 	path
 	query
+	rawbody
+	form
+	protobuf
+	json
 	header
 	cookie
-	form
-	json
-	protobuf
-	rawBody
 	maxIn
 )
 
@@ -35,7 +35,7 @@ var allIn = []in{
 	query,
 	header,
 	cookie,
-	rawBody,
+	rawbody,
 	form,
 	json,
 	protobuf,
