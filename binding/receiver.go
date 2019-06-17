@@ -22,10 +22,10 @@ const (
 	query
 	header
 	cookie
-	rawBody
 	form
 	json
 	protobuf
+	rawBody
 	maxIn
 )
 

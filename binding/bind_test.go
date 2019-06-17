@@ -483,11 +483,13 @@ func TestAuto(t *testing.T) {
 		A string `vd:"$!=''"`
 		B string
 		C string
+		D string `form:"D,required" query:"D,required"`
 	}
 	query := make(url.Values)
 	query.Add("A", "a")
 	query.Add("B", "b")
 	query.Add("C", "c")
+	query.Add("D", "d")
 	req := newRequest("http://localhost/?"+query.Encode(), nil, nil, nil)
 	recv := new(Recv)
 	binder := binding.New(nil)
@@ -496,9 +498,11 @@ func TestAuto(t *testing.T) {
 	assert.Equal(t, "a", recv.A)
 	assert.Equal(t, "b", recv.B)
 	assert.Equal(t, "c", recv.C)
+	assert.Equal(t, "d", recv.D)
 
 	query = make(url.Values)
 	query.Add("A", "a")
+	query.Add("D", "d")
 	form := make(url.Values)
 	form.Add("B", "b")
 	form.Add("C", "c")
@@ -512,6 +516,7 @@ func TestAuto(t *testing.T) {
 	assert.Equal(t, "", recv.A)
 	assert.Equal(t, "b", recv.B)
 	assert.Equal(t, "c", recv.C)
+	assert.Equal(t, "d", recv.D)
 	err = binder.Validate(recv)
 	assert.EqualError(t, err, "validating A: fail")
 }

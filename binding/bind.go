@@ -112,21 +112,25 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 	cookies := recv.getCookies(req)
 
 	for _, param := range recv.params {
-		for _, info := range param.tagInfos {
+
+		for i, info := range param.tagInfos {
+			var found bool
 			switch info.paramIn {
 			case query:
-				_, err = param.bindQuery(info, expr, queryValues)
+				found, err = param.bindQuery(info, expr, queryValues)
 			case path:
-				_, err = param.bindPath(info, expr, pathParams)
+				found, err = param.bindPath(info, expr, pathParams)
 			case header:
-				_, err = param.bindHeader(info, expr, req.Header)
+				found, err = param.bindHeader(info, expr, req.Header)
 			case cookie:
 				err = param.bindCookie(info, expr, cookies)
+				found = err == nil
 			case rawBody:
 				err = param.bindRawBody(info, expr, bodyBytes)
+				found = err == nil
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
-					_, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)
+					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)
 				}
 			case auto:
 				// Try bind parameters from the body when the request has body,
@@ -136,26 +140,31 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 						if queryValues == nil {
 							queryValues = req.URL.Query()
 						}
-						_, err = param.bindQuery(info, expr, queryValues)
+						found, err = param.bindQuery(info, expr, queryValues)
 					}
 				} else {
 					switch bodyCodec {
 					case bodyForm:
 						if !param.omitIns[form] {
-							_, err = param.bindMapStrings(info, expr, postForm)
+							found, err = param.bindMapStrings(info, expr, postForm)
 						}
 					case bodyJSON:
 						if !param.omitIns[json] {
 							err = param.checkRequireJSON(info, expr, bodyString, false)
+							found = err == nil
 						}
 					case bodyProtobuf:
 						if !param.omitIns[protobuf] {
 							err = param.checkRequireProtobuf(info, expr, false)
+							found = err == nil
 						}
 					}
 				}
 			}
-			if err != nil {
+			if found && err == nil {
+				break
+			}
+			if (found || i == len(param.tagInfos)-1) && err != nil {
 				return value, recv.hasVd, err
 			}
 		}
