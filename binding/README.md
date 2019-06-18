@@ -92,7 +92,7 @@ The parameter position in HTTP request:
 |----------|----------|-----------|
 |`path:"$name"` or `path:"$name,required"`|Yes|URL path parameter|
 |`query:"$name"` or `query:"$name,required"`|Yes|URL query parameter|
-|`rawbody:""` or `rawbody:"required"`|Yes|The raw bytes of body|
+|`raw_body:""` or `raw_body:"required"`|Yes|The raw bytes of body|
 |`form:"$name"` or `form:"$name,required"`|Yes|The field in body, support:<br>`application/x-www-form-urlencoded`,<br>`multipart/form-data`|
 |`protobuf:"...(raw syntax)"`|No|The field in body, support:<br>`application/x-protobuf`|
 |`json:"$name"` or `json:"$name,required"`|No|The field in body, support:<br>`application/json`|
@@ -111,7 +111,7 @@ The parameter position in HTTP request:
 - When there are multiple tags, the order in which to try to bind is:
   1. path
   2. query
-  3. rawbody
+  3. raw_body
   4. form
   5. protobuf
   6. json

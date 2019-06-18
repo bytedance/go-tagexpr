@@ -10,7 +10,7 @@ var defaultBinding = New(nil)
 //  query tag name is 'query';
 //  header tag name is 'header';
 //  cookie tag name is 'cookie';
-//  rawbody tag name is 'rawbody';
+//  raw_body tag name is 'raw_body';
 //  form tag name is 'form';
 //  validator tag name is 'vd';
 //  protobuf tag name is 'protobuf';

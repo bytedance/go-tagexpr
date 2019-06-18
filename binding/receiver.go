@@ -20,7 +20,7 @@ const (
 	auto in = iota
 	path
 	query
-	rawbody
+	raw_body
 	form
 	protobuf
 	json
@@ -35,7 +35,7 @@ var allIn = []in{
 	query,
 	header,
 	cookie,
-	rawbody,
+	raw_body,
 	form,
 	json,
 	protobuf,

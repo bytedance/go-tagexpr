@@ -125,7 +125,7 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 			case cookie:
 				err = param.bindCookie(info, expr, cookies)
 				found = err == nil
-			case rawbody:
+			case raw_body:
 				err = param.bindRawBody(info, expr, bodyBytes)
 				found = err == nil
 			case form, json, protobuf:
@@ -238,7 +238,7 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 				paramIn = cookie
 			case b.tagNames.RawBody:
 				recv.hasBody = true
-				paramIn = rawbody
+				paramIn = raw_body
 			case b.tagNames.FormBody:
 				recv.hasBody = true
 				paramIn = form

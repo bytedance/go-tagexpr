@@ -15,7 +15,7 @@ const (
 	defaultTagQuery     = "query"
 	defaultTagHeader    = "header"
 	defaultTagCookie    = "cookie"
-	defaultTagRawbody   = "rawbody"
+	defaultTagRawbody   = "raw_body"
 	defaultTagForm      = "form"
 	defaultTagValidator = "vd"
 	tagProtobuf         = "protobuf"
