@@ -112,6 +112,9 @@ func (r *receiver) getBody(req *http.Request) ([]byte, string, error) {
 func (r *receiver) prebindBody(structPointer interface{}, value reflect.Value, bodyCodec codec, bodyBytes []byte) error {
 	switch bodyCodec {
 	case bodyJSON:
+		if jsonUnmarshalFunc != nil {
+			return jsonUnmarshalFunc(bodyBytes, structPointer)
+		}
 		jsonparam.Assign(gjson.Parse(goutil.BytesToString(bodyBytes)), value)
 	case bodyProtobuf:
 		msg, ok := structPointer.(proto.Message)

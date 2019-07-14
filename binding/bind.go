@@ -36,6 +36,18 @@ func New(tagNames *TagNames) *Binding {
 	return b.SetErrorFactory(nil, nil)
 }
 
+var (
+	jsonUnmarshalFunc       func(data []byte, v interface{}) error
+	jsonIndependentRequired = true
+)
+
+// ResetJSONUnmarshaler reset the JSON Unmarshal function.
+// NOTE: verifyingRequired is true if the required tag is supported.
+func ResetJSONUnmarshaler(verifyingRequired bool, fn func(data []byte, v interface{}) error) {
+	jsonIndependentRequired = !verifyingRequired
+	jsonUnmarshalFunc = fn
+}
+
 var defaultValidatingErrFactory = newDefaultErrorFactory("validating")
 var defaultBindErrFactory = newDefaultErrorFactory("binding")
 

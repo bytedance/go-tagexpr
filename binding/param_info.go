@@ -132,7 +132,7 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 }
 
 func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) error {
-	if checkOpt || info.required {
+	if jsonIndependentRequired && (checkOpt || info.required) {
 		r := gjson.Get(bodyString, info.namePath)
 		if !r.Exists() {
 			return info.requiredError

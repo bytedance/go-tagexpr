@@ -314,6 +314,7 @@ func TestFormNum(t *testing.T) {
 }
 
 func TestJSON(t *testing.T) {
+	// binding.ResetJSONUnmarshaler(false, json.Unmarshal)
 	type Recv struct {
 		X **struct {
 			A []string  `json:"a"`
@@ -341,7 +342,7 @@ func TestJSON(t *testing.T) {
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, &binding.Error{ErrType: "binding", FailField: "y", Msg: "missing required parameter"}, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
 	assert.Equal(t, int32(21), (**recv.X).B)
