@@ -101,6 +101,10 @@ type T struct {
     Field1 T1 `tagName:"expression"`
 	// Multiple model
     Field2 T2 `tagName:"exprName:expression; [exprName2:expression2;]..."`
+	// Omit it
+    Field3 T3 `tagName:"-"`
+    // Omit it when it is nil
+    Field4 T4 `tagName:"?"`
     ...
 }
 ```

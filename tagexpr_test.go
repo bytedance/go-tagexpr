@@ -693,14 +693,14 @@ func TestNilField(t *testing.T) {
 	te.Range(func(es ExprSelector, eval func() interface{}) bool {
 		r := eval()
 		if r != nil {
-			t.Fatal(r)
+			t.Fatal(es, r)
 		}
 		return true
 	})
 
 	type G struct {
-		Nil1 *int `vd:"nil!=$"`
-		Nil2 *int `vd:"$!=nil"`
+		Nil1 *int `tagexpr:"nil!=$"`
+		Nil2 *int `tagexpr:"$!=nil"`
 	}
 	g := G{
 		Nil1: new(int),
@@ -709,8 +709,36 @@ func TestNilField(t *testing.T) {
 	vm.MustRun(g).Range(func(es ExprSelector, eval func() interface{}) bool {
 		r, ok := eval().(bool)
 		if !ok || !r {
-			t.Fatal(r)
+			t.Fatal(es, r)
 		}
 		return true
 	})
+
+	type N struct {
+		X string        `tagexpr:"len($)>0"`
+		N *N            `tagexpr:"?"`
+		S []*N          `tagexpr:"?"`
+		M map[string]*N `tagexpr:"?"`
+		I interface{}   `tagexpr:"?"`
+	}
+	n := &N{
+		X: "n",
+		N: nil,
+		S: []*N{nil},
+		M: map[string]*N{"": nil},
+		I: nil,
+	}
+	var cnt int
+	vm.MustRun(n).Range(func(es ExprSelector, eval func() interface{}) bool {
+		r, ok := eval().(bool)
+		if !ok || !r {
+			t.Fatal(es, r)
+		}
+		t.Log(es, r)
+		cnt++
+		return true
+	})
+	if cnt != 1 {
+		t.FailNow()
+	}
 }

@@ -11,7 +11,18 @@ type namedTagExpr struct {
 	expr         *Expr
 }
 
+const (
+	tagOmit    = "-"
+	tagOmitNil = "?"
+)
+
 func (f *fieldVM) parseExprs(tag string) error {
+	switch tag {
+	case tagOmit, tagOmitNil:
+		f.tagOp = tag
+		return nil
+	}
+
 	kvs, err := parseTag(tag)
 	if err != nil {
 		return err
