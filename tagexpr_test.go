@@ -697,4 +697,20 @@ func TestNilField(t *testing.T) {
 		}
 		return true
 	})
+
+	type G struct {
+		Nil1 *int `vd:"nil!=$"`
+		Nil2 *int `vd:"$!=nil"`
+	}
+	g := G{
+		Nil1: new(int),
+		Nil2: new(int),
+	}
+	vm.MustRun(g).Range(func(es ExprSelector, eval func() interface{}) bool {
+		r, ok := eval().(bool)
+		if !ok || !r {
+			t.Fatal(r)
+		}
+		return true
+	})
 }

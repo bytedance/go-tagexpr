@@ -99,22 +99,24 @@ func (ee *equalExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 	v1 := ee.rightOperand.Run(currField, tagExpr)
 	switch r := v0.(type) {
 	case float64:
-		var r1 float64
-		r1, _ = v1.(float64)
-		return r == r1
+		r1, ok := v1.(float64)
+		if ok {
+			return r == r1
+		}
 	case string:
-		var r1 string
-		r1, _ = v1.(string)
-		return r == r1
+		r1, ok := v1.(string)
+		if ok {
+			return r == r1
+		}
 	case bool:
-		var r1 bool
-		r1, _ = v1.(bool)
-		return r == r1
+		r1, ok := v1.(bool)
+		if ok {
+			return r == r1
+		}
 	case nil:
 		return v1 == nil
-	default:
-		return false
 	}
+	return false
 }
 
 type notEqualExprNode struct{ equalExprNode }
@@ -134,16 +136,17 @@ func (ge *greaterExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 	v1 := ge.rightOperand.Run(currField, tagExpr)
 	switch r := v0.(type) {
 	case float64:
-		var r1 float64
-		r1, _ = v1.(float64)
-		return r > r1
+		r1, ok := v1.(float64)
+		if ok {
+			return r > r1
+		}
 	case string:
-		var r1 string
-		r1, _ = v1.(string)
-		return r > r1
-	default:
-		return false
+		r1, ok := v1.(string)
+		if ok {
+			return r > r1
+		}
 	}
+	return false
 }
 
 type greaterEqualExprNode struct{ exprBackground }
@@ -155,16 +158,17 @@ func (ge *greaterEqualExprNode) Run(currField string, tagExpr *TagExpr) interfac
 	v1 := ge.rightOperand.Run(currField, tagExpr)
 	switch r := v0.(type) {
 	case float64:
-		var r1 float64
-		r1, _ = v1.(float64)
-		return r >= r1
+		r1, ok := v1.(float64)
+		if ok {
+			return r >= r1
+		}
 	case string:
-		var r1 string
-		r1, _ = v1.(string)
-		return r >= r1
-	default:
-		return false
+		r1, ok := v1.(string)
+		if ok {
+			return r >= r1
+		}
 	}
+	return false
 }
 
 type lessExprNode struct{ exprBackground }
@@ -176,16 +180,17 @@ func (le *lessExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 	v1 := le.rightOperand.Run(currField, tagExpr)
 	switch r := v0.(type) {
 	case float64:
-		var r1 float64
-		r1, _ = v1.(float64)
-		return r < r1
+		r1, ok := v1.(float64)
+		if ok {
+			return r < r1
+		}
 	case string:
-		var r1 string
-		r1, _ = v1.(string)
-		return r < r1
-	default:
-		return false
+		r1, ok := v1.(string)
+		if ok {
+			return r < r1
+		}
 	}
+	return false
 }
 
 type lessEqualExprNode struct{ exprBackground }
@@ -197,16 +202,17 @@ func (le *lessEqualExprNode) Run(currField string, tagExpr *TagExpr) interface{}
 	v1 := le.rightOperand.Run(currField, tagExpr)
 	switch r := v0.(type) {
 	case float64:
-		var r1 float64
-		r1, _ = v1.(float64)
-		return r <= r1
+		r1, ok := v1.(float64)
+		if ok {
+			return r <= r1
+		}
 	case string:
-		var r1 string
-		r1, _ = v1.(string)
-		return r <= r1
-	default:
-		return false
+		r1, ok := v1.(string)
+		if ok {
+			return r <= r1
+		}
 	}
+	return false
 }
 
 type andExprNode struct{ exprBackground }
