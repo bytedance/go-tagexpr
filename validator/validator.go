@@ -63,8 +63,10 @@ func (v *Validator) Validate(value interface{}) error {
 }
 
 func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
-	rv := goutil.DereferenceValue(value)
-	switch rv.Kind() {
+	rv := goutil.DereferenceIfaceValue(value)
+	rt := goutil.DereferenceType(rv.Type())
+	rv = goutil.DereferenceValue(rv)
+	switch rt.Kind() {
 	case reflect.Struct:
 		break
 
@@ -113,10 +115,7 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 				}
 			}
 		}
-	default:
-		if goutil.DereferenceType(value.Type()).Kind() != reflect.Struct {
-			return nil
-		}
+		return nil
 	}
 
 	expr, err := v.vm.Run(rv)

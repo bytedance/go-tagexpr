@@ -714,19 +714,28 @@ func TestNilField(t *testing.T) {
 		return true
 	})
 
-	type N struct {
-		X string        `tagexpr:"len($)>0"`
-		N *N            `tagexpr:"?"`
-		S []*N          `tagexpr:"?"`
-		M map[string]*N `tagexpr:"?"`
-		I interface{}   `tagexpr:"?"`
-	}
+	type (
+		N struct {
+			X  string                 `tagexpr:"len($)>0"`
+			N  *N                     `tagexpr:"?"`
+			S  []*N                   `tagexpr:"?"`
+			M  map[string]*N          `tagexpr:"?"`
+			I  interface{}            `tagexpr:"-"`
+			MI map[string]interface{} `tagexpr:"?"`
+			SI []interface{}
+		}
+		M struct {
+			X string `tagexpr:"len($)>0"`
+		}
+	)
 	n := &N{
-		X: "n",
-		N: nil,
-		S: []*N{nil},
-		M: map[string]*N{"": nil},
-		I: nil,
+		X:  "n",
+		N:  nil,
+		S:  []*N{nil},
+		M:  map[string]*N{"": nil},
+		I:  new(N),
+		MI: map[string]interface{}{"": (*M)(nil)},
+		SI: []interface{}{&M{X: "nn"}},
 	}
 	var cnt int
 	vm.MustRun(n).Range(func(es ExprSelector, eval func() interface{}) bool {
@@ -738,7 +747,7 @@ func TestNilField(t *testing.T) {
 		cnt++
 		return true
 	})
-	if cnt != 1 {
+	if cnt != 2 {
 		t.FailNow()
 	}
 }

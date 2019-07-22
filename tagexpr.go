@@ -23,6 +23,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/henrylee2cn/goutil"
 	"github.com/henrylee2cn/goutil/tpack"
 )
 
@@ -58,6 +59,7 @@ type fieldVM struct {
 	origin                 *structVM
 	mapKeyStructVM         *structVM
 	mapOrSliceElemStructVM *structVM
+	mapOrSliceIfaceKinds   [2]bool // [value, key/index]
 	tagOp                  string
 }
 
@@ -220,7 +222,12 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) error {
 		a = append(a, derefType(field.elemType.Key()))
 	}
 	for i, t := range a {
-		if t.Kind() != reflect.Struct {
+		kind := t.Kind()
+		if kind != reflect.Struct {
+			if kind == reflect.Interface {
+				field.mapOrSliceIfaceKinds[i] = true
+				field.origin.fieldsWithIndirectStructVM = append(field.origin.fieldsWithIndirectStructVM, field)
+			}
 			continue
 		}
 		s, err := vm.registerStructLocked(t)
@@ -660,45 +667,141 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 		for _, f := range list {
 			v := f.packElemFrom(t.ptr)
 			omitNil := f.tagOp == tagOmitNil
+			mapKeyStructVM := f.mapKeyStructVM
+			mapOrSliceElemStructVM := f.mapOrSliceElemStructVM
+			valueIface := f.mapOrSliceIfaceKinds[0]
+			keyIface := f.mapOrSliceIfaceKinds[1]
 
-			if f.elemKind == reflect.Map {
+			if f.elemKind == reflect.Map &&
+				(mapOrSliceElemStructVM != nil || mapKeyStructVM != nil || valueIface || keyIface) {
 				for _, key := range v.MapKeys() {
-					if f.mapKeyStructVM != nil {
+					if mapKeyStructVM != nil {
 						ptr := tpack.From(derefValue(key)).Pointer()
 						if omitNil && ptr == 0 {
 							continue
 						}
-						if !f.mapKeyStructVM.newTagExpr(ptr).Range(fn) {
+						if !mapKeyStructVM.newTagExpr(ptr).Range(fn) {
 							return false
 						}
+					} else if keyIface && !t.subRange(omitNil, key, fn) {
+						return false
 					}
-					if f.mapOrSliceElemStructVM != nil {
+					if mapOrSliceElemStructVM != nil {
 						ptr := tpack.From(derefValue(v.MapIndex(key))).Pointer()
 						if omitNil && ptr == 0 {
 							continue
 						}
-						if !f.mapOrSliceElemStructVM.newTagExpr(ptr).Range(fn) {
+						if !mapOrSliceElemStructVM.newTagExpr(ptr).Range(fn) {
 							return false
 						}
+					} else if valueIface && !t.subRange(omitNil, v.MapIndex(key), fn) {
+						return false
 					}
 				}
 
-			} else {
+			} else if mapOrSliceElemStructVM != nil || valueIface {
 				// slice or array
 				for i := v.Len() - 1; i >= 0; i-- {
-					ptr := tpack.From(derefValue(v.Index(i))).Pointer()
-					if omitNil && ptr == 0 {
-						continue
-					}
-					if !f.mapOrSliceElemStructVM.newTagExpr(ptr).Range(fn) {
+					if mapOrSliceElemStructVM != nil {
+						ptr := tpack.From(derefValue(v.Index(i))).Pointer()
+						if omitNil && ptr == 0 {
+							continue
+						}
+						if !mapOrSliceElemStructVM.newTagExpr(ptr).Range(fn) {
+							return false
+						}
+					} else if valueIface && !t.subRange(omitNil, v.Index(i), fn) {
 						return false
 					}
 				}
 			}
 		}
 	}
-
 	return true
+}
+
+func (t *TagExpr) subRange(omitNil bool, value reflect.Value, fn func(es ExprSelector, eval func() interface{}) bool) bool {
+	rv := goutil.DereferenceIfaceValue(value)
+	rt := goutil.DereferenceType(rv.Type())
+	rv = goutil.DereferenceValue(rv)
+	switch rt.Kind() {
+	case reflect.Struct:
+		if omitNil && !rv.IsValid() {
+			return true
+		}
+		te, err := t.s.vm.subRun(rt, tpack.RuntimeTypeID(rt), tpack.From(rv).Pointer())
+		if err != nil {
+			return false
+		}
+		return te.Range(fn)
+
+	case reflect.Slice, reflect.Array:
+		count := rv.Len()
+		if count == 0 {
+			return true
+		}
+		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			for i := count - 1; i >= 0; i-- {
+				if !t.subRange(omitNil, rv.Index(i), fn) {
+					return false
+				}
+			}
+		default:
+			return true
+		}
+
+	case reflect.Map:
+		if rv.Len() == 0 {
+			return true
+		}
+		var canKey, canValue bool
+		rt := rv.Type()
+		switch goutil.DereferenceType(rt.Key()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			canKey = true
+		}
+		switch goutil.DereferenceType(rt.Elem()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			canValue = true
+		}
+		if !canKey && !canValue {
+			return true
+		}
+		for _, key := range rv.MapKeys() {
+			if canKey {
+				if !t.subRange(omitNil, key, fn) {
+					return false
+				}
+			}
+			if canValue {
+				if !t.subRange(omitNil, rv.MapIndex(key), fn) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (vm *VM) subRun(t reflect.Type, tid int32, ptr uintptr) (*TagExpr, error) {
+	var err error
+	vm.rw.RLock()
+	s, ok := vm.structJar[tid]
+	vm.rw.RUnlock()
+	if !ok {
+		vm.rw.Lock()
+		s, ok = vm.structJar[tid]
+		if !ok {
+			s, err = vm.registerStructLocked(t)
+			if err != nil {
+				vm.rw.Unlock()
+				return nil, err
+			}
+		}
+		vm.rw.Unlock()
+	}
+	return s.newTagExpr(ptr), nil
 }
 
 var (
@@ -712,6 +815,9 @@ func (t *TagExpr) checkout(fs string) (*TagExpr, error) {
 	}
 	subTagExpr, ok := t.sub[fs]
 	if ok {
+		if subTagExpr == nil {
+			return nil, errOmitNil
+		}
 		return subTagExpr, nil
 	}
 	f, ok := t.s.fields[fs]
@@ -720,6 +826,7 @@ func (t *TagExpr) checkout(fs string) (*TagExpr, error) {
 	}
 	ptr := f.elemPtr(t.ptr)
 	if f.tagOp == tagOmitNil && unsafe.Pointer(ptr) == nil {
+		t.sub[fs] = nil
 		return nil, errOmitNil
 	}
 	subTagExpr = f.origin.newTagExpr(ptr)
