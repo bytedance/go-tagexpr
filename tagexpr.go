@@ -310,19 +310,27 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 	nameSpace := field.structField.Name
 	offset := field.offset
 	ptrDeep := field.ptrDeep
-	omitExpr := field.tagOp == tagOmit
+	tagOp := field.tagOp
+	omitExpr := tagOp == tagOmit
 	for _, k := range sub.fieldSelectorList {
 		v := sub.fields[k]
 		valueGetter := v.valueGetter
 		reflectValueGetter := v.reflectValueGetter
 		f := &fieldVM{
-			structField: v.structField,
-			offset:      offset + v.offset,
-			origin:      v.origin,
-			exprs:       make(map[string]*Expr, len(v.exprs)),
+			structField:            v.structField,
+			offset:                 offset,
+			exprs:                  make(map[string]*Expr, len(v.exprs)),
+			ptrDeep:                v.ptrDeep,
+			elemType:               v.elemType,
+			elemKind:               v.elemKind,
+			origin:                 v.origin,
+			mapKeyStructVM:         v.mapKeyStructVM,
+			mapOrSliceElemStructVM: v.mapOrSliceElemStructVM,
+			mapOrSliceIfaceKinds:   v.mapOrSliceIfaceKinds,
 		}
 
 		if !omitExpr {
+			f.tagOp = v.tagOp
 			var selector string
 			for k, v := range v.exprs {
 				selector = nameSpace + FieldSeparator + k
@@ -330,6 +338,8 @@ func (s *structVM) copySubFields(field *fieldVM, sub *structVM) {
 				s.exprs[selector] = v
 				s.exprSelectorList = append(s.exprSelectorList, selector)
 			}
+		} else {
+			f.tagOp = tagOp
 		}
 
 		if valueGetter != nil {

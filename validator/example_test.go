@@ -8,11 +8,14 @@ import (
 
 func Example() {
 	type InfoRequest struct {
-		Name   string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
-		Age    int    `vd:"$>0"`
-		Email  string `vd:"email($)"`
-		Phone1 string `vd:"phone($)"`
-		Phone2 string `vd:"phone($,'CN')"`
+		Name         string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
+		Age          int    `vd:"$>0"`
+		Email        string `vd:"email($)"`
+		Phone1       string `vd:"phone($)"`
+		Phone2       string `vd:"phone($,'CN')"`
+		*InfoRequest `vd:"?"`
+		Info1        *InfoRequest `vd:"?"`
+		Info2        *InfoRequest `vd:"-"`
 	}
 	info := InfoRequest{
 		Name:   "Alice",

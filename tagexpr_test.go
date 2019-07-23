@@ -717,12 +717,13 @@ func TestNilField(t *testing.T) {
 	type (
 		N struct {
 			X  string                 `tagexpr:"len($)>0"`
-			N  *N                     `tagexpr:"?"`
 			S  []*N                   `tagexpr:"?"`
 			M  map[string]*N          `tagexpr:"?"`
 			I  interface{}            `tagexpr:"-"`
 			MI map[string]interface{} `tagexpr:"?"`
 			SI []interface{}
+			*N `tagexpr:"?"`
+			N2 *N `tagexpr:"?"`
 		}
 		M struct {
 			X string `tagexpr:"len($)>0"`
@@ -730,7 +731,6 @@ func TestNilField(t *testing.T) {
 	)
 	n := &N{
 		X:  "n",
-		N:  nil,
 		S:  []*N{nil},
 		M:  map[string]*N{"": nil},
 		I:  new(N),
