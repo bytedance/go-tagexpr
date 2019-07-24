@@ -751,3 +751,44 @@ func TestNilField(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestDeepNested(t *testing.T) {
+	type testInner struct {
+		Address string `tagexpr:"$"`
+	}
+	type struct1 struct {
+		I *testInner
+		A []*testInner
+	}
+	type struct2 struct {
+		S *struct1
+	}
+	type Data struct {
+		S1 *struct2
+		S2 *struct2
+	}
+	data := &Data{
+		S1: &struct2{
+			S: &struct1{
+				I: &testInner{Address: "I:address"},
+				A: []*testInner{{Address: "A:address"}},
+			},
+		},
+		S2: &struct2{
+			S: &struct1{
+				A: []*testInner{nil},
+			},
+		},
+	}
+	expectKey := [...]interface{}{"S1.S.I.Address", "S2.S.I.Address", "Address", "Address"}
+	expectValue := [...]interface{}{"I:address", nil, "A:address", nil}
+	var i int
+	vm := New("tagexpr")
+	vm.MustRun(data).Range(func(es ExprSelector, eval func() interface{}) bool {
+		assert.Equal(t, expectKey[i], es.String())
+		assert.Equal(t, expectValue[i], eval())
+		i++
+		t.Log(es, eval())
+		return true
+	})
+}
