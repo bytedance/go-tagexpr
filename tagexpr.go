@@ -43,7 +43,7 @@ type structVM struct {
 	fieldsWithIndirectStructVM []*fieldVM
 	exprs                      map[string]*Expr
 	exprSelectorList           []string
-	ifaceTagExprGetters        []func(unsafe.Pointer) (te *TagExpr, ok bool)
+	ifaceTagExprGetters        []func(unsafe.Pointer, func(*TagExpr) bool) bool
 }
 
 // fieldVM tag expression set of struct field
@@ -77,6 +77,14 @@ func New(tagName ...string) *VM {
 	}
 }
 
+// MustWarmUp is similar to WarmUp, but panic when error.
+func (vm *VM) MustWarmUp(structOrStructPtrOrReflect ...interface{}) {
+	err := vm.WarmUp(structOrStructPtrOrReflect...)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // WarmUp preheating some interpreters of the struct type in batches,
 // to improve the performance of the vm.Run.
 func (vm *VM) WarmUp(structOrStructPtrOrReflect ...interface{}) error {
@@ -101,12 +109,13 @@ func (vm *VM) WarmUp(structOrStructPtrOrReflect ...interface{}) error {
 	return nil
 }
 
-// MustWarmUp is similar to WarmUp, but panic when error.
-func (vm *VM) MustWarmUp(structOrStructPtrOrReflect ...interface{}) {
-	err := vm.WarmUp(structOrStructPtrOrReflect...)
+// MustRun is similar to Run, but panic when error.
+func (vm *VM) MustRun(structOrStructPtrOrReflectValue interface{}) *TagExpr {
+	te, err := vm.Run(structOrStructPtrOrReflectValue)
 	if err != nil {
 		panic(err)
 	}
+	return te
 }
 
 // Run returns the tag expression handler of the @structOrStructPtrOrReflectValue.
@@ -150,13 +159,88 @@ func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error)
 	return s.newTagExpr(ptr), nil
 }
 
-// MustRun is similar to Run, but panic when error.
-func (vm *VM) MustRun(structOrStructPtrOrReflectValue interface{}) *TagExpr {
-	te, err := vm.Run(structOrStructPtrOrReflectValue)
-	if err != nil {
-		panic(err)
+func (vm *VM) subRunAll(omitNil bool, value reflect.Value, fn func(*TagExpr) bool) bool {
+	rv := goutil.DereferenceIfaceValue(value)
+	rt := goutil.DereferenceType(rv.Type())
+	rv = goutil.DereferenceValue(rv)
+	switch rt.Kind() {
+	case reflect.Struct:
+		if omitNil && !rv.IsValid() {
+			return true
+		}
+		te, err := vm.subRun(rt, tpack.RuntimeTypeID(rt), unsafe.Pointer(tpack.From(rv).Pointer()))
+		if err != nil {
+			return true
+		}
+		return fn(te)
+
+	case reflect.Slice, reflect.Array:
+		count := rv.Len()
+		if count == 0 {
+			return true
+		}
+		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			for i := count - 1; i >= 0; i-- {
+				if !vm.subRunAll(omitNil, rv.Index(i), fn) {
+					return false
+				}
+			}
+		default:
+			return true
+		}
+
+	case reflect.Map:
+		if rv.Len() == 0 {
+			return true
+		}
+		var canKey, canValue bool
+		rt := rv.Type()
+		switch goutil.DereferenceType(rt.Key()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			canKey = true
+		}
+		switch goutil.DereferenceType(rt.Elem()).Kind() {
+		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
+			canValue = true
+		}
+		if !canKey && !canValue {
+			return true
+		}
+		for _, key := range rv.MapKeys() {
+			if canKey {
+				if !vm.subRunAll(omitNil, key, fn) {
+					return false
+				}
+			}
+			if canValue {
+				if !vm.subRunAll(omitNil, rv.MapIndex(key), fn) {
+					return false
+				}
+			}
+		}
 	}
-	return te
+	return true
+}
+
+func (vm *VM) subRun(t reflect.Type, tid int32, ptr unsafe.Pointer) (*TagExpr, error) {
+	var err error
+	vm.rw.RLock()
+	s, ok := vm.structJar[tid]
+	vm.rw.RUnlock()
+	if !ok {
+		vm.rw.Lock()
+		s, ok = vm.structJar[tid]
+		if !ok {
+			s, err = vm.registerStructLocked(t)
+			if err != nil {
+				vm.rw.Unlock()
+				return nil, err
+			}
+		}
+		vm.rw.Unlock()
+	}
+	return s.newTagExpr(ptr), nil
 }
 
 func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
@@ -313,6 +397,35 @@ func (f *fieldVM) ensureInit(v reflect.Value) {
 	}
 }
 
+func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
+	field.origin = sub
+	nameSpace := field.structField.Name
+	fieldsWithIndirectStructVM := make(map[*fieldVM]struct{}, len(sub.fieldsWithIndirectStructVM))
+	for _, subField := range sub.fieldsWithIndirectStructVM {
+		fieldsWithIndirectStructVM[subField] = struct{}{}
+	}
+	for _, k := range sub.fieldSelectorList {
+		v := sub.fields[k]
+		f := s.newChildField(field, v)
+		fieldSelector := nameSpace + FieldSeparator + k
+		s.fields[fieldSelector] = f
+		s.fieldSelectorList = append(s.fieldSelectorList, fieldSelector)
+		if _, ok := fieldsWithIndirectStructVM[v]; ok {
+			s.fieldsWithIndirectStructVM = append(s.fieldsWithIndirectStructVM, f)
+		}
+	}
+	for _, _subFn := range sub.ifaceTagExprGetters {
+		subFn := _subFn
+		s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, fn func(*TagExpr) bool) bool {
+			ptr = field.getElemPtr(ptr)
+			if ptr == nil {
+				return true
+			}
+			return subFn(ptr, fn)
+		})
+	}
+}
+
 func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 	f := &fieldVM{
 		structField:            child.structField,
@@ -324,8 +437,6 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 		mapKeyStructVM:         child.mapKeyStructVM,
 		mapOrSliceElemStructVM: child.mapOrSliceElemStructVM,
 		mapOrSliceIfaceKinds:   child.mapOrSliceIfaceKinds,
-		// valueGetter:            child.valueGetter,
-		// reflectValueGetter:     child.reflectValueGetter,
 	}
 
 	f.getPtr = func(ptr unsafe.Pointer) unsafe.Pointer {
@@ -387,26 +498,6 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 	return f
 }
 
-func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
-	field.origin = sub
-	nameSpace := field.structField.Name
-	fieldsWithIndirectStructVM := make(map[*fieldVM]struct{}, len(sub.fieldsWithIndirectStructVM))
-	for _, subField := range sub.fieldsWithIndirectStructVM {
-		fieldsWithIndirectStructVM[subField] = struct{}{}
-	}
-	// sub.ifaceTagExprGetters
-	for _, k := range sub.fieldSelectorList {
-		v := sub.fields[k]
-		f := s.newChildField(field, v)
-		fieldSelector := nameSpace + FieldSeparator + k
-		s.fields[fieldSelector] = f
-		s.fieldSelectorList = append(s.fieldSelectorList, fieldSelector)
-		if _, ok := fieldsWithIndirectStructVM[v]; ok {
-			s.fieldsWithIndirectStructVM = append(s.fieldsWithIndirectStructVM, f)
-		}
-	}
-}
-
 func (f *fieldVM) getElemPtr(ptr unsafe.Pointer) unsafe.Pointer {
 	ptr = f.getPtr(ptr)
 	for i := f.ptrDeep; ptr != nil && i > 0; i-- {
@@ -427,42 +518,13 @@ func (s *structVM) setIfaceTagExprGetter(f *fieldVM) {
 	if f.tagOp == tagOmit {
 		return
 	}
-	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer) (*TagExpr, bool) {
+	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, fn func(*TagExpr) bool) bool {
 		v := f.packElemFrom(ptr)
 		if !v.IsValid() || v.IsNil() {
-			return nil, false
+			return true
 		}
-		te, ok := s.vm.runFromValue(v)
-		if !ok {
-			return nil, false
-		}
-		return te, true
+		return s.vm.subRunAll(f.tagOp == tagOmitNil, v, fn)
 	})
-}
-
-func (vm *VM) runFromValue(v reflect.Value) (*TagExpr, bool) {
-	u := tpack.From(v).UnderlyingElem()
-	if u.Kind() != reflect.Struct {
-		return nil, false
-	}
-	tid := u.RuntimeTypeID()
-	var err error
-	vm.rw.RLock()
-	s, ok := vm.structJar[tid]
-	vm.rw.RUnlock()
-	if !ok {
-		vm.rw.Lock()
-		s, ok = vm.structJar[tid]
-		if !ok {
-			s, err = vm.registerStructLocked(v.Elem().Type())
-			if err != nil {
-				vm.rw.Unlock()
-				return nil, false
-			}
-		}
-		vm.rw.Unlock()
-	}
-	return s.newTagExpr(unsafe.Pointer(u.Pointer())), true
 }
 
 func (f *fieldVM) setFloatGetter() {
@@ -690,17 +752,6 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 	}
 
 	ptr := t.ptr
-	if list := t.s.ifaceTagExprGetters; len(list) > 0 {
-		var te *TagExpr
-		var ok bool
-		for _, getter := range list {
-			if te, ok = getter(ptr); ok {
-				if !te.Range(fn) {
-					return false
-				}
-			}
-		}
-	}
 
 	if list := t.s.fieldsWithIndirectStructVM; len(list) > 0 {
 		for _, f := range list {
@@ -759,91 +810,23 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 			}
 		}
 	}
+
+	if list := t.s.ifaceTagExprGetters; len(list) > 0 {
+		for _, getter := range list {
+			if !getter(ptr, func(te *TagExpr) bool {
+				return te.Range(fn)
+			}) {
+				return false
+			}
+		}
+	}
 	return true
 }
 
 func (t *TagExpr) subRange(omitNil bool, value reflect.Value, fn func(es ExprSelector, eval func() interface{}) bool) bool {
-	rv := goutil.DereferenceIfaceValue(value)
-	rt := goutil.DereferenceType(rv.Type())
-	rv = goutil.DereferenceValue(rv)
-	switch rt.Kind() {
-	case reflect.Struct:
-		if omitNil && !rv.IsValid() {
-			return true
-		}
-		te, err := t.s.vm.subRun(rt, tpack.RuntimeTypeID(rt), unsafe.Pointer(tpack.From(rv).Pointer()))
-		if err != nil {
-			return false
-		}
+	return t.s.vm.subRunAll(omitNil, value, func(te *TagExpr) bool {
 		return te.Range(fn)
-
-	case reflect.Slice, reflect.Array:
-		count := rv.Len()
-		if count == 0 {
-			return true
-		}
-		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
-		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
-			for i := count - 1; i >= 0; i-- {
-				if !t.subRange(omitNil, rv.Index(i), fn) {
-					return false
-				}
-			}
-		default:
-			return true
-		}
-
-	case reflect.Map:
-		if rv.Len() == 0 {
-			return true
-		}
-		var canKey, canValue bool
-		rt := rv.Type()
-		switch goutil.DereferenceType(rt.Key()).Kind() {
-		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
-			canKey = true
-		}
-		switch goutil.DereferenceType(rt.Elem()).Kind() {
-		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
-			canValue = true
-		}
-		if !canKey && !canValue {
-			return true
-		}
-		for _, key := range rv.MapKeys() {
-			if canKey {
-				if !t.subRange(omitNil, key, fn) {
-					return false
-				}
-			}
-			if canValue {
-				if !t.subRange(omitNil, rv.MapIndex(key), fn) {
-					return false
-				}
-			}
-		}
-	}
-	return true
-}
-
-func (vm *VM) subRun(t reflect.Type, tid int32, ptr unsafe.Pointer) (*TagExpr, error) {
-	var err error
-	vm.rw.RLock()
-	s, ok := vm.structJar[tid]
-	vm.rw.RUnlock()
-	if !ok {
-		vm.rw.Lock()
-		s, ok = vm.structJar[tid]
-		if !ok {
-			s, err = vm.registerStructLocked(t)
-			if err != nil {
-				vm.rw.Unlock()
-				return nil, err
-			}
-		}
-		vm.rw.Unlock()
-	}
-	return s.newTagExpr(ptr), nil
+	})
 }
 
 var (

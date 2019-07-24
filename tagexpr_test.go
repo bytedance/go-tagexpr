@@ -759,6 +759,7 @@ func TestDeepNested(t *testing.T) {
 	type struct1 struct {
 		I *testInner
 		A []*testInner
+		X interface{}
 	}
 	type struct2 struct {
 		S *struct1
@@ -772,6 +773,7 @@ func TestDeepNested(t *testing.T) {
 			S: &struct1{
 				I: &testInner{Address: "I:address"},
 				A: []*testInner{{Address: "A:address"}},
+				X: []*testInner{{Address: "X:address"}},
 			},
 		},
 		S2: &struct2{
@@ -780,8 +782,8 @@ func TestDeepNested(t *testing.T) {
 			},
 		},
 	}
-	expectKey := [...]interface{}{"S1.S.I.Address", "S2.S.I.Address", "Address", "Address"}
-	expectValue := [...]interface{}{"I:address", nil, "A:address", nil}
+	expectKey := [...]interface{}{"S1.S.I.Address", "S2.S.I.Address", "Address", "Address", "Address"}
+	expectValue := [...]interface{}{"I:address", nil, "A:address", nil, "X:address"}
 	var i int
 	vm := New("tagexpr")
 	vm.MustRun(data).Range(func(es ExprSelector, eval func() interface{}) bool {
