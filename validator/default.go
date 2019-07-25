@@ -12,8 +12,9 @@ func Default() *Validator {
 // Validate uses the default validator to validate whether the fields of value is valid.
 // NOTE:
 //  The tag name is 'vd'
-func Validate(value interface{}) error {
-	return defaultValidator.Validate(value)
+//  If checkAll=true, validate all the error.
+func Validate(value interface{}, checkAll ...bool) error {
+	return defaultValidator.Validate(value, checkAll...)
 }
 
 // SetErrorFactory customizes the factory of validation error for the default validator.

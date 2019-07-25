@@ -53,21 +53,29 @@ func (v *Validator) VM() *tagexpr.VM {
 }
 
 // Validate validates whether the fields of value is valid.
+// NOTE:
+//  If checkAll=true, validate all the error.
 func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 	var all bool
 	if len(checkAll) > 0 {
 		all = checkAll[0]
 	}
-	var errs []error
+	type ErrInfo struct {
+		selector string
+		path     string
+		te       *tagexpr.TagExpr
+	}
+	var errInfos = make([]*ErrInfo, 0, 8)
+	var errs = make([]error, 0, 8)
 	v.vm.RunAny(value, func(te *tagexpr.TagExpr, err error) error {
 		if err != nil {
 			errs = append(errs, err)
-			if !all {
-				return io.EOF
+			if all {
+				return nil
 			}
+			return io.EOF
 		}
-		var errSelector, errPath string
-		te.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) error {
+		err = te.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) error {
 			if strings.Contains(path, tagexpr.ExprNameSeparator) {
 				return nil
 			}
@@ -75,25 +83,27 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			if valid {
 				return nil
 			}
-			errSelector = es.String()
-			errPath = path
+			errInfos = append(errInfos, &ErrInfo{
+				selector: es.String(),
+				path:     path,
+				te:       te,
+			})
 			if all {
 				return nil
 			}
 			return io.EOF
 		})
-		if errSelector == "" {
-			return nil
+		if err != nil && !all {
+			return err
 		}
-		errs = append(errs, v.errFactory(
-			errPath,
-			te.EvalString(errSelector+tagexpr.ExprNameSeparator+ErrMsgExprName),
-		))
-		if all {
-			return nil
-		}
-		return io.EOF
+		return nil
 	})
+	for _, info := range errInfos {
+		errs = append(errs, v.errFactory(
+			info.path,
+			info.te.EvalString(info.selector+tagexpr.ExprNameSeparator+ErrMsgExprName),
+		))
+	}
 	switch len(errs) {
 	case 0:
 		return nil
@@ -102,7 +112,7 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 	default:
 		var errStr string
 		for _, e := range errs {
-			errStr += e.Error() + "\n"
+			errStr += e.Error() + "\t"
 		}
 		return errors.New(errStr[:len(errStr)-1])
 	}
