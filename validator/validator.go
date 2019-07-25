@@ -122,16 +122,16 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 	if err != nil {
 		return err
 	}
-	var errSelector string
+	var errSelector, errPath string
 	var valid bool
-	expr.Range(func(es tagexpr.ExprSelector, eval func() interface{}) bool {
-		selector := es.String()
-		if strings.Contains(selector, tagexpr.ExprNameSeparator) {
+	expr.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) bool {
+		if strings.Contains(path, tagexpr.ExprNameSeparator) {
 			return true
 		}
 		valid = tagexpr.FakeBool(eval())
 		if !valid {
-			errSelector = selector
+			errSelector = es.String()
+			errPath = path
 		}
 		return valid
 	})
@@ -139,7 +139,7 @@ func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
 		return nil
 	}
 	errMsg := expr.EvalString(errSelector + tagexpr.ExprNameSeparator + ErrMsgExprName)
-	return v.errFactory(selectorPrefix+errSelector, errMsg)
+	return v.errFactory(selectorPrefix+errPath, errMsg)
 }
 
 // SetErrorFactory customizes the factory of validation error.

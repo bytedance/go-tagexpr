@@ -229,7 +229,7 @@ func Test(t *testing.T) {
 				t.Fatalf("Eval Serial: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
-		tagExpr.Range(func(es ExprSelector, eval func() interface{}) bool {
+		tagExpr.Range(func(path string, es ExprSelector, eval func() interface{}) bool {
 			t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 			value := c.tests[es.String()]
 			val := eval()
@@ -545,7 +545,7 @@ func TestOperator(t *testing.T) {
 				t.Fatalf("Eval NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
-		tagExpr.Range(func(es ExprSelector, eval func() interface{}) bool {
+		tagExpr.Range(func(path string, es ExprSelector, eval func() interface{}) bool {
 			t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 			value := c.tests[es.String()]
 			val := eval()
@@ -578,8 +578,8 @@ func TestStruct(t *testing.T) {
 	assert.Equal(t, "xxx", expr.EvalString("B.C3"))
 	assert.Equal(t, "xxx", expr.EvalString("B.C"))
 	assert.Equal(t, "xxx", expr.EvalString("B.C.D.X"))
-	expr.Range(func(es ExprSelector, eval func() interface{}) bool {
-		t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
+	expr.Range(func(path string, es ExprSelector, eval func() interface{}) bool {
+		t.Logf("Range selector: %s, field: %q exprName: %q", path, es.Field(), es.Name())
 		if eval().(string) != "xxx" {
 			t.FailNow()
 		}
@@ -672,8 +672,8 @@ func TestStruct3(t *testing.T) {
 	if expr.EvalString("XBlock.BlockType") != "BlockType" {
 		t.Fatal(expr.EvalString("XBlock.BlockType"))
 	}
-	ok := expr.Range(func(es ExprSelector, eval func() interface{}) bool {
-		t.Logf("Range selector: %s, field: %q exprName: %q, eval: %v", es, es.Field(), es.Name(), eval())
+	ok := expr.Range(func(path string, es ExprSelector, eval func() interface{}) bool {
+		t.Logf("Range selector: %s, field: %q exprName: %q, eval: %v", path, es.Field(), es.Name(), eval())
 		return true
 	})
 	if !ok {
@@ -690,10 +690,10 @@ func TestNilField(t *testing.T) {
 	}
 	vm := New("tagexpr")
 	te := vm.MustRun(P{})
-	te.Range(func(es ExprSelector, eval func() interface{}) bool {
+	te.Range(func(path string, es ExprSelector, eval func() interface{}) bool {
 		r := eval()
 		if r != nil {
-			t.Fatal(es, r)
+			t.Fatal(path, r)
 		}
 		return true
 	})
@@ -706,10 +706,10 @@ func TestNilField(t *testing.T) {
 		Nil1: new(int),
 		Nil2: new(int),
 	}
-	vm.MustRun(g).Range(func(es ExprSelector, eval func() interface{}) bool {
+	vm.MustRun(g).Range(func(path string, es ExprSelector, eval func() interface{}) bool {
 		r, ok := eval().(bool)
 		if !ok || !r {
-			t.Fatal(es, r)
+			t.Fatal(path, r)
 		}
 		return true
 	})
@@ -738,12 +738,12 @@ func TestNilField(t *testing.T) {
 		SI: []interface{}{&M{X: "nn"}},
 	}
 	var cnt int
-	vm.MustRun(n).Range(func(es ExprSelector, eval func() interface{}) bool {
+	vm.MustRun(n).Range(func(path string, es ExprSelector, eval func() interface{}) bool {
 		r, ok := eval().(bool)
 		if !ok || !r {
-			t.Fatal(es, r)
+			t.Fatal(path, r)
 		}
-		t.Log(es, r)
+		t.Log(path, r)
 		cnt++
 		return true
 	})
@@ -754,7 +754,7 @@ func TestNilField(t *testing.T) {
 
 func TestDeepNested(t *testing.T) {
 	type testInner struct {
-		Address string `tagexpr:"$"`
+		Address string `tagexpr:"name:$"`
 	}
 	type struct1 struct {
 		I *testInner
@@ -782,15 +782,16 @@ func TestDeepNested(t *testing.T) {
 			},
 		},
 	}
-	expectKey := [...]interface{}{"S1.S.I.Address", "S2.S.I.Address", "Address", "Address", "Address"}
+	expectKey := [...]interface{}{"S1.S.I.Address@name", "S2.S.I.Address@name", "S1.S.A[0].Address@name", "S2.S.A[0].Address@name", "S1.S.X[0].Address@name"}
 	expectValue := [...]interface{}{"I:address", nil, "A:address", nil, "X:address"}
 	var i int
 	vm := New("tagexpr")
-	vm.MustRun(data).Range(func(es ExprSelector, eval func() interface{}) bool {
-		assert.Equal(t, expectKey[i], es.String())
+	vm.MustRun(data).Range(func(path string, es ExprSelector, eval func() interface{}) bool {
+		assert.Equal(t, expectKey[i], path)
 		assert.Equal(t, expectValue[i], eval())
 		i++
-		t.Log(es, eval())
+		t.Log(path, es, eval())
 		return true
 	})
+	assert.Equal(t, 5, i)
 }

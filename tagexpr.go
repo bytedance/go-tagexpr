@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
@@ -43,7 +44,7 @@ type structVM struct {
 	fieldsWithIndirectStructVM []*fieldVM
 	exprs                      map[string]*Expr
 	exprSelectorList           []string
-	ifaceTagExprGetters        []func(unsafe.Pointer, func(*TagExpr) bool) bool
+	ifaceTagExprGetters        []func(unsafe.Pointer, string, func(*TagExpr) bool) bool
 }
 
 // fieldVM tag expression set of struct field
@@ -60,6 +61,7 @@ type fieldVM struct {
 	mapKeyStructVM         *structVM
 	mapOrSliceElemStructVM *structVM
 	mapOrSliceIfaceKinds   [2]bool // [value, key/index]
+	fieldSelector          string
 	tagOp                  string
 }
 
@@ -156,10 +158,10 @@ func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error)
 		}
 		vm.rw.Unlock()
 	}
-	return s.newTagExpr(ptr), nil
+	return s.newTagExpr(ptr, ""), nil
 }
 
-func (vm *VM) subRunAll(omitNil bool, value reflect.Value, fn func(*TagExpr) bool) bool {
+func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn func(*TagExpr) bool) bool {
 	rv := goutil.DereferenceIfaceValue(value)
 	rt := goutil.DereferenceType(rv.Type())
 	rv = goutil.DereferenceValue(rv)
@@ -168,7 +170,7 @@ func (vm *VM) subRunAll(omitNil bool, value reflect.Value, fn func(*TagExpr) boo
 		if omitNil && !rv.IsValid() {
 			return true
 		}
-		te, err := vm.subRun(rt, tpack.RuntimeTypeID(rt), unsafe.Pointer(tpack.From(rv).Pointer()))
+		te, err := vm.subRun(tePath, rt, tpack.RuntimeTypeID(rt), unsafe.Pointer(tpack.From(rv).Pointer()))
 		if err != nil {
 			return true
 		}
@@ -182,7 +184,7 @@ func (vm *VM) subRunAll(omitNil bool, value reflect.Value, fn func(*TagExpr) boo
 		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			for i := count - 1; i >= 0; i-- {
-				if !vm.subRunAll(omitNil, rv.Index(i), fn) {
+				if !vm.subRunAll(omitNil, tePath+"["+strconv.Itoa(i)+"]", rv.Index(i), fn) {
 					return false
 				}
 			}
@@ -209,12 +211,12 @@ func (vm *VM) subRunAll(omitNil bool, value reflect.Value, fn func(*TagExpr) boo
 		}
 		for _, key := range rv.MapKeys() {
 			if canKey {
-				if !vm.subRunAll(omitNil, key, fn) {
+				if !vm.subRunAll(omitNil, tePath+"{}", key, fn) {
 					return false
 				}
 			}
 			if canValue {
-				if !vm.subRunAll(omitNil, rv.MapIndex(key), fn) {
+				if !vm.subRunAll(omitNil, tePath+"{K:"+key.String()+"}", rv.MapIndex(key), fn) {
 					return false
 				}
 			}
@@ -223,7 +225,7 @@ func (vm *VM) subRunAll(omitNil bool, value reflect.Value, fn func(*TagExpr) boo
 	return true
 }
 
-func (vm *VM) subRun(t reflect.Type, tid int32, ptr unsafe.Pointer) (*TagExpr, error) {
+func (vm *VM) subRun(path string, t reflect.Type, tid int32, ptr unsafe.Pointer) (*TagExpr, error) {
 	var err error
 	vm.rw.RLock()
 	s, ok := vm.structJar[tid]
@@ -240,7 +242,7 @@ func (vm *VM) subRun(t reflect.Type, tid int32, ptr unsafe.Pointer) (*TagExpr, e
 		}
 		vm.rw.Unlock()
 	}
-	return s.newTagExpr(ptr), nil
+	return s.newTagExpr(ptr, path), nil
 }
 
 func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
@@ -343,17 +345,17 @@ func (vm *VM) newStructVM() *structVM {
 
 func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error) {
 	f := &fieldVM{
-		structField: structField,
-		exprs:       make(map[string]*Expr, 8),
-		origin:      s,
+		structField:   structField,
+		exprs:         make(map[string]*Expr, 8),
+		origin:        s,
+		fieldSelector: structField.Name,
 	}
 	err := f.parseExprs(structField.Tag.Get(s.vm.tagName))
 	if err != nil {
 		return nil, err
 	}
-	fieldSelector := f.structField.Name
-	s.fields[fieldSelector] = f
-	s.fieldSelectorList = append(s.fieldSelectorList, fieldSelector)
+	s.fields[f.fieldSelector] = f
+	s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
 
 	var t = structField.Type
 	var ptrDeep int
@@ -399,7 +401,6 @@ func (f *fieldVM) ensureInit(v reflect.Value) {
 
 func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
 	field.origin = sub
-	nameSpace := field.structField.Name
 	fieldsWithIndirectStructVM := make(map[*fieldVM]struct{}, len(sub.fieldsWithIndirectStructVM))
 	for _, subField := range sub.fieldsWithIndirectStructVM {
 		fieldsWithIndirectStructVM[subField] = struct{}{}
@@ -407,21 +408,24 @@ func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
 	for _, k := range sub.fieldSelectorList {
 		v := sub.fields[k]
 		f := s.newChildField(field, v)
-		fieldSelector := nameSpace + FieldSeparator + k
-		s.fields[fieldSelector] = f
-		s.fieldSelectorList = append(s.fieldSelectorList, fieldSelector)
 		if _, ok := fieldsWithIndirectStructVM[v]; ok {
 			s.fieldsWithIndirectStructVM = append(s.fieldsWithIndirectStructVM, f)
 		}
 	}
 	for _, _subFn := range sub.ifaceTagExprGetters {
 		subFn := _subFn
-		s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, fn func(*TagExpr) bool) bool {
+		s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, pathPrefix string, fn func(*TagExpr) bool) bool {
 			ptr = field.getElemPtr(ptr)
 			if ptr == nil {
 				return true
 			}
-			return subFn(ptr, fn)
+			var path string
+			if pathPrefix == "" {
+				path = field.fieldSelector
+			} else {
+				path = pathPrefix + FieldSeparator + field.fieldSelector
+			}
+			return subFn(ptr, path, fn)
 		})
 	}
 }
@@ -437,6 +441,21 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 		mapKeyStructVM:         child.mapKeyStructVM,
 		mapOrSliceElemStructVM: child.mapOrSliceElemStructVM,
 		mapOrSliceIfaceKinds:   child.mapOrSliceIfaceKinds,
+		fieldSelector:          parent.fieldSelector + FieldSeparator + child.fieldSelector,
+	}
+	s.fields[f.fieldSelector] = f
+	s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
+
+	if parent.tagOp != tagOmit {
+		f.tagOp = child.tagOp
+		for k, v := range child.exprs {
+			selector := parent.fieldSelector + FieldSeparator + k
+			f.exprs[selector] = v
+			s.exprs[selector] = v
+			s.exprSelectorList = append(s.exprSelectorList, selector)
+		}
+	} else {
+		f.tagOp = parent.tagOp
 	}
 
 	f.getPtr = func(ptr unsafe.Pointer) unsafe.Pointer {
@@ -445,20 +464,6 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 			return nil
 		}
 		return child.getPtr(ptr)
-	}
-
-	if parent.tagOp != tagOmit {
-		f.tagOp = child.tagOp
-		var selector string
-		nameSpace := parent.structField.Name
-		for k, v := range child.exprs {
-			selector = nameSpace + FieldSeparator + k
-			f.exprs[selector] = v
-			s.exprs[selector] = v
-			s.exprSelectorList = append(s.exprSelectorList, selector)
-		}
-	} else {
-		f.tagOp = parent.tagOp
 	}
 
 	if child.valueGetter != nil {
@@ -518,12 +523,18 @@ func (s *structVM) setIfaceTagExprGetter(f *fieldVM) {
 	if f.tagOp == tagOmit {
 		return
 	}
-	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, fn func(*TagExpr) bool) bool {
+	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, pathPrefix string, fn func(*TagExpr) bool) bool {
 		v := f.packElemFrom(ptr)
 		if !v.IsValid() || v.IsNil() {
 			return true
 		}
-		return s.vm.subRunAll(f.tagOp == tagOmitNil, v, fn)
+		var path string
+		if pathPrefix == "" {
+			path = f.fieldSelector
+		} else {
+			path = pathPrefix + FieldSeparator + f.fieldSelector
+		}
+		return s.vm.subRunAll(f.tagOp == tagOmitNil, path, v, fn)
 	})
 }
 
@@ -625,20 +636,22 @@ func (vm *VM) getStructType(t reflect.Type) (reflect.Type, error) {
 	return structType, nil
 }
 
-func (s *structVM) newTagExpr(ptr unsafe.Pointer) *TagExpr {
+func (s *structVM) newTagExpr(ptr unsafe.Pointer, path string) *TagExpr {
 	te := &TagExpr{
-		s:   s,
-		ptr: ptr,
-		sub: make(map[string]*TagExpr, 8),
+		s:    s,
+		ptr:  ptr,
+		sub:  make(map[string]*TagExpr, 8),
+		path: strings.TrimPrefix(path, "."),
 	}
 	return te
 }
 
 // TagExpr struct tag expression evaluator
 type TagExpr struct {
-	s   *structVM
-	ptr unsafe.Pointer
-	sub map[string]*TagExpr
+	s    *structVM
+	ptr  unsafe.Pointer
+	sub  map[string]*TagExpr
+	path string
 }
 
 // EvalFloat evaluate the value of the struct tag expression by the selector expression.
@@ -734,17 +747,23 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 // When fn returns false, interrupt traversal and return false.
 // NOTE:
 //  eval result types: float64, string, bool, nil
-func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) bool {
+func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interface{}) bool) bool {
 	if list := t.s.exprSelectorList; len(list) > 0 {
 		exprs := t.s.exprs
-		for _, exprSelector := range list {
-			dir, base := splitFieldSelector(exprSelector)
+		for _, es := range list {
+			dir, base := splitFieldSelector(es)
 			targetTagExpr, err := t.checkout(dir)
 			if err != nil {
 				continue
 			}
-			if !fn(ExprSelector(exprSelector), func() interface{} {
-				return exprs[exprSelector].run(base, targetTagExpr)
+			var path string
+			if targetTagExpr.path == "" {
+				path = es
+			} else {
+				path = targetTagExpr.path + FieldSeparator + es
+			}
+			if !fn(path, ExprSelector(es), func() interface{} {
+				return exprs[es].run(base, targetTagExpr)
 			}) {
 				return false
 			}
@@ -767,16 +786,17 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 
 			if f.elemKind == reflect.Map &&
 				(mapOrSliceElemStructVM != nil || mapKeyStructVM != nil || valueIface || keyIface) {
+				keyPath := f.fieldSelector + FieldSeparator + "{}"
 				for _, key := range v.MapKeys() {
 					if mapKeyStructVM != nil {
 						p := unsafe.Pointer(tpack.From(derefValue(key)).Pointer())
 						if omitNil && p == nil {
 							continue
 						}
-						if !mapKeyStructVM.newTagExpr(p).Range(fn) {
+						if !mapKeyStructVM.newTagExpr(p, keyPath).Range(fn) {
 							return false
 						}
-					} else if keyIface && !t.subRange(omitNil, key, fn) {
+					} else if keyIface && !t.subRange(omitNil, keyPath, key, fn) {
 						return false
 					}
 					if mapOrSliceElemStructVM != nil {
@@ -784,10 +804,10 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 						if omitNil && p == nil {
 							continue
 						}
-						if !mapOrSliceElemStructVM.newTagExpr(p).Range(fn) {
+						if !mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"{"+key.String()+"}").Range(fn) {
 							return false
 						}
-					} else if valueIface && !t.subRange(omitNil, v.MapIndex(key), fn) {
+					} else if valueIface && !t.subRange(omitNil, f.fieldSelector+"{"+key.String()+"}", v.MapIndex(key), fn) {
 						return false
 					}
 				}
@@ -800,10 +820,10 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 						if omitNil && p == nil {
 							continue
 						}
-						if !mapOrSliceElemStructVM.newTagExpr(p).Range(fn) {
+						if !mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"["+strconv.Itoa(i)+"]").Range(fn) {
 							return false
 						}
-					} else if valueIface && !t.subRange(omitNil, v.Index(i), fn) {
+					} else if valueIface && !t.subRange(omitNil, f.fieldSelector+"["+strconv.Itoa(i)+"]", v.Index(i), fn) {
 						return false
 					}
 				}
@@ -813,7 +833,7 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 
 	if list := t.s.ifaceTagExprGetters; len(list) > 0 {
 		for _, getter := range list {
-			if !getter(ptr, func(te *TagExpr) bool {
+			if !getter(ptr, "", func(te *TagExpr) bool {
 				return te.Range(fn)
 			}) {
 				return false
@@ -823,8 +843,8 @@ func (t *TagExpr) Range(fn func(es ExprSelector, eval func() interface{}) bool) 
 	return true
 }
 
-func (t *TagExpr) subRange(omitNil bool, value reflect.Value, fn func(es ExprSelector, eval func() interface{}) bool) bool {
-	return t.s.vm.subRunAll(omitNil, value, func(te *TagExpr) bool {
+func (t *TagExpr) subRange(omitNil bool, path string, value reflect.Value, fn func(string, ExprSelector, func() interface{}) bool) bool {
+	return t.s.vm.subRunAll(omitNil, path, value, func(te *TagExpr) bool {
 		return te.Range(fn)
 	})
 }
@@ -854,7 +874,7 @@ func (t *TagExpr) checkout(fs string) (*TagExpr, error) {
 		t.sub[fs] = nil
 		return nil, errOmitNil
 	}
-	subTagExpr = f.origin.newTagExpr(ptr)
+	subTagExpr = f.origin.newTagExpr(ptr, t.path)
 	t.sub[fs] = subTagExpr
 	return subTagExpr, nil
 }

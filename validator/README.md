@@ -101,7 +101,7 @@ func Example() {
 
 	// Output:
 	// true
-	// invalid parameter: Email
+	// invalid parameter: Info.Email
 	// true
 	// C must be false when S.A>0
 	// invalid d: [x y]

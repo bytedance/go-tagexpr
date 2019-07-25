@@ -82,7 +82,7 @@ func Example() {
 
 	// Output:
 	// true
-	// invalid parameter: Email
+	// invalid parameter: Info.Email
 	// true
 	// C must be false when S.A>0
 	// invalid d: [x y]
@@ -94,34 +94,4 @@ func Example() {
 	// unsupport data: nil
 	// <nil>
 	// <nil>
-}
-
-func Example2() {
-	type testInner struct {
-		Address string `vd:"$"`
-	}
-	type struct1 struct {
-		I []*testInner
-	}
-	type struct2 struct {
-		S *struct1
-	}
-	type test struct {
-		S *struct2
-	}
-	t := &test{
-		S: &struct2{
-			S: &struct1{
-				[]*testInner{
-					{
-						Address: "address",
-					},
-				},
-			},
-		},
-	}
-
-	v := vd.New("vd")
-	fmt.Println(v.Validate(t))
-	// Output:
 }
