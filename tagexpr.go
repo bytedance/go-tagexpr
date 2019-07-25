@@ -44,7 +44,7 @@ type structVM struct {
 	fieldsWithIndirectStructVM []*fieldVM
 	exprs                      map[string]*Expr
 	exprSelectorList           []string
-	ifaceTagExprGetters        []func(unsafe.Pointer, string, func(*TagExpr) bool) bool
+	ifaceTagExprGetters        []func(unsafe.Pointer, string, func(*TagExpr, error) error) error
 }
 
 // fieldVM tag expression set of struct field
@@ -79,38 +79,6 @@ func New(tagName ...string) *VM {
 	}
 }
 
-// MustWarmUp is similar to WarmUp, but panic when error.
-func (vm *VM) MustWarmUp(structOrStructPtrOrReflect ...interface{}) {
-	err := vm.WarmUp(structOrStructPtrOrReflect...)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// WarmUp preheating some interpreters of the struct type in batches,
-// to improve the performance of the vm.Run.
-func (vm *VM) WarmUp(structOrStructPtrOrReflect ...interface{}) error {
-	vm.rw.Lock()
-	defer vm.rw.Unlock()
-	var err error
-	for _, v := range structOrStructPtrOrReflect {
-		switch t := v.(type) {
-		case nil:
-			return errors.New("cannot warn up nil interface")
-		case reflect.Type:
-			_, err = vm.registerStructLocked(t)
-		case reflect.Value:
-			_, err = vm.registerStructLocked(t.Type())
-		default:
-			_, err = vm.registerStructLocked(reflect.TypeOf(v))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // MustRun is similar to Run, but panic when error.
 func (vm *VM) MustRun(structOrStructPtrOrReflectValue interface{}) *TagExpr {
 	te, err := vm.Run(structOrStructPtrOrReflectValue)
@@ -119,6 +87,8 @@ func (vm *VM) MustRun(structOrStructPtrOrReflectValue interface{}) *TagExpr {
 	}
 	return te
 }
+
+var unsupportNil = errors.New("unsupport data: nil")
 
 // Run returns the tag expression handler of the @structOrStructPtrOrReflectValue.
 // NOTE:
@@ -134,7 +104,7 @@ func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error)
 	}
 	ptr := unsafe.Pointer(u.Pointer())
 	if ptr == nil {
-		return nil, errors.New("unsupport data: nil")
+		return nil, unsupportNil
 	}
 	u = u.UnderlyingElem()
 	tid := u.RuntimeTypeID()
@@ -161,40 +131,54 @@ func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error)
 	return s.newTagExpr(ptr, ""), nil
 }
 
-func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn func(*TagExpr) bool) bool {
+// RunAny returns the tag expression handler for the @v.
+// NOTE:
+//  The @v can be structured data such as struct, map, slice, array, interface, reflcet.Value, etc.
+//  If the structure type has not been warmed up,
+//  it will be slower when it is first called.
+func (vm *VM) RunAny(v interface{}, fn func(*TagExpr, error) error) error {
+	vv, isReflectValue := v.(reflect.Value)
+	if !isReflectValue {
+		vv = reflect.ValueOf(v)
+	}
+	return vm.subRunAll(false, "", vv, fn)
+}
+
+func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn func(*TagExpr, error) error) error {
 	rv := goutil.DereferenceIfaceValue(value)
 	rt := goutil.DereferenceType(rv.Type())
 	rv = goutil.DereferenceValue(rv)
 	switch rt.Kind() {
 	case reflect.Struct:
-		if omitNil && !rv.IsValid() {
-			return true
+		ptr := unsafe.Pointer(tpack.From(rv).Pointer())
+		if ptr == nil {
+			if omitNil {
+				return nil
+			}
+			return fn(nil, unsupportNil)
 		}
-		te, err := vm.subRun(tePath, rt, tpack.RuntimeTypeID(rt), unsafe.Pointer(tpack.From(rv).Pointer()))
-		if err != nil {
-			return true
-		}
-		return fn(te)
+		return fn(vm.subRun(tePath, rt, tpack.RuntimeTypeID(rt), ptr))
 
 	case reflect.Slice, reflect.Array:
 		count := rv.Len()
 		if count == 0 {
-			return true
+			return nil
 		}
 		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			for i := count - 1; i >= 0; i-- {
-				if !vm.subRunAll(omitNil, tePath+"["+strconv.Itoa(i)+"]", rv.Index(i), fn) {
-					return false
+				err := vm.subRunAll(omitNil, tePath+"["+strconv.Itoa(i)+"]", rv.Index(i), fn)
+				if err != nil {
+					return err
 				}
 			}
 		default:
-			return true
+			return nil
 		}
 
 	case reflect.Map:
 		if rv.Len() == 0 {
-			return true
+			return nil
 		}
 		var canKey, canValue bool
 		rt := rv.Type()
@@ -207,22 +191,24 @@ func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn fun
 			canValue = true
 		}
 		if !canKey && !canValue {
-			return true
+			return nil
 		}
 		for _, key := range rv.MapKeys() {
 			if canKey {
-				if !vm.subRunAll(omitNil, tePath+"{}", key, fn) {
-					return false
+				err := vm.subRunAll(omitNil, tePath+"{}", key, fn)
+				if err != nil {
+					return err
 				}
 			}
 			if canValue {
-				if !vm.subRunAll(omitNil, tePath+"{K:"+key.String()+"}", rv.MapIndex(key), fn) {
-					return false
+				err := vm.subRunAll(omitNil, tePath+"{K:"+key.String()+"}", rv.MapIndex(key), fn)
+				if err != nil {
+					return err
 				}
 			}
 		}
 	}
-	return true
+	return nil
 }
 
 func (vm *VM) subRun(path string, t reflect.Type, tid int32, ptr unsafe.Pointer) (*TagExpr, error) {
@@ -414,10 +400,10 @@ func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
 	}
 	for _, _subFn := range sub.ifaceTagExprGetters {
 		subFn := _subFn
-		s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, pathPrefix string, fn func(*TagExpr) bool) bool {
+		s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, pathPrefix string, fn func(*TagExpr, error) error) error {
 			ptr = field.getElemPtr(ptr)
 			if ptr == nil {
-				return true
+				return nil
 			}
 			var path string
 			if pathPrefix == "" {
@@ -523,10 +509,10 @@ func (s *structVM) setIfaceTagExprGetter(f *fieldVM) {
 	if f.tagOp == tagOmit {
 		return
 	}
-	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, pathPrefix string, fn func(*TagExpr) bool) bool {
+	s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, pathPrefix string, fn func(*TagExpr, error) error) error {
 		v := f.packElemFrom(ptr)
 		if !v.IsValid() || v.IsNil() {
-			return true
+			return nil
 		}
 		var path string
 		if pathPrefix == "" {
@@ -747,7 +733,8 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 // When fn returns false, interrupt traversal and return false.
 // NOTE:
 //  eval result types: float64, string, bool, nil
-func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interface{}) bool) bool {
+func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interface{}) error) error {
+	var err error
 	if list := t.s.exprSelectorList; len(list) > 0 {
 		exprs := t.s.exprs
 		for _, es := range list {
@@ -762,10 +749,11 @@ func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interf
 			} else {
 				path = targetTagExpr.path + FieldSeparator + es
 			}
-			if !fn(path, ExprSelector(es), func() interface{} {
+			err = fn(path, ExprSelector(es), func() interface{} {
 				return exprs[es].run(base, targetTagExpr)
-			}) {
-				return false
+			})
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -793,22 +781,30 @@ func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interf
 						if omitNil && p == nil {
 							continue
 						}
-						if !mapKeyStructVM.newTagExpr(p, keyPath).Range(fn) {
-							return false
+						err = mapKeyStructVM.newTagExpr(p, keyPath).Range(fn)
+						if err != nil {
+							return err
 						}
-					} else if keyIface && !t.subRange(omitNil, keyPath, key, fn) {
-						return false
+					} else if keyIface {
+						err = t.subRange(omitNil, keyPath, key, fn)
+						if err != nil {
+							return err
+						}
 					}
 					if mapOrSliceElemStructVM != nil {
 						p := unsafe.Pointer(tpack.From(derefValue(v.MapIndex(key))).Pointer())
 						if omitNil && p == nil {
 							continue
 						}
-						if !mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"{"+key.String()+"}").Range(fn) {
-							return false
+						err = mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"{"+key.String()+"}").Range(fn)
+						if err != nil {
+							return err
 						}
-					} else if valueIface && !t.subRange(omitNil, f.fieldSelector+"{"+key.String()+"}", v.MapIndex(key), fn) {
-						return false
+					} else if valueIface {
+						err = t.subRange(omitNil, f.fieldSelector+"{"+key.String()+"}", v.MapIndex(key), fn)
+						if err != nil {
+							return err
+						}
 					}
 				}
 
@@ -820,11 +816,15 @@ func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interf
 						if omitNil && p == nil {
 							continue
 						}
-						if !mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"["+strconv.Itoa(i)+"]").Range(fn) {
-							return false
+						err = mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"["+strconv.Itoa(i)+"]").Range(fn)
+						if err != nil {
+							return err
 						}
-					} else if valueIface && !t.subRange(omitNil, f.fieldSelector+"["+strconv.Itoa(i)+"]", v.Index(i), fn) {
-						return false
+					} else if valueIface {
+						err = t.subRange(omitNil, f.fieldSelector+"["+strconv.Itoa(i)+"]", v.Index(i), fn)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -833,18 +833,25 @@ func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interf
 
 	if list := t.s.ifaceTagExprGetters; len(list) > 0 {
 		for _, getter := range list {
-			if !getter(ptr, "", func(te *TagExpr) bool {
+			err = getter(ptr, "", func(te *TagExpr, err error) error {
+				if err != nil {
+					return err
+				}
 				return te.Range(fn)
-			}) {
-				return false
+			})
+			if err != nil {
+				return err
 			}
 		}
 	}
-	return true
+	return nil
 }
 
-func (t *TagExpr) subRange(omitNil bool, path string, value reflect.Value, fn func(string, ExprSelector, func() interface{}) bool) bool {
-	return t.s.vm.subRunAll(omitNil, path, value, func(te *TagExpr) bool {
+func (t *TagExpr) subRange(omitNil bool, path string, value reflect.Value, fn func(string, ExprSelector, func() interface{}) error) error {
+	return t.s.vm.subRunAll(omitNil, path, value, func(te *TagExpr, err error) error {
+		if err != nil {
+			return err
+		}
 		return te.Range(fn)
 	})
 }

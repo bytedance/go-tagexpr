@@ -88,9 +88,9 @@ func Example() {
 	// invalid d: [x y]
 	// invalid parameter: e
 	// {"succ":false, "error":"validation failed: f.g"}
-	// {"succ":false, "error":"validation failed: a/f.g"}
-	// {"succ":false, "error":"validation failed: {k}/f.g"}
-	// {"succ":false, "error":"validation failed: 0/0/f.g"}
+	// {"succ":false, "error":"validation failed: {K:a}.f.g"}
+	// {"succ":false, "error":"validation failed: {}.f.g"}
+	// {"succ":false, "error":"validation failed: [0][0].f.g"}
 	// unsupport data: nil
 	// <nil>
 	// <nil>

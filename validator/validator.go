@@ -16,13 +16,12 @@
 package validator
 
 import (
-	"reflect"
-	"strconv"
+	"errors"
+	"io"
 	"strings"
 	_ "unsafe"
 
 	tagexpr "github.com/bytedance/go-tagexpr"
-	"github.com/henrylee2cn/goutil"
 )
 
 const (
@@ -54,92 +53,59 @@ func (v *Validator) VM() *tagexpr.VM {
 }
 
 // Validate validates whether the fields of value is valid.
-func (v *Validator) Validate(value interface{}) error {
-	rv, ok := value.(reflect.Value)
-	if !ok {
-		rv = reflect.ValueOf(value)
+func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
+	var all bool
+	if len(checkAll) > 0 {
+		all = checkAll[0]
 	}
-	return v.validate("", rv)
-}
-
-func (v *Validator) validate(selectorPrefix string, value reflect.Value) error {
-	rv := goutil.DereferenceIfaceValue(value)
-	rt := goutil.DereferenceType(rv.Type())
-	rv = goutil.DereferenceValue(rv)
-	switch rt.Kind() {
-	case reflect.Struct:
-		break
-
-	case reflect.Slice, reflect.Array:
-		count := rv.Len()
-		if count == 0 {
-			return nil
-		}
-		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
-		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
-			for i := count - 1; i >= 0; i-- {
-				if err := v.validate(selectorPrefix+strconv.Itoa(i)+"/", rv.Index(i)); err != nil {
-					return err
-				}
-			}
-		default:
-			return nil
-		}
-
-	case reflect.Map:
-		if rv.Len() == 0 {
-			return nil
-		}
-		var canKey, canValue bool
-		rt := rv.Type()
-		switch goutil.DereferenceType(rt.Key()).Kind() {
-		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
-			canKey = true
-		}
-		switch goutil.DereferenceType(rt.Elem()).Kind() {
-		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
-			canValue = true
-		}
-		if !canKey && !canValue {
-			return nil
-		}
-		for _, key := range rv.MapKeys() {
-			if canKey {
-				if err := v.validate(selectorPrefix+"{k}"+"/", key); err != nil {
-					return err
-				}
-			}
-			if canValue {
-				if err := v.validate(selectorPrefix+key.String()+"/", rv.MapIndex(key)); err != nil {
-					return err
-				}
+	var errs []error
+	v.vm.RunAny(value, func(te *tagexpr.TagExpr, err error) error {
+		if err != nil {
+			errs = append(errs, err)
+			if !all {
+				return io.EOF
 			}
 		}
-		return nil
-	}
-
-	expr, err := v.vm.Run(rv)
-	if err != nil {
-		return err
-	}
-	var errSelector, errPath string
-	var valid bool
-	expr.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) bool {
-		if strings.Contains(path, tagexpr.ExprNameSeparator) {
-			return true
-		}
-		valid = tagexpr.FakeBool(eval())
-		if !valid {
+		var errSelector, errPath string
+		te.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) error {
+			if strings.Contains(path, tagexpr.ExprNameSeparator) {
+				return nil
+			}
+			valid := tagexpr.FakeBool(eval())
+			if valid {
+				return nil
+			}
 			errSelector = es.String()
 			errPath = path
+			if all {
+				return nil
+			}
+			return io.EOF
+		})
+		if errSelector == "" {
+			return nil
 		}
-		return valid
+		errs = append(errs, v.errFactory(
+			errPath,
+			te.EvalString(errSelector+tagexpr.ExprNameSeparator+ErrMsgExprName),
+		))
+		if all {
+			return nil
+		}
+		return io.EOF
 	})
-	if errSelector == "" {
+	switch len(errs) {
+	case 0:
 		return nil
+	case 1:
+		return errs[0]
+	default:
+		var errStr string
+		for _, e := range errs {
+			errStr += e.Error() + "\n"
+		}
+		return errors.New(errStr[:len(errStr)-1])
 	}
-	errMsg := expr.EvalString(errSelector + tagexpr.ExprNameSeparator + ErrMsgExprName)
-	return v.errFactory(selectorPrefix+errPath, errMsg)
 }
 
 // SetErrorFactory customizes the factory of validation error.

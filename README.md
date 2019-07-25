@@ -46,11 +46,6 @@ func Example() {
 	}
 
 	vm := tagexpr.New("tagexpr")
-	err := vm.WarmUp(new(T))
-	if err != nil {
-		panic(err)
-	}
-
 	t := &T{
 		A:  107,
 		B:  "abc",
