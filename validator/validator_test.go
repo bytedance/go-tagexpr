@@ -65,5 +65,5 @@ func TestIssue(t *testing.T) {
 			},
 		},
 	}
-	t.Log(vd.Validate(req, true))
+	assert.EqualError(t, vd.Validate(req, true), "invalid parameter: Msg.Recipients[0].Address")
 }
