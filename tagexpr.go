@@ -242,6 +242,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 		return s, nil
 	}
 	s = vm.newStructVM()
+	s.name = structType.String()
 	vm.structJar[tid] = s
 	var numField = structType.NumField()
 	var structField reflect.StructField
@@ -306,7 +307,9 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) error {
 		if err != nil {
 			return err
 		}
-		if len(s.exprSelectorList) > 0 || len(s.ifaceTagExprGetters) > 0 {
+		if len(s.exprSelectorList) > 0 ||
+			len(s.ifaceTagExprGetters) > 0 ||
+			len(s.fieldsWithIndirectStructVM) > 0 {
 			if i == 0 {
 				field.mapOrSliceElemStructVM = s
 			} else {
@@ -393,11 +396,19 @@ func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
 	}
 	for _, k := range sub.fieldSelectorList {
 		v := sub.fields[k]
-		f := s.newChildField(field, v)
+		f := s.newChildField(field, v, true)
 		if _, ok := fieldsWithIndirectStructVM[v]; ok {
 			s.fieldsWithIndirectStructVM = append(s.fieldsWithIndirectStructVM, f)
+			// TODO: maybe needed?
+			// delete(fieldsWithIndirectStructVM, v)
 		}
 	}
+	// TODO: maybe needed?
+	// for v := range fieldsWithIndirectStructVM {
+	// 	f := s.newChildField(field, v, false)
+	// 	s.fieldsWithIndirectStructVM = append(s.fieldsWithIndirectStructVM, f)
+	// }
+
 	for _, _subFn := range sub.ifaceTagExprGetters {
 		subFn := _subFn
 		s.ifaceTagExprGetters = append(s.ifaceTagExprGetters, func(ptr unsafe.Pointer, pathPrefix string, fn func(*TagExpr, error) error) error {
@@ -416,7 +427,7 @@ func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
 	}
 }
 
-func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
+func (s *structVM) newChildField(parent *fieldVM, child *fieldVM, toBind bool) *fieldVM {
 	f := &fieldVM{
 		structField:            child.structField,
 		exprs:                  make(map[string]*Expr, len(child.exprs)),
@@ -429,21 +440,11 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 		mapOrSliceIfaceKinds:   child.mapOrSliceIfaceKinds,
 		fieldSelector:          parent.fieldSelector + FieldSeparator + child.fieldSelector,
 	}
-	s.fields[f.fieldSelector] = f
-	s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
-
 	if parent.tagOp != tagOmit {
 		f.tagOp = child.tagOp
-		for k, v := range child.exprs {
-			selector := parent.fieldSelector + FieldSeparator + k
-			f.exprs[selector] = v
-			s.exprs[selector] = v
-			s.exprSelectorList = append(s.exprSelectorList, selector)
-		}
 	} else {
 		f.tagOp = parent.tagOp
 	}
-
 	f.getPtr = func(ptr unsafe.Pointer) unsafe.Pointer {
 		ptr = parent.getElemPtr(ptr)
 		if ptr == nil {
@@ -451,7 +452,6 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 		}
 		return child.getPtr(ptr)
 	}
-
 	if child.valueGetter != nil {
 		if parent.ptrDeep == 0 {
 			f.valueGetter = func(ptr unsafe.Pointer) interface{} {
@@ -483,6 +483,19 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM) *fieldVM {
 					return reflect.Value{}
 				}
 				return child.reflectValueGetter(unsafe.Pointer(newField.Pointer()), initZero)
+			}
+		}
+	}
+
+	if toBind {
+		s.fields[f.fieldSelector] = f
+		s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
+		if parent.tagOp != tagOmit {
+			for k, v := range child.exprs {
+				selector := parent.fieldSelector + FieldSeparator + k
+				f.exprs[selector] = v
+				s.exprs[selector] = v
+				s.exprSelectorList = append(s.exprSelectorList, selector)
 			}
 		}
 	}

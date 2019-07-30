@@ -76,7 +76,8 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			return io.EOF
 		}
 		err = te.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) error {
-			if strings.Contains(path, tagexpr.ExprNameSeparator) {
+			s := es.String()
+			if strings.Contains(s, tagexpr.ExprNameSeparator) {
 				return nil
 			}
 			valid := tagexpr.FakeBool(eval())
@@ -84,7 +85,7 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 				return nil
 			}
 			errInfos = append(errInfos, &ErrInfo{
-				selector: es.String(),
+				selector: s,
 				path:     path,
 				te:       te,
 			})
