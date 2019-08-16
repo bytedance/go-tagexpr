@@ -143,6 +143,9 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
 					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)
+				} else if info.required {
+					found = false
+					err = info.requiredError
 				}
 			case auto:
 				// Try bind parameters from the body when the request has body,
