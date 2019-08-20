@@ -26,6 +26,7 @@ const (
 type Config struct {
 	// LooseZeroMode if set to true,
 	// the empty string request parameter is bound to the zero value of parameter.
+	// NOTE: Suitable for these parameter types: query/header/cookie/form .
 	LooseZeroMode bool
 	// PathParam use 'path' by default when empty
 	PathParam string

@@ -23,7 +23,8 @@ func Default() *Binding {
 // SetLooseZeroMode if set to true,
 // the empty string request parameter is bound to the zero value of parameter.
 // NOTE:
-//  The default is false.
+//  The default is false;
+//  Suitable for these parameter types: query/header/cookie/form .
 func SetLooseZeroMode(enable bool) {
 	defaultBinding.SetLooseZeroMode(enable)
 }

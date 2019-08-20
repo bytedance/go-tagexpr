@@ -51,7 +51,8 @@ func ResetJSONUnmarshaler(verifyingRequired bool, fn func(data []byte, v interfa
 // SetLooseZeroMode if set to true,
 // the empty string request parameter is bound to the zero value of parameter.
 // NOTE:
-//  The default is false.
+//  The default is false;
+//  Suitable for these parameter types: query/header/cookie/form .
 func (b *Binding) SetLooseZeroMode(enable bool) *Binding {
 	b.config.LooseZeroMode = enable
 	for k := range b.recvs {
