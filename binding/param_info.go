@@ -17,6 +17,7 @@ type paramInfo struct {
 	tagInfos       []*tagInfo
 	omitIns        map[in]bool
 	bindErrFactory func(failField, msg string) error
+	looseZeroMode  bool
 }
 
 func (p *paramInfo) name(paramIn in) string {
@@ -156,15 +157,13 @@ func (p *paramInfo) bindMapStrings(info *tagInfo, expr *tagexpr.TagExpr, values 
 	return true, p.bindStringSlice(info, expr, r)
 }
 
+// NOTE: len(a)>0
 func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []string) error {
 	v, err := p.getField(expr, true)
 	if err != nil || !v.IsValid() {
 		return err
 	}
-	return setStringSlice(info, v, a)
-}
 
-func setStringSlice(info *tagInfo, v reflect.Value, a []string) error {
 	v = goutil.DereferenceValue(v)
 	switch v.Kind() {
 	case reflect.String:
@@ -172,86 +171,88 @@ func setStringSlice(info *tagInfo, v reflect.Value, a []string) error {
 		return nil
 
 	case reflect.Bool:
-		bol, err := strconv.ParseBool(a[0])
-		if err == nil {
+		var bol bool
+		bol, err = strconv.ParseBool(a[0])
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
 			v.SetBool(bol)
 			return nil
 		}
-		return nil
-
 	case reflect.Float32:
-		f, err := strconv.ParseFloat(a[0], 32)
-		if err == nil {
+		var f float64
+		f, err = strconv.ParseFloat(a[0], 32)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
 			v.SetFloat(f)
 			return nil
 		}
-		return nil
 	case reflect.Float64:
-		f, err := strconv.ParseFloat(a[0], 64)
-		if err == nil {
+		var f float64
+		f, err = strconv.ParseFloat(a[0], 64)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
 			v.SetFloat(f)
 			return nil
 		}
-		return nil
-
 	case reflect.Int64, reflect.Int:
-		i, err := strconv.ParseInt(a[0], 10, 64)
-		if err == nil {
+		var i int64
+		i, err = strconv.ParseInt(a[0], 10, 64)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
 			v.SetInt(i)
 			return nil
 		}
 	case reflect.Int32:
-		i, err := strconv.ParseInt(a[0], 10, 32)
-		if err == nil {
+		var i int64
+		i, err = strconv.ParseInt(a[0], 10, 32)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
 			v.SetInt(i)
 			return nil
 		}
 	case reflect.Int16:
-		i, err := strconv.ParseInt(a[0], 10, 16)
-		if err == nil {
+		var i int64
+		i, err = strconv.ParseInt(a[0], 10, 16)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
 			v.SetInt(i)
 			return nil
 		}
 	case reflect.Int8:
-		i, err := strconv.ParseInt(a[0], 10, 8)
-		if err == nil {
+		var i int64
+		i, err = strconv.ParseInt(a[0], 10, 8)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
 			v.SetInt(i)
 			return nil
 		}
-
 	case reflect.Uint64, reflect.Uint:
-		i, err := strconv.ParseUint(a[0], 10, 64)
-		if err == nil {
-			v.SetUint(i)
+		var u uint64
+		u, err = strconv.ParseUint(a[0], 10, 64)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
+			v.SetUint(u)
 			return nil
 		}
 	case reflect.Uint32:
-		i, err := strconv.ParseUint(a[0], 10, 32)
-		if err == nil {
-			v.SetUint(i)
+		var u uint64
+		u, err = strconv.ParseUint(a[0], 10, 32)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
+			v.SetUint(u)
 			return nil
 		}
 	case reflect.Uint16:
-		i, err := strconv.ParseUint(a[0], 10, 16)
-		if err == nil {
-			v.SetUint(i)
+		var u uint64
+		u, err = strconv.ParseUint(a[0], 10, 16)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
+			v.SetUint(u)
 			return nil
 		}
 	case reflect.Uint8:
-		i, err := strconv.ParseUint(a[0], 10, 8)
-		if err == nil {
-			v.SetUint(i)
+		var u uint64
+		u, err = strconv.ParseUint(a[0], 10, 8)
+		if err == nil || (a[0] == "" && p.looseZeroMode) {
+			v.SetUint(u)
 			return nil
 		}
-
 	case reflect.Slice:
-		tt := v.Type().Elem()
-		vv, err := stringsToValue(tt.Kind(), a)
+		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
 		if err == nil {
 			v.Set(vv)
 			return nil
 		}
 	}
-
 	return info.typeError
 }

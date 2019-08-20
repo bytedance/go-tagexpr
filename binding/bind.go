@@ -17,22 +17,22 @@ type Binding struct {
 	recvs          map[int32]*receiver
 	lock           sync.RWMutex
 	bindErrFactory func(failField, msg string) error
-	tagNames       TagNames
+	config         Config
 }
 
 // New creates a binding tool.
 // NOTE:
-//  Use default tag name for tagNames fields that are empty
-func New(tagNames *TagNames) *Binding {
-	if tagNames == nil {
-		tagNames = new(TagNames)
+//  Use default tag name for config fields that are empty
+func New(config *Config) *Binding {
+	if config == nil {
+		config = new(Config)
 	}
 	b := &Binding{
-		recvs:    make(map[int32]*receiver, 1024),
-		tagNames: *tagNames,
+		recvs:  make(map[int32]*receiver, 1024),
+		config: *config,
 	}
-	b.tagNames.init()
-	b.vd = validator.New(b.tagNames.Validator)
+	b.config.init()
+	b.vd = validator.New(b.config.Validator)
 	return b.SetErrorFactory(nil, nil)
 }
 
@@ -46,6 +46,18 @@ var (
 func ResetJSONUnmarshaler(verifyingRequired bool, fn func(data []byte, v interface{}) error) {
 	jsonIndependentRequired = !verifyingRequired
 	jsonUnmarshalFunc = fn
+}
+
+// SetLooseZeroMode if set to true,
+// the empty string request parameter is bound to the zero value of parameter.
+// NOTE:
+//  The default is false.
+func (b *Binding) SetLooseZeroMode(enable bool) *Binding {
+	b.config.LooseZeroMode = enable
+	for k := range b.recvs {
+		delete(b.recvs, k)
+	}
+	return b
 }
 
 var defaultValidatingErrFactory = newDefaultErrorFactory("validating")
@@ -216,7 +228,8 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 		return nil, err
 	}
 	recv = &receiver{
-		params: make([]*paramInfo, 0, 16),
+		params:        make([]*paramInfo, 0, 16),
+		looseZeroMode: b.config.LooseZeroMode,
 	}
 	var errExprSelector tagexpr.ExprSelector
 	var errMsg string
@@ -229,38 +242,38 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			return false
 		}
 
-		tagKVs := b.tagNames.parse(fh.StructField())
+		tagKVs := b.config.parse(fh.StructField())
 		p := recv.getOrAddParam(fh, b.bindErrFactory)
 		tagInfos := [maxIn]*tagInfo{}
 	L:
 		for _, tagKV := range tagKVs {
 			paramIn := auto
 			switch tagKV.name {
-			case b.tagNames.Validator:
+			case b.config.Validator:
 				recv.hasVd = true
 				continue L
 
-			case b.tagNames.Query:
+			case b.config.Query:
 				recv.hasQuery = true
 				paramIn = query
-			case b.tagNames.PathParam:
+			case b.config.PathParam:
 				recv.hasPath = true
 				paramIn = path
-			case b.tagNames.Header:
+			case b.config.Header:
 				paramIn = header
-			case b.tagNames.Cookie:
+			case b.config.Cookie:
 				recv.hasCookie = true
 				paramIn = cookie
-			case b.tagNames.RawBody:
+			case b.config.RawBody:
 				recv.hasBody = true
 				paramIn = raw_body
-			case b.tagNames.FormBody:
+			case b.config.FormBody:
 				recv.hasBody = true
 				paramIn = form
-			case b.tagNames.protobufBody:
+			case b.config.protobufBody:
 				recv.hasBody = true
 				paramIn = protobuf
-			case b.tagNames.jsonBody:
+			case b.config.jsonBody:
 				recv.hasBody = true
 				paramIn = json
 
@@ -287,7 +300,7 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			recv.hasBody = true
 		}
 		if !recv.hasVd {
-			_, recv.hasVd = tagKVs.lookup(b.tagNames.Validator)
+			_, recv.hasVd = tagKVs.lookup(b.config.Validator)
 		}
 		return true
 	})

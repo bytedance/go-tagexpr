@@ -54,6 +54,8 @@ type receiver struct {
 	hasQuery, hasCookie, hasPath, hasBody, hasVd bool
 
 	params []*paramInfo
+
+	looseZeroMode bool
 }
 
 func (r *receiver) getParam(fieldSelector string) *paramInfo {
@@ -71,11 +73,13 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(f
 	if p != nil {
 		return p
 	}
-	p = new(paramInfo)
-	p.fieldSelector = fieldSelector
-	p.structField = fh.StructField()
-	p.omitIns = make(map[in]bool, maxIn)
-	p.bindErrFactory = bindErrFactory
+	p = &paramInfo{
+		fieldSelector:  fieldSelector,
+		structField:    fh.StructField(),
+		omitIns:        make(map[in]bool, maxIn),
+		bindErrFactory: bindErrFactory,
+		looseZeroMode:  r.looseZeroMode,
+	}
 	r.params = append(r.params, p)
 	return p
 }

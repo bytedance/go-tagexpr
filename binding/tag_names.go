@@ -22,8 +22,11 @@ const (
 	tagJSON             = "json"
 )
 
-// TagNames struct tag naming
-type TagNames struct {
+// Config the struct tag naming and so on
+type Config struct {
+	// LooseZeroMode if set to true,
+	// the empty string request parameter is bound to the zero value of parameter.
+	LooseZeroMode bool
 	// PathParam use 'path' by default when empty
 	PathParam string
 	// Query use 'query' by default when empty
@@ -46,7 +49,7 @@ type TagNames struct {
 	list []string
 }
 
-func (t *TagNames) init() {
+func (t *Config) init() {
 	t.list = []string{
 		goutil.InitAndGetString(&t.PathParam, defaultTagPath),
 		goutil.InitAndGetString(&t.Query, defaultTagQuery),
@@ -60,7 +63,7 @@ func (t *TagNames) init() {
 	}
 }
 
-func (t *TagNames) parse(field reflect.StructField) tagKVs {
+func (t *Config) parse(field reflect.StructField) tagKVs {
 	tag := field.Tag
 	fieldName := field.Name
 

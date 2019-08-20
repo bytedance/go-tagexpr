@@ -54,15 +54,21 @@ func TestQueryString(t *testing.T) {
 			B string    `query:"b"`
 			C *[]string `query:"c,required"`
 			D *string   `query:"d"`
+			E *[]***int `query:"e"`
 		}
 		Y string  `query:"y,required"`
 		Z *string `query:"z"`
 	}
-	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d2&y=y1", nil, nil, nil)
+	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d2&e=&e=2&y=y1", nil, nil, nil)
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
+	assert.EqualError(t, err, "binding X.E: parameter type does not match binding data")
+	binder.SetLooseZeroMode(true)
+	err = binder.BindAndValidate(recv, req, nil)
 	assert.Nil(t, err)
+	assert.Equal(t, 0, ***(*(**recv.X).E)[0])
+	assert.Equal(t, 2, ***(*(**recv.X).E)[1])
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
 	assert.Equal(t, "b1", (**recv.X).B)
 	assert.Equal(t, []string{"c1", "c2"}, *(**recv.X).C)

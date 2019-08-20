@@ -45,43 +45,51 @@ func evalString(eval func() interface{}) (val string, errStr string) {
 
 var errMismatch = errors.New("type mismatch")
 
-func stringsToValue(elmeKind reflect.Kind, a []string) (reflect.Value, error) {
+func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value, error) {
 	var i interface{}
 	var err error
+	var ptrDepth int
+	elmeKind := t.Kind()
+	for elmeKind == reflect.Ptr {
+		t = t.Elem()
+		elmeKind = t.Kind()
+		ptrDepth++
+	}
 	switch elmeKind {
 	case reflect.String:
 		i = a
 	case reflect.Bool:
-		i, err = goutil.StringsToBools(a)
+		i, err = goutil.StringsToBools(a, emptyAsZero)
 	case reflect.Float32:
-		i, err = goutil.StringsToFloat32s(a)
+		i, err = goutil.StringsToFloat32s(a, emptyAsZero)
 	case reflect.Float64:
-		i, err = goutil.StringsToFloat64s(a)
+		i, err = goutil.StringsToFloat64s(a, emptyAsZero)
 	case reflect.Int:
-		i, err = goutil.StringsToInts(a)
+		i, err = goutil.StringsToInts(a, emptyAsZero)
 	case reflect.Int64:
-		i, err = goutil.StringsToInt64s(a)
+		i, err = goutil.StringsToInt64s(a, emptyAsZero)
 	case reflect.Int32:
-		i, err = goutil.StringsToInt32s(a)
+		i, err = goutil.StringsToInt32s(a, emptyAsZero)
 	case reflect.Int16:
-		i, err = goutil.StringsToInt16s(a)
+		i, err = goutil.StringsToInt16s(a, emptyAsZero)
 	case reflect.Int8:
-		i, err = goutil.StringsToInt8s(a)
+		i, err = goutil.StringsToInt8s(a, emptyAsZero)
 	case reflect.Uint:
-		i, err = goutil.StringsToUints(a)
+		i, err = goutil.StringsToUints(a, emptyAsZero)
 	case reflect.Uint64:
-		i, err = goutil.StringsToUint64s(a)
+		i, err = goutil.StringsToUint64s(a, emptyAsZero)
 	case reflect.Uint32:
-		i, err = goutil.StringsToUint32s(a)
+		i, err = goutil.StringsToUint32s(a, emptyAsZero)
 	case reflect.Uint16:
-		i, err = goutil.StringsToUint16s(a)
+		i, err = goutil.StringsToUint16s(a, emptyAsZero)
 	case reflect.Uint8:
-		i, err = goutil.StringsToUint8s(a)
+		i, err = goutil.StringsToUint8s(a, emptyAsZero)
 	default:
 		return reflect.Value{}, errMismatch
 	}
 	if err != nil {
 		return reflect.Value{}, errMismatch
 	}
-	return reflect.ValueOf(i), nil
+	v := goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth)
+	return v, nil
 }

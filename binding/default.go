@@ -14,9 +14,18 @@ var defaultBinding = New(nil)
 //  form tag name is 'form';
 //  validator tag name is 'vd';
 //  protobuf tag name is 'protobuf';
-//  json tag name is 'json'.
+//  json tag name is 'json';
+//  LooseZeroMode is false.
 func Default() *Binding {
 	return defaultBinding
+}
+
+// SetLooseZeroMode if set to true,
+// the empty string request parameter is bound to the zero value of parameter.
+// NOTE:
+//  The default is false.
+func SetLooseZeroMode(enable bool) {
+	defaultBinding.SetLooseZeroMode(enable)
 }
 
 // SetErrorFactory customizes the factory of validation error.
