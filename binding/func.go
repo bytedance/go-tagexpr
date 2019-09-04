@@ -23,7 +23,7 @@ var typeUnmarshalFuncs = make(map[reflect.Type]func(string, bool) (reflect.Value
 
 // MustRegTypeUnmarshal registers unmarshalor function of type.
 // NOTE:
-//  panic if return error.
+//  panic if exist error.
 func MustRegTypeUnmarshal(t reflect.Type, fn func(v string, emptyAsZero bool) (reflect.Value, error)) {
 	err := RegTypeUnmarshal(t, fn)
 	if err != nil {
