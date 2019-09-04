@@ -34,7 +34,13 @@ func MustRegTypeUnmarshal(t reflect.Type, fn func(v string, emptyAsZero bool) (r
 // RegTypeUnmarshal registers unmarshalor function of type.
 func RegTypeUnmarshal(t reflect.Type, fn func(v string, emptyAsZero bool) (reflect.Value, error)) error {
 	// check
-	if t.Kind() == reflect.Ptr {
+	switch t.Kind() {
+	case reflect.String, reflect.Bool,
+		reflect.Float32, reflect.Float64,
+		reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8,
+		reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+		return errors.New("registration type cannot be a basic type")
+	case reflect.Ptr:
 		return errors.New("registration type cannot be a pointer type")
 	}
 	// test
@@ -55,7 +61,7 @@ func init() {
 		if v == "" && emptyAsZero {
 			return reflect.ValueOf(time.Time{}), nil
 		}
-		t, err := time.Parse(time.RFC1123, v)
+		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
 			return reflect.Value{}, err
 		}

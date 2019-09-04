@@ -253,6 +253,7 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			v.Set(vv)
 			return nil
 		}
+		fallthrough
 	default:
 		fn := typeUnmarshalFuncs[v.Type()]
 		if fn != nil {
