@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bytedance/go-tagexpr/binding"
 	"github.com/henrylee2cn/goutil/httpbody"
@@ -539,6 +540,37 @@ func TestAuto(t *testing.T) {
 	assert.Equal(t, "d", recv.D)
 	err = binder.Validate(recv)
 	assert.EqualError(t, err, "validating A: fail")
+}
+
+func TestTypeUnmarshal(t *testing.T) {
+	type Recv struct {
+		A time.Time   `form:"t1"`
+		B *time.Time  `query:"t2"`
+		C []time.Time `query:"t2"`
+	}
+	query := make(url.Values)
+	query.Add("t2", "Sun, 06 Nov 2019 08:49:37 GMT")
+	query.Add("t2", "Sun, 06 Nov 2019 16:49:37 GMT")
+	form := make(url.Values)
+	form.Add("t1", "Sun, 06 Nov 2019 22:49:37 GMT")
+	contentType, bodyReader := httpbody.NewFormBody2(form, nil)
+	header := make(http.Header)
+	header.Set("Content-Type", contentType)
+	req := newRequest("http://localhost/?"+query.Encode(), header, nil, bodyReader)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, nil)
+	assert.Nil(t, err)
+	t1, err := time.Parse(time.RFC1123, "Sun, 06 Nov 2019 22:49:37 GMT")
+	assert.Nil(t, err)
+	assert.Equal(t, t1, recv.A)
+	t21, err := time.Parse(time.RFC1123, "Sun, 06 Nov 2019 08:49:37 GMT")
+	assert.Nil(t, err)
+	assert.Equal(t, t21, *recv.B)
+	t22, err := time.Parse(time.RFC1123, "Sun, 06 Nov 2019 16:49:37 GMT")
+	assert.Nil(t, err)
+	assert.Equal(t, []time.Time{t21, t22}, recv.C)
+	t.Logf("%v", recv)
 }
 
 func newRequest(u string, header http.Header, cookies []*http.Cookie, bodyReader io.Reader) *http.Request {

@@ -5,19 +5,6 @@ A powerful HTTP request parameters binder that supports struct tag expression.
 ## Example
 
 ```go
-package binding_test
-
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"strings"
-
-	"github.com/bytedance/go-tagexpr/binding"
-	"github.com/henrylee2cn/goutil/httpbody"
-)
-
 func Example() {
 	type InfoRequest struct {
 		Name          string   `path:"name"`
@@ -31,6 +18,7 @@ func Example() {
 		SessionID     string   `cookie:"sessionid,required"`
 		AutoBody      string
 		AutoNotFound  *string
+		TimeRFC1123   time.Time `query:"t"`
 	}
 
 	args := new(InfoRequest)
@@ -46,7 +34,7 @@ func Example() {
 
 	// Output:
 	// request:
-	// POST /info/henrylee2cn?year=2018&year=2019 HTTP/1.1
+	// POST /info/henrylee2cn?year=2018&year=2019&t=Sun, 06 Nov 2019 22:49:37 GMT HTTP/1.1
 	// Host: localhost
 	// User-Agent: Go-http-client/1.1
 	// Transfer-Encoding: chunked
@@ -78,7 +66,8 @@ func Example() {
 	// 	"Authorization": "Basic 123456",
 	// 	"SessionID": "987654",
 	// 	"AutoBody": "autobody_test",
-	// 	"AutoNotFound": null
+	// 	"AutoNotFound": null,
+	// 	"TimeRFC1123": "2019-11-06T22:49:37Z"
 	// }
 }
 ...

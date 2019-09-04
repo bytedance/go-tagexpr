@@ -85,11 +85,22 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value
 	case reflect.Uint8:
 		i, err = goutil.StringsToUint8s(a, emptyAsZero)
 	default:
-		return reflect.Value{}, errMismatch
+		fn := typeUnmarshalFuncs[t]
+		if fn == nil {
+			return reflect.Value{}, errMismatch
+		}
+		v := reflect.New(reflect.SliceOf(t)).Elem()
+		for _, s := range a {
+			vv, err := fn(s, emptyAsZero)
+			if err != nil {
+				return reflect.Value{}, errMismatch
+			}
+			v = reflect.Append(v, vv)
+		}
+		return goutil.ReferenceSlice(v, ptrDepth), nil
 	}
 	if err != nil {
 		return reflect.Value{}, errMismatch
 	}
-	v := goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth)
-	return v, nil
+	return goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth), nil
 }

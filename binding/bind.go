@@ -36,18 +36,6 @@ func New(config *Config) *Binding {
 	return b.SetErrorFactory(nil, nil)
 }
 
-var (
-	jsonUnmarshalFunc       func(data []byte, v interface{}) error
-	jsonIndependentRequired = true
-)
-
-// ResetJSONUnmarshaler reset the JSON Unmarshal function.
-// NOTE: verifyingRequired is true if the required tag is supported.
-func ResetJSONUnmarshaler(verifyingRequired bool, fn func(data []byte, v interface{}) error) {
-	jsonIndependentRequired = !verifyingRequired
-	jsonUnmarshalFunc = fn
-}
-
 // SetLooseZeroMode if set to true,
 // the empty string request parameter is bound to the zero value of parameter.
 // NOTE:
