@@ -7,6 +7,20 @@ import (
 	"github.com/nyaruka/phonenumbers"
 )
 
+// MustRegFunc registers validator function expression.
+// NOTE:
+//  panic if exist error;
+//  example: phone($) or phone($,'CN');
+//  If @force=true, allow to cover the existed same @funcName;
+//  The go number types always are float64;
+//  The go string types always are string.
+func MustRegFunc(funcName string, fn func(args ...interface{}) bool, force ...bool) {
+	err := RegFunc(funcName, fn, force...)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // RegFunc registers validator function expression.
 // NOTE:
 //  example: phone($) or phone($,'CN');
@@ -22,7 +36,7 @@ func RegFunc(funcName string, fn func(args ...interface{}) bool, force ...bool) 
 func init() {
 	var pattern = "^([A-Za-z0-9_\\-\\.\u4e00-\u9fa5])+\\@([A-Za-z0-9_\\-\\.])+\\.([A-Za-z]{2,8})$"
 	emailRegexp := regexp.MustCompile(pattern)
-	tagexpr.RegFunc("email", func(args ...interface{}) interface{} {
+	MustRegFunc("email", func(args ...interface{}) bool {
 		if len(args) != 1 {
 			return false
 		}
@@ -35,7 +49,7 @@ func init() {
 }
 
 func init() {
-	tagexpr.RegFunc("phone", func(args ...interface{}) interface{} {
+	MustRegFunc("phone", func(args ...interface{}) bool {
 		var numberToParse, defaultRegion string
 		var ok bool
 		switch len(args) {
