@@ -146,6 +146,9 @@ func (vm *VM) RunAny(v interface{}, fn func(*TagExpr, error) error) error {
 
 func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn func(*TagExpr, error) error) error {
 	rv := goutil.DereferenceIfaceValue(value)
+	if !rv.IsValid() {
+		return nil
+	}
 	rt := goutil.DereferenceType(rv.Type())
 	rv = goutil.DereferenceValue(rv)
 	switch rt.Kind() {

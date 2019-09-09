@@ -26,7 +26,7 @@ func TestAll(t *testing.T) {
 	assert.EqualError(t, vd.Validate(new(T), true), "invalid parameter: a\tinvalid parameter: f.g")
 }
 
-func TestIssue(t *testing.T) {
+func TestIssue1(t *testing.T) {
 	type MailBox struct {
 		Address *string `vd:"email($)"`
 		Name    *string
@@ -66,4 +66,18 @@ func TestIssue(t *testing.T) {
 		},
 	}
 	assert.EqualError(t, vd.Validate(req, true), "invalid parameter: Msg.Recipients[0].Address")
+}
+
+func TestIssue2(t *testing.T) {
+	type a struct {
+		m map[string]interface{}
+	}
+	A := &a{
+		m: map[string]interface{}{
+			"1": 1,
+			"2": nil,
+		},
+	}
+	v := vd.New("vd")
+	assert.NoError(t, v.Validate(A))
 }
