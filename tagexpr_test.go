@@ -790,3 +790,31 @@ func TestDeepNested(t *testing.T) {
 	})
 	assert.Equal(t, 5, i)
 }
+
+func TestIssue3(t *testing.T) {
+	type C struct {
+		Id    string
+		Index int32 `vd:"$"`
+	}
+	type A struct {
+		F1 *C
+		F2 *C
+	}
+	a := &A{
+		F1: &C{
+			Id:    "test",
+			Index: 1,
+		},
+	}
+	vm := New("vd")
+	err := vm.MustRun(a).Range(func(path string, es ExprSelector, eval func() interface{}) error {
+		switch path {
+		case "F1.Index":
+			assert.Equal(t, float64(1), eval(), path)
+		case "F2.Index":
+			assert.Equal(t, nil, eval(), path)
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+}

@@ -359,6 +359,9 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 
 	var offset = structField.Offset
 	f.getPtr = func(ptr unsafe.Pointer) unsafe.Pointer {
+		if ptr == nil {
+			return nil
+		}
 		return unsafe.Pointer(uintptr(ptr) + offset)
 	}
 

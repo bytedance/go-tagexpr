@@ -81,3 +81,22 @@ func TestIssue2(t *testing.T) {
 	v := vd.New("vd")
 	assert.NoError(t, v.Validate(A))
 }
+
+func TestIssue3(t *testing.T) {
+	type C struct {
+		Id    string
+		Index int32 `vd:"$"`
+	}
+	type A struct {
+		F1 *C
+		F2 *C
+	}
+	a := &A{
+		F1: &C{
+			Id:    "test",
+			Index: 1,
+		},
+	}
+	v := vd.New("vd")
+	assert.EqualError(t, v.Validate(a), "invalid parameter: F2.Index")
+}
