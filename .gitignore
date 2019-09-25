@@ -31,3 +31,4 @@ _testmain.go
 # idea ignore
 .idea/
 go.sum
+go.mod
