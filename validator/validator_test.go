@@ -1,6 +1,7 @@
 package validator_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	vd "github.com/bytedance/go-tagexpr/validator"
@@ -120,7 +121,7 @@ func TestIssue4(t *testing.T) {
 	a = &A{F1: new(C)}
 	assert.EqualError(t, v.Validate(a), "invalid parameter: F1.Index")
 
-	a = &A{F2: map[string]*C{"": new(C)}}
+	a = &A{F2: map[string]*C{"": nil}}
 	assert.EqualError(t, v.Validate(a), "invalid parameter: F2{}.Index")
 
 	a = &A{F3: []*C{new(C)}}
@@ -142,6 +143,29 @@ func TestIssue4(t *testing.T) {
 		D []*D
 	}
 	b.F1 = new(C)
-	e := &E{D: []*D{}}
+	e := &E{D: []*D{nil}}
 	assert.NoError(t, v.Validate(e))
+}
+
+func TestIssue5(t *testing.T) {
+	type SubSheet struct {
+	}
+	type CopySheet struct {
+		Source      *SubSheet `json:"source" vd:"$!=nil"`
+		Destination *SubSheet `json:"destination" vd:"$!=nil"`
+	}
+	type UpdateSheetsRequest struct {
+		CopySheet *CopySheet `json:"copySheet"`
+	}
+	type BatchUpdateSheetRequestArg struct {
+		Requests []*UpdateSheetsRequest `json:"requests"`
+	}
+	b := `{"requests": [{}]}`
+	var data BatchUpdateSheetRequestArg
+	err := json.Unmarshal([]byte(b), &data)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(data.Requests))
+	assert.Nil(t, data.Requests[0].CopySheet)
+	v := vd.New("vd")
+	assert.NoError(t, v.Validate(data))
 }

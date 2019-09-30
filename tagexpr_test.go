@@ -226,10 +226,11 @@ func Test(t *testing.T) {
 				t.Fatalf("Eval Serial: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
-		tagExpr.Range(func(path string, es ExprSelector, eval func() interface{}) error {
+		tagExpr.Range(func(eh *ExprHandler) error {
+			es := eh.ExprSelector()
 			t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 			value := c.tests[es.String()]
-			val := eval()
+			val := eh.Eval()
 			if !reflect.DeepEqual(val, value) {
 				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, es, val, value)
 			}
@@ -542,10 +543,11 @@ func TestOperator(t *testing.T) {
 				t.Fatalf("Eval NO: %d, selector: %q, got: %v, expect: %v", i, selector, val, value)
 			}
 		}
-		tagExpr.Range(func(path string, es ExprSelector, eval func() interface{}) error {
+		tagExpr.Range(func(eh *ExprHandler) error {
+			es := eh.ExprSelector()
 			t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
 			value := c.tests[es.String()]
-			val := eval()
+			val := eh.Eval()
 			if !reflect.DeepEqual(val, value) {
 				t.Fatalf("Range NO: %d, selector: %q, got: %v, expect: %v", i, es, val, value)
 			}
@@ -575,9 +577,10 @@ func TestStruct(t *testing.T) {
 	assert.Equal(t, "xxx", expr.EvalString("B.C3"))
 	assert.Equal(t, "xxx", expr.EvalString("B.C"))
 	assert.Equal(t, "xxx", expr.EvalString("B.C.D.X"))
-	expr.Range(func(path string, es ExprSelector, eval func() interface{}) error {
-		t.Logf("Range selector: %s, field: %q exprName: %q", path, es.Field(), es.Name())
-		if eval().(string) != "xxx" {
+	expr.Range(func(eh *ExprHandler) error {
+		es := eh.ExprSelector()
+		t.Logf("Range selector: %s, field: %q exprName: %q", es, es.Field(), es.Name())
+		if eh.Eval().(string) != "xxx" {
 			t.FailNow()
 		}
 		return nil
@@ -669,8 +672,9 @@ func TestStruct3(t *testing.T) {
 	if expr.EvalString("XBlock.BlockType") != "BlockType" {
 		t.Fatal(expr.EvalString("XBlock.BlockType"))
 	}
-	err := expr.Range(func(path string, es ExprSelector, eval func() interface{}) error {
-		t.Logf("Range selector: %s, field: %q exprName: %q, eval: %v", path, es.Field(), es.Name(), eval())
+	err := expr.Range(func(eh *ExprHandler) error {
+		es := eh.ExprSelector()
+		t.Logf("Range selector: %s, field: %q exprName: %q, eval: %v", eh.Path(), es.Field(), es.Name(), eh.Eval())
 		return nil
 	})
 	assert.NoError(t, err)
@@ -685,10 +689,10 @@ func TestNilField(t *testing.T) {
 	}
 	vm := New("tagexpr")
 	te := vm.MustRun(P{})
-	te.Range(func(path string, es ExprSelector, eval func() interface{}) error {
-		r := eval()
+	te.Range(func(eh *ExprHandler) error {
+		r := eh.Eval()
 		if r != nil {
-			t.Fatal(path, r)
+			t.Fatal(eh.Path(), r)
 		}
 		return nil
 	})
@@ -701,10 +705,10 @@ func TestNilField(t *testing.T) {
 		Nil1: new(int),
 		Nil2: new(int),
 	}
-	vm.MustRun(g).Range(func(path string, es ExprSelector, eval func() interface{}) error {
-		r, ok := eval().(bool)
+	vm.MustRun(g).Range(func(eh *ExprHandler) error {
+		r, ok := eh.Eval().(bool)
 		if !ok || !r {
-			t.Fatal(path, r)
+			t.Fatal(eh.Path(), r)
 		}
 		return nil
 	})
@@ -733,12 +737,12 @@ func TestNilField(t *testing.T) {
 		SI: []interface{}{&M{X: "nn"}},
 	}
 	var cnt int
-	vm.MustRun(n).Range(func(path string, es ExprSelector, eval func() interface{}) error {
-		r, ok := eval().(bool)
+	vm.MustRun(n).Range(func(eh *ExprHandler) error {
+		r, ok := eh.Eval().(bool)
 		if !ok || !r {
-			t.Fatal(path, r)
+			t.Fatal(eh.Path(), r)
 		}
-		t.Log("path:", path, "es:", es, "val:", r)
+		t.Log("path:", eh.Path(), "es:", eh.ExprSelector(), "val:", r)
 		cnt++
 		return nil
 	})
@@ -781,11 +785,11 @@ func TestDeepNested(t *testing.T) {
 	expectValue := [...]interface{}{"I:address", nil, "A:address", nil, "X:address"}
 	var i int
 	vm := New("tagexpr")
-	vm.MustRun(data).Range(func(path string, es ExprSelector, eval func() interface{}) error {
-		assert.Equal(t, expectKey[i], path)
-		assert.Equal(t, expectValue[i], eval())
+	vm.MustRun(data).Range(func(eh *ExprHandler) error {
+		assert.Equal(t, expectKey[i], eh.Path())
+		assert.Equal(t, expectValue[i], eh.Eval())
 		i++
-		t.Log(path, es, eval())
+		t.Log(eh.Path(), eh.ExprSelector(), eh.Eval())
 		return nil
 	})
 	assert.Equal(t, 5, i)
@@ -809,16 +813,16 @@ func TestIssue3(t *testing.T) {
 		},
 	}
 	vm := New("vd")
-	err := vm.MustRun(a).Range(func(path string, es ExprSelector, eval func() interface{}) error {
-		switch path {
+	err := vm.MustRun(a).Range(func(eh *ExprHandler) error {
+		switch eh.Path() {
 		case "F1.Index":
-			assert.Equal(t, float64(1), eval(), path)
+			assert.Equal(t, float64(1), eh.Eval(), eh.Path())
 		case "F2.Index":
-			assert.Equal(t, nil, eval(), path)
+			assert.Equal(t, nil, eh.Eval(), eh.Path())
 		case "F1.P":
-			assert.Equal(t, true, eval(), path)
+			assert.Equal(t, true, eh.Eval(), eh.Path())
 		case "F2.P":
-			assert.Equal(t, false, eval(), path)
+			assert.Equal(t, false, eh.Eval(), eh.Path())
 		}
 		return nil
 	})

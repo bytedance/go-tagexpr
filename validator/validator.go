@@ -77,21 +77,19 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			return io.EOF
 		}
 		nilParentFields := make(map[string]bool, 16)
-		err = te.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) error {
-			s := es.String()
-			if strings.Contains(s, tagexpr.ExprNameSeparator) {
+		err = te.Range(func(eh *tagexpr.ExprHandler) error {
+			if strings.Contains(eh.StringSelector(), tagexpr.ExprNameSeparator) {
 				return nil
 			}
-			valid := tagexpr.FakeBool(eval())
-			if valid {
+			if eh.EvalBool() {
 				return nil
 			}
 			// Ignore this error if the value of the parent is nil
-			if pfs, ok := es.ParentField(); ok {
+			if pfs, ok := eh.ExprSelector().ParentField(); ok {
 				if nilParentFields[pfs] {
 					return nil
 				}
-				if fh, ok := te.Field(pfs); ok {
+				if fh, ok := eh.TagExpr().Field(pfs); ok {
 					v := fh.Value(false)
 					if !v.IsValid() || (v.Kind() == reflect.Ptr && v.IsNil()) {
 						nilParentFields[pfs] = true
@@ -100,8 +98,8 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 				}
 			}
 			errInfos = append(errInfos, &ErrInfo{
-				selector: s,
-				path:     path,
+				selector: eh.StringSelector(),
+				path:     eh.Path(),
 				te:       te,
 			})
 			if all {

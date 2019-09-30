@@ -659,7 +659,7 @@ type TagExpr struct {
 	path string
 }
 
-// EvalFloat evaluate the value of the struct tag expression by the selector expression.
+// EvalFloat evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
 //  If the expression value type is not float64, return 0.
 func (t *TagExpr) EvalFloat(exprSelector string) float64 {
@@ -667,7 +667,7 @@ func (t *TagExpr) EvalFloat(exprSelector string) float64 {
 	return r
 }
 
-// EvalString evaluate the value of the struct tag expression by the selector expression.
+// EvalString evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
 //  If the expression value type is not string, return "".
 func (t *TagExpr) EvalString(exprSelector string) string {
@@ -675,7 +675,7 @@ func (t *TagExpr) EvalString(exprSelector string) string {
 	return r
 }
 
-// EvalBool evaluate the value of the struct tag expression by the selector expression.
+// EvalBool evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
 //  If the expression value is not 0, '' or nil, return true.
 func (t *TagExpr) EvalBool(exprSelector string) bool {
@@ -721,7 +721,7 @@ func (t *TagExpr) RangeFields(fn func(*FieldHandler) bool) bool {
 	return true
 }
 
-// Eval evaluate the value of the struct tag expression by the selector expression.
+// Eval evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
 //  format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
 //  result types: float64, string, bool, nil
@@ -752,25 +752,16 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 // When fn returns false, interrupt traversal and return false.
 // NOTE:
 //  eval result types: float64, string, bool, nil
-func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interface{}) error) error {
+func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 	var err error
 	if list := t.s.exprSelectorList; len(list) > 0 {
-		exprs := t.s.exprs
 		for _, es := range list {
 			dir, base := splitFieldSelector(es)
 			targetTagExpr, err := t.checkout(dir)
 			if err != nil {
 				continue
 			}
-			var path string
-			if targetTagExpr.path == "" {
-				path = es
-			} else {
-				path = targetTagExpr.path + FieldSeparator + es
-			}
-			err = fn(path, ExprSelector(es), func() interface{} {
-				return exprs[es].run(base, targetTagExpr)
-			})
+			err = fn(newExprHandler(t, targetTagExpr, base, es))
 			if err != nil {
 				return err
 			}
@@ -866,7 +857,7 @@ func (t *TagExpr) Range(fn func(path string, es ExprSelector, eval func() interf
 	return nil
 }
 
-func (t *TagExpr) subRange(omitNil bool, path string, value reflect.Value, fn func(string, ExprSelector, func() interface{}) error) error {
+func (t *TagExpr) subRange(omitNil bool, path string, value reflect.Value, fn func(*ExprHandler) error) error {
 	return t.s.vm.subRunAll(omitNil, path, value, func(te *TagExpr, err error) error {
 		if err != nil {
 			return err
