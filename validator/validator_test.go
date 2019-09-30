@@ -127,8 +127,21 @@ func TestIssue4(t *testing.T) {
 	assert.EqualError(t, v.Validate(a), "invalid parameter: F3[0].Index")
 
 	type B struct {
-		F *C `vd:"$!=nil"`
+		F1 *C `vd:"$!=nil"`
+		F2 *C
 	}
 	b := &B{}
-	assert.EqualError(t, v.Validate(b), "invalid parameter: F")
+	assert.EqualError(t, v.Validate(b), "invalid parameter: F1")
+
+	type D struct {
+		F1 *C
+		F2 *C
+	}
+
+	type E struct {
+		D []*D
+	}
+	b.F1 = new(C)
+	e := &E{D: []*D{}}
+	assert.NoError(t, v.Validate(e))
 }
