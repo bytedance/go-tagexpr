@@ -18,6 +18,7 @@ package validator
 import (
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	_ "unsafe"
 
@@ -75,6 +76,7 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			}
 			return io.EOF
 		}
+		nilParentFields := make(map[string]bool, 16)
 		err = te.Range(func(path string, es tagexpr.ExprSelector, eval func() interface{}) error {
 			s := es.String()
 			if strings.Contains(s, tagexpr.ExprNameSeparator) {
@@ -83,6 +85,19 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			valid := tagexpr.FakeBool(eval())
 			if valid {
 				return nil
+			}
+			// Ignore this error if the value of the parent is nil
+			if pfs, ok := es.ParentField(); ok {
+				if nilParentFields[pfs] {
+					return nil
+				}
+				if fh, ok := te.Field(pfs); ok {
+					v := fh.Value(false)
+					if !v.IsValid() || (v.Kind() == reflect.Ptr && v.IsNil()) {
+						nilParentFields[pfs] = true
+						return nil
+					}
+				}
 			}
 			errInfos = append(errInfos, &ErrInfo{
 				selector: s,

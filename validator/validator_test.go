@@ -85,7 +85,7 @@ func TestIssue2(t *testing.T) {
 func TestIssue3(t *testing.T) {
 	type C struct {
 		Id    string
-		Index int32 `vd:"$"`
+		Index int32 `vd:"$==1"`
 	}
 	type A struct {
 		F1 *C
@@ -98,5 +98,31 @@ func TestIssue3(t *testing.T) {
 		},
 	}
 	v := vd.New("vd")
-	assert.EqualError(t, v.Validate(a), "invalid parameter: F2.Index")
+	assert.NoError(t, v.Validate(a))
+}
+
+func TestIssue4(t *testing.T) {
+	type C struct {
+		Index  *int32 `vd:"$!=nil"`
+		Index2 *int32 `vd:"$!=nil"`
+		Index3 *int32 `vd:"$!=nil"`
+	}
+	type A struct {
+		F1 *C
+		F2 map[string]*C
+		F3 []*C
+	}
+	v := vd.New("vd")
+
+	a := &A{}
+	assert.NoError(t, v.Validate(a))
+
+	a = &A{F1: new(C)}
+	assert.EqualError(t, v.Validate(a), "invalid parameter: F1.Index")
+
+	a = &A{F2: map[string]*C{"": new(C)}}
+	assert.EqualError(t, v.Validate(a), "invalid parameter: F2{}.Index")
+
+	a = &A{F3: []*C{new(C)}}
+	assert.EqualError(t, v.Validate(a), "invalid parameter: F3[0].Index")
 }
