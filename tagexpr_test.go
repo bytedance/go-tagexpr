@@ -738,7 +738,7 @@ func TestNilField(t *testing.T) {
 		if !ok || !r {
 			t.Fatal(path, r)
 		}
-		t.Log(path, r)
+		t.Log("path:", path, "es:", es, "val:", r)
 		cnt++
 		return nil
 	})
@@ -795,6 +795,7 @@ func TestIssue3(t *testing.T) {
 	type C struct {
 		Id    string
 		Index int32 `vd:"$"`
+		P     *int  `vd:"$!=nil"`
 	}
 	type A struct {
 		F1 *C
@@ -804,6 +805,7 @@ func TestIssue3(t *testing.T) {
 		F1: &C{
 			Id:    "test",
 			Index: 1,
+			P:     new(int),
 		},
 	}
 	vm := New("vd")
@@ -813,6 +815,10 @@ func TestIssue3(t *testing.T) {
 			assert.Equal(t, float64(1), eval(), path)
 		case "F2.Index":
 			assert.Equal(t, nil, eval(), path)
+		case "F1.P":
+			assert.Equal(t, true, eval(), path)
+		case "F2.P":
+			assert.Equal(t, false, eval(), path)
 		}
 		return nil
 	})

@@ -44,6 +44,16 @@ func (f FieldSelector) Split() (paths []string, name string) {
 	return nil, s
 }
 
+// Parent returns the parent FieldSelector.
+func (f FieldSelector) Parent() (string, bool) {
+	s := string(f)
+	i := strings.LastIndex(s, FieldSeparator)
+	if i < 0 {
+		return "", false
+	}
+	return s[:i], true
+}
+
 // String returns string type value.
 func (f FieldSelector) String() string {
 	return string(f)
@@ -71,18 +81,19 @@ func (e ExprSelector) Name() string {
 	return s[atIdx+1:]
 }
 
-// Field returns the name of the field it belongs to.
+// Field returns the field selector it belongs to.
 func (e ExprSelector) Field() string {
 	s := string(e)
 	idx := strings.LastIndex(s, ExprNameSeparator)
 	if idx != -1 {
 		s = s[:idx]
 	}
-	idx = strings.LastIndex(s, FieldSeparator)
-	if idx != -1 {
-		return s[idx+1:]
-	}
 	return s
+}
+
+// ParentField returns the parent field selector it belongs to.
+func (e ExprSelector) ParentField() (string, bool) {
+	return FieldSelector(e.Field()).Parent()
 }
 
 // Split returns the field selector and the expression name.
