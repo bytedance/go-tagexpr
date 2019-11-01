@@ -97,15 +97,14 @@ The parameter position in HTTP request:
 - Expression `required` or `req` indicates that the parameter is required
 - If no position is tagged, try bind parameters from the body when the request has body,
 <br>otherwise try bind from the URL query
-- When there are multiple tags, the order in which to try to bind is:
+- When there are multiple tags or no tags, the order in which to try to bind is:
   1. path
-  2. query
-  3. raw_body
-  4. form
-  5. protobuf
-  6. json
-  7. header
-  8. cookie
+  2. form
+  3. query
+  4. cookie
+  5. header
+  6. protobuf
+  7. json
 
 ## Type Unmarshalor
 

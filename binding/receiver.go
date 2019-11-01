@@ -17,29 +17,34 @@ import (
 type in uint8
 
 const (
-	auto in = iota
+	undefined in = iota
 	path
-	query
-	raw_body
 	form
+	query
+	cookie
+	header
 	protobuf
 	json
-	header
-	cookie
+	raw_body
 	maxIn
 )
 
-var allIn = []in{
-	auto,
-	path,
-	query,
-	header,
-	cookie,
-	raw_body,
-	form,
-	json,
-	protobuf,
-}
+var (
+	allIn = func() []in {
+		a := []in{}
+		for i := undefined + 1; i < maxIn; i++ {
+			a = append(a, i)
+		}
+		return a
+	}()
+	sortedDefaultIn = func() []in {
+		a := []in{}
+		for i := undefined + 1; i < raw_body; i++ {
+			a = append(a, i)
+		}
+		return a
+	}()
+)
 
 type codec in
 
@@ -51,11 +56,24 @@ const (
 )
 
 type receiver struct {
-	hasQuery, hasCookie, hasPath, hasBody, hasVd bool
+	hasPath, hasQuery, hasBody, hasCookie, hasVd bool
 
 	params []*paramInfo
 
 	looseZeroMode bool
+}
+
+func (r *receiver) assginIn(i in, v bool) {
+	switch i {
+	case path:
+		r.hasPath = v
+	case query:
+		r.hasQuery = v
+	case form, json, protobuf:
+		r.hasBody = v
+	case cookie:
+		r.hasCookie = v
+	}
 }
 
 func (r *receiver) getParam(fieldSelector string) *paramInfo {

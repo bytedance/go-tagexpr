@@ -73,6 +73,9 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 }
 
 func (p *paramInfo) bindPath(info *tagInfo, expr *tagexpr.TagExpr, pathParams PathParams) (bool, error) {
+	if pathParams == nil {
+		return false, nil
+	}
 	r, found := pathParams.Get(info.paramName)
 	if !found {
 		if info.required {

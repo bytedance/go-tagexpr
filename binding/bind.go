@@ -129,18 +129,15 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 		for i, info := range param.tagInfos {
 			var found bool
 			switch info.paramIn {
-			case query:
-				found, err = param.bindQuery(info, expr, queryValues)
 			case path:
 				found, err = param.bindPath(info, expr, pathParams)
-			case header:
-				found, err = param.bindHeader(info, expr, req.Header)
+			case query:
+				found, err = param.bindQuery(info, expr, queryValues)
 			case cookie:
 				err = param.bindCookie(info, expr, cookies)
 				found = err == nil
-			case raw_body:
-				err = param.bindRawBody(info, expr, bodyBytes)
-				found = err == nil
+			case header:
+				found, err = param.bindHeader(info, expr, req.Header)
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
 					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)
@@ -148,34 +145,9 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 					found = false
 					err = info.requiredError
 				}
-			case auto:
-				// Try bind parameters from the body when the request has body,
-				// otherwise try bind from the URL query
-				if len(bodyBytes) == 0 {
-					if !param.omitIns[query] {
-						if queryValues == nil {
-							queryValues = req.URL.Query()
-						}
-						found, err = param.bindQuery(info, expr, queryValues)
-					}
-				} else {
-					switch bodyCodec {
-					case bodyForm:
-						if !param.omitIns[form] {
-							found, err = param.bindMapStrings(info, expr, postForm)
-						}
-					case bodyJSON:
-						if !param.omitIns[json] {
-							err = param.checkRequireJSON(info, expr, bodyString, false)
-							found = err == nil
-						}
-					case bodyProtobuf:
-						if !param.omitIns[protobuf] {
-							err = param.checkRequireProtobuf(info, expr, false)
-							found = err == nil
-						}
-					}
-				}
+			case raw_body:
+				err = param.bindRawBody(info, expr, bodyBytes)
+				found = err == nil
 			}
 			if found && err == nil {
 				break
@@ -236,36 +208,27 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 		tagInfos := [maxIn]*tagInfo{}
 	L:
 		for _, tagKV := range tagKVs {
-			paramIn := auto
+			paramIn := undefined
 			switch tagKV.name {
 			case b.config.Validator:
 				recv.hasVd = true
 				continue L
-
-			case b.config.Query:
-				recv.hasQuery = true
-				paramIn = query
 			case b.config.PathParam:
-				recv.hasPath = true
 				paramIn = path
+			case b.config.FormBody:
+				paramIn = form
+			case b.config.Query:
+				paramIn = query
+			case b.config.Cookie:
+				paramIn = cookie
 			case b.config.Header:
 				paramIn = header
-			case b.config.Cookie:
-				recv.hasCookie = true
-				paramIn = cookie
-			case b.config.RawBody:
-				recv.hasBody = true
-				paramIn = raw_body
-			case b.config.FormBody:
-				recv.hasBody = true
-				paramIn = form
 			case b.config.protobufBody:
-				recv.hasBody = true
 				paramIn = protobuf
 			case b.config.jsonBody:
-				recv.hasBody = true
 				paramIn = json
-
+			case b.config.RawBody:
+				paramIn = raw_body
 			default:
 				continue L
 			}
@@ -275,18 +238,26 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			if info != nil {
 				if info.paramName == "-" {
 					p.omitIns[in(i)] = true
+					recv.assginIn(in(i), false)
 				} else {
 					info.paramIn = in(i)
 					p.tagInfos = append(p.tagInfos, info)
+					recv.assginIn(in(i), true)
 				}
 			}
 		}
 		if len(p.tagInfos) == 0 {
-			p.tagInfos = append(p.tagInfos, &tagInfo{
-				paramIn:   auto,
-				paramName: p.structField.Name,
-			})
-			recv.hasBody = true
+			for _, i := range sortedDefaultIn {
+				if p.omitIns[i] {
+					recv.assginIn(i, false)
+					continue
+				}
+				p.tagInfos = append(p.tagInfos, &tagInfo{
+					paramIn:   i,
+					paramName: p.structField.Name,
+				})
+				recv.assginIn(i, true)
+			}
 		}
 		if !recv.hasVd {
 			_, recv.hasVd = tagKVs.lookup(b.config.Validator)
