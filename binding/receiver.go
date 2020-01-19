@@ -66,13 +66,13 @@ type receiver struct {
 func (r *receiver) assginIn(i in, v bool) {
 	switch i {
 	case path:
-		r.hasPath = v
+		r.hasPath = r.hasPath || v
 	case query:
-		r.hasQuery = v
+		r.hasQuery = r.hasQuery || v
 	case form, json, protobuf:
-		r.hasBody = v
+		r.hasBody = r.hasBody || v
 	case cookie:
-		r.hasCookie = v
+		r.hasCookie = r.hasCookie || v
 	}
 }
 
