@@ -61,12 +61,6 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 	if len(checkAll) > 0 {
 		all = checkAll[0]
 	}
-	type ErrInfo struct {
-		selector string
-		path     string
-		te       *tagexpr.TagExpr
-	}
-	var errInfos = make([]*ErrInfo, 0, 8)
 	var errs = make([]error, 0, 8)
 	v.vm.RunAny(value, func(te *tagexpr.TagExpr, err error) error {
 		if err != nil {
@@ -97,11 +91,10 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 					}
 				}
 			}
-			errInfos = append(errInfos, &ErrInfo{
-				selector: eh.StringSelector(),
-				path:     eh.Path(),
-				te:       te,
-			})
+			errs = append(errs, v.errFactory(
+				eh.Path(),
+				eh.TagExpr().EvalString(eh.StringSelector()+tagexpr.ExprNameSeparator+ErrMsgExprName),
+			))
 			if all {
 				return nil
 			}
@@ -112,12 +105,6 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 		}
 		return nil
 	})
-	for _, info := range errInfos {
-		errs = append(errs, v.errFactory(
-			info.path,
-			info.te.EvalString(info.selector+tagexpr.ExprNameSeparator+ErrMsgExprName),
-		))
-	}
 	switch len(errs) {
 	case 0:
 		return nil

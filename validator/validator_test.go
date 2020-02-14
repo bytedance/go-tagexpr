@@ -104,7 +104,7 @@ func TestIssue3(t *testing.T) {
 
 func TestIssue4(t *testing.T) {
 	type C struct {
-		Index  *int32 `vd:"$!=nil"`
+		Index  *int32 `vd:"@:$!=nil;msg:'index is nil'"`
 		Index2 *int32 `vd:"$!=nil"`
 		Index3 *int32 `vd:"$!=nil"`
 	}
@@ -119,13 +119,13 @@ func TestIssue4(t *testing.T) {
 	assert.NoError(t, v.Validate(a))
 
 	a = &A{F1: new(C)}
-	assert.EqualError(t, v.Validate(a), "invalid parameter: F1.Index")
+	assert.EqualError(t, v.Validate(a), "index is nil")
 
-	a = &A{F2: map[string]*C{"": nil}}
-	assert.EqualError(t, v.Validate(a), "invalid parameter: F2{}.Index")
+	a = &A{F2: map[string]*C{"": &C{Index: new(int32)}}}
+	assert.EqualError(t, v.Validate(a), "invalid parameter: F2{}.Index2")
 
-	a = &A{F3: []*C{new(C)}}
-	assert.EqualError(t, v.Validate(a), "invalid parameter: F3[0].Index")
+	a = &A{F3: []*C{{Index: new(int32)}}}
+	assert.EqualError(t, v.Validate(a), "invalid parameter: F3[0].Index2")
 
 	type B struct {
 		F1 *C `vd:"$!=nil"`
