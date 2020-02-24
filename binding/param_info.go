@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/bytedance/go-tagexpr"
 	"github.com/henrylee2cn/goutil"
@@ -137,8 +138,12 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 
 func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) error {
 	if jsonIndependentRequired && (checkOpt || info.required) {
-		r := gjson.Get(bodyString, info.namePath)
-		if !r.Exists() {
+		if !gjson.Get(bodyString, info.namePath).Exists() {
+			idx := strings.LastIndex(info.namePath, ".")
+			// There should be a superior but it is empty, no error is reported
+			if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
+				return nil
+			}
 			return info.requiredError
 		}
 		v, err := p.getField(expr, false)

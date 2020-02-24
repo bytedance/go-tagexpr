@@ -581,6 +581,77 @@ func TestTypeUnmarshal(t *testing.T) {
 	t.Logf("%v", recv)
 }
 
+func TestOption(t *testing.T) {
+	type Recv struct {
+		X *struct {
+			C int `json:"c,required"`
+			D int `json:"d"`
+		} `json:"X"`
+		Y string `json:"y"`
+	}
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+
+	bodyReader := strings.NewReader(`{
+			"X": {
+				"c": 21,
+				"d": 41
+			},
+			"y": "y1"
+		}`)
+	req := newRequest("", header, nil, bodyReader)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 21, recv.X.C)
+	assert.Equal(t, 41, recv.X.D)
+	assert.Equal(t, "y1", recv.Y)
+
+	bodyReader = strings.NewReader(`{
+			"X": {
+			},
+			"y": "y1"
+		}`)
+	req = newRequest("", header, nil, bodyReader)
+	recv = new(Recv)
+	binder = binding.New(nil)
+	err = binder.BindAndValidate(recv, req, nil)
+	assert.EqualError(t, err, "binding X.c: missing required parameter")
+	assert.Equal(t, 0, recv.X.C)
+	assert.Equal(t, 0, recv.X.D)
+	assert.Equal(t, "y1", recv.Y)
+
+	bodyReader = strings.NewReader(`{
+			"y": "y1"
+		}`)
+	req = newRequest("", header, nil, bodyReader)
+	recv = new(Recv)
+	binder = binding.New(nil)
+	err = binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+	assert.True(t, recv.X == nil)
+	assert.Equal(t, "y1", recv.Y)
+
+	type Recv2 struct {
+		X *struct {
+			C int `json:"c,required"`
+			D int `json:"d"`
+		} `json:"X,required"`
+		Y string `json:"y"`
+	}
+	bodyReader = strings.NewReader(`{
+			"y": "y1"
+		}`)
+	req = newRequest("", header, nil, bodyReader)
+	recv2 := new(Recv2)
+	binder = binding.New(nil)
+	err = binder.BindAndValidate(recv2, req, nil)
+	assert.EqualError(t, err, "binding X: missing required parameter")
+	assert.True(t, recv2.X == nil)
+	assert.Equal(t, "y1", recv2.Y)
+}
+
 func newRequest(u string, header http.Header, cookies []*http.Cookie, bodyReader io.Reader) *http.Request {
 	if header == nil {
 		header = make(http.Header)
