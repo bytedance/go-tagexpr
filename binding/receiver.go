@@ -38,7 +38,7 @@ var (
 		return a
 	}()
 	sortedDefaultIn = func() []in {
-		a := []in{}
+		var a []in
 		for i := undefined + 1; i < raw_body; i++ {
 			a = append(a, i)
 		}

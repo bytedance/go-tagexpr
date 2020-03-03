@@ -3,6 +3,7 @@ package binding
 import (
 	"net/http"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/bytedance/go-tagexpr"
@@ -194,13 +195,13 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 	}
 	var errExprSelector tagexpr.ExprSelector
 	var errMsg string
-
+	var fieldsWithValidTag = make(map[string]bool)
 	expr.RangeFields(func(fh *tagexpr.FieldHandler) bool {
 		if !fh.Value(true).CanSet() {
 			selector := fh.StringSelector()
 			errMsg = "field cannot be set: " + selector
 			errExprSelector = tagexpr.ExprSelector(selector)
-			return false
+			return true
 		}
 
 		tagKVs := b.config.parse(fh.StructField())
@@ -234,6 +235,7 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			}
 			tagInfos[paramIn] = tagKV.defaultSplit()
 		}
+
 		for i, info := range tagInfos {
 			if info != nil {
 				if info.paramName == "-" {
@@ -246,18 +248,31 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 				}
 			}
 		}
+		fs := string(fh.FieldSelector())
 		if len(p.tagInfos) == 0 {
-			for _, i := range sortedDefaultIn {
-				if p.omitIns[i] {
-					recv.assginIn(i, false)
-					continue
+			var canDefault = true
+			for s := range fieldsWithValidTag {
+				if strings.HasPrefix(fs, s) {
+					canDefault = false
+					break
 				}
-				p.tagInfos = append(p.tagInfos, &tagInfo{
-					paramIn:   i,
-					paramName: p.structField.Name,
-				})
-				recv.assginIn(i, true)
 			}
+			// Support default binding order when there is no valid tag in the superior fields
+			if canDefault {
+				for _, i := range sortedDefaultIn {
+					if p.omitIns[i] {
+						recv.assginIn(i, false)
+						continue
+					}
+					p.tagInfos = append(p.tagInfos, &tagInfo{
+						paramIn:   i,
+						paramName: p.structField.Name,
+					})
+					recv.assginIn(i, true)
+				}
+			}
+		} else {
+			fieldsWithValidTag[fs+tagexpr.FieldSeparator] = true
 		}
 		if !recv.hasVd {
 			_, recv.hasVd = tagKVs.lookup(b.config.Validator)

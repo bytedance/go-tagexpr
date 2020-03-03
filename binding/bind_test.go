@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bytedance/go-tagexpr/binding"
+	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil/httpbody"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,8 +34,7 @@ func TestRawBody(t *testing.T) {
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.NotNil(t, err)
-	assert.Equal(t, "validating raw_body.F: too long", err.Error())
+	assert.EqualError(t, err, "validating raw_body.F: too long")
 	for _, v := range []interface{}{
 		(**recv.raw_body).A,
 		*(**recv.raw_body).B,
@@ -676,4 +676,22 @@ func newRequest(u string, header http.Header, cookies []*http.Cookie, bodyReader
 		req.AddCookie(c)
 	}
 	return req
+}
+
+func TestQueryStringIssue(t *testing.T) {
+	type Timestamp struct {
+		time.Time
+	}
+	type Recv struct {
+		Name *string    `query:"name"`
+		T    *Timestamp `query:"t"`
+	}
+	req := newRequest("http://localhost:8080/?name=test", nil, nil, nil)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	binder.SetLooseZeroMode(true)
+	err := binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, ameda.StringToStringPtr("test"), recv.Name)
+	assert.Equal(t, (*Timestamp)(nil), recv.T)
 }
