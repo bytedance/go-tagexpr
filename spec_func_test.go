@@ -59,4 +59,29 @@ func TestFunc(t *testing.T) {
 			t.Fatalf("email: %s, expect: %v, but got: %v", c.email, c.expect, got)
 		}
 	}
+
+	// test len
+	type R struct {
+		Str string `vd:"clen($)<6"`
+	}
+	var lenCases = []struct {
+		str    string
+		expect bool
+	}{
+		{"123", true},
+		{"一二三四五六七", false},
+		{"一二三四五", true},
+	}
+
+	lenObj := new(R)
+	vm = tagexpr.New("vd")
+	for _, lenCase := range lenCases {
+		lenObj.Str = lenCase.str
+		te := vm.MustRun(lenObj)
+		got := te.EvalBool("Str")
+		if got != lenCase.expect {
+			t.Fatalf("string: %v, expect: %v, but got: %v", lenCase.str, lenCase.expect, got)
+		}
+	}
+
 }
