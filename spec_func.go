@@ -125,6 +125,23 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	err = RegFunc("mblen", func(args ...interface{}) interface{} {
+		if len(args) != 1 {
+			return 0
+		}
+		v := args[0]
+		switch e := v.(type) {
+		case string:
+			return float64(len([]rune(e)))
+		case float64, bool:
+			return nil
+		}
+		defer func() { recover() }()
+		return float64(reflect.ValueOf(v).Len())
+	}, true)
+	if err != nil {
+		panic(err)
+	}
 }
 
 type regexpFuncExprNode struct {
