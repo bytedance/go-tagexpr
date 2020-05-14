@@ -285,6 +285,7 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 	return info.typeError
 }
 
+// stringsToMap converts a slice of map tuple strings to a map
 func stringsToMap(t reflect.Type, a []string) (interface{}, error) {
 	res := make(map[string]string, len(a))
 	for _, item := range a {
@@ -297,6 +298,7 @@ func stringsToMap(t reflect.Type, a []string) (interface{}, error) {
 	return convertMap(t, res)
 }
 
+// convertMap converts map of string to corresponding map type
 func convertMap(t reflect.Type, input map[string]string) (interface{}, error) {
 	var err error
 	switch t.Kind() {
