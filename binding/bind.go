@@ -1,7 +1,6 @@
 package binding
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -146,15 +145,12 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 					found = false
 					err = info.requiredError
 				}
-				fmt.Println("json", found, err)
 			case raw_body:
 				err = param.bindRawBody(info, expr, bodyBytes)
 				found = err == nil
-				fmt.Println("raw", err)
 			case default_val:
 				err = param.bindStringSlice(info, expr, []string{info.paramName})
 				found = err == nil
-				fmt.Println("default", err)
 			}
 			if found && err == nil {
 				break
@@ -234,6 +230,8 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 				paramIn = protobuf
 			case b.config.jsonBody:
 				paramIn = json
+			case b.config.RawBody:
+				paramIn = raw_body
 			case b.config.defaultVal:
 				paramIn = default_val
 			default:
