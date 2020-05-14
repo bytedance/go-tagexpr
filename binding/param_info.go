@@ -1,6 +1,7 @@
 package binding
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -264,6 +265,13 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 		fallthrough
+	case reflect.Map:
+		resMap, err := stringsToMap(v.Type().Elem(), a)
+		if err == nil {
+			v.Set(reflect.ValueOf(resMap))
+			return nil
+		}
+		fallthrough
 	default:
 		fn := typeUnmarshalFuncs[v.Type()]
 		if fn != nil {
@@ -275,4 +283,44 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		}
 	}
 	return info.typeError
+}
+
+func stringsToMap(t reflect.Type, a []string) (interface{}, error) {
+	res := make(map[string]string, len(a))
+	for _, item := range a {
+		tuple := strings.Split(item, ":")
+		if len(tuple) != 2 {
+			return nil, errors.New("invalid map in default tag")
+		}
+		res[tuple[0]] = tuple[1]
+	}
+	return convertMap(t, res)
+}
+
+func convertMap(t reflect.Type, input map[string]string) (interface{}, error) {
+	var err error
+	switch t.Kind() {
+	case reflect.String:
+		return input, nil
+	case reflect.Int64:
+		res := make(map[string]int64, len(input))
+		for k, v := range input {
+			res[k], err = strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return nil, errMismatch
+			}
+		}
+		return res, nil
+	case reflect.Float64:
+		res := make(map[string]float64, len(input))
+		for k, v := range input {
+			res[k], err = strconv.ParseFloat(v, 64)
+			if err != nil {
+				return nil, errMismatch
+			}
+		}
+		return res, nil
+	default:
+		return nil, errors.New("map value only support string, int64 and float64")
+	}
 }

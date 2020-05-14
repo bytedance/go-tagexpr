@@ -49,13 +49,13 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value
 	var i interface{}
 	var err error
 	var ptrDepth int
-	elmeKind := t.Kind()
-	for elmeKind == reflect.Ptr {
+	elemKind := t.Kind()
+	for elemKind == reflect.Ptr {
 		t = t.Elem()
-		elmeKind = t.Kind()
+		elemKind = t.Kind()
 		ptrDepth++
 	}
-	switch elmeKind {
+	switch elemKind {
 	case reflect.String:
 		i = a
 	case reflect.Bool:
