@@ -116,8 +116,7 @@ func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, body
 	case bodyForm:
 		return p.bindMapStrings(info, expr, postForm)
 	case bodyJSON:
-		err := p.checkRequireJSON(info, expr, bodyString, false)
-		return err == nil, err
+		return p.checkRequireJSON(info, expr, bodyString, false)
 	case bodyProtobuf:
 		err := p.checkRequireProtobuf(info, expr, false)
 		return err == nil, err
@@ -136,22 +135,25 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 	return nil
 }
 
-func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) error {
-	if jsonIndependentRequired && (checkOpt || info.required) {
-		if !gjson.Get(bodyString, info.namePath).Exists() {
-			idx := strings.LastIndex(info.namePath, ".")
-			// There should be a superior but it is empty, no error is reported
-			if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
-				return nil
-			}
-			return info.requiredError
-		}
-		v, err := p.getField(expr, false)
-		if err != nil || !v.IsValid() {
-			return info.requiredError
-		}
+func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) (bool, error) {
+	var requiredError error
+	if jsonIndependentRequired && (checkOpt || info.required) { // only return error if it's a required field
+		requiredError = info.requiredError
 	}
-	return nil
+
+	if !gjson.Get(bodyString, info.namePath).Exists() {
+		idx := strings.LastIndex(info.namePath, ".")
+		// There should be a superior but it is empty, no error is reported
+		if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
+			return true, nil
+		}
+		return false, requiredError
+	}
+	v, err := p.getField(expr, false)
+	if err != nil || !v.IsValid() {
+		return false, requiredError
+	}
+	return true, nil
 }
 
 func (p *paramInfo) bindMapStrings(info *tagInfo, expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {

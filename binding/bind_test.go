@@ -3,6 +3,7 @@ package binding_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -497,6 +498,53 @@ func TestPath(t *testing.T) {
 	assert.Equal(t, float32(41), *(**recv.X).D)
 	assert.Equal(t, "y1", recv.Y)
 	assert.Equal(t, (*int64)(nil), recv.Z)
+}
+
+type testPathParams2 struct{}
+
+func (testPathParams2) Get(name string) (string, bool) {
+	switch name {
+	case "e":
+		return "123", true
+	default:
+		return "", false
+	}
+}
+
+func TestDefault(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			A []string `path:"a" json:"a"`
+			B int32    `path:"b" default:"32"`
+			C bool     `json:"c" default:"true"`
+			D *float32 `default:"123.4"`
+		}
+		Y string `json:"y" default:"y1"`
+		Z int64
+	}
+
+	bodyReader := strings.NewReader(`{
+		"X": {
+			"a": ["a1","a2"],
+		},
+		"Z": 6
+	}`)
+
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	req := newRequest("", header, nil, bodyReader)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, new(testPathParams2))
+	b, _ := json.Marshal(recv)
+	fmt.Println(string(b))
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+	assert.Equal(t, int32(32), (**recv.X).B)
+	assert.Equal(t, true, (**recv.X).C)
+	assert.Equal(t, float32(123.4), *(**recv.X).D)
+	assert.Equal(t, "y1", recv.Y)
+	assert.Equal(t, int64(6), recv.Z)
 }
 
 func TestAuto(t *testing.T) {

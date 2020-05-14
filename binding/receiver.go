@@ -26,6 +26,7 @@ const (
 	protobuf
 	json
 	raw_body
+	default_val
 	maxIn
 )
 

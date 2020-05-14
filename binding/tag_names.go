@@ -20,6 +20,7 @@ const (
 	defaultTagValidator = "vd"
 	tagProtobuf         = "protobuf"
 	tagJSON             = "json"
+	tagDefault          = "default"
 )
 
 // Config the struct tag naming and so on
@@ -46,6 +47,8 @@ type Config struct {
 	protobufBody string
 	// jsonBody use 'json' by default when empty
 	jsonBody string
+	// defaultVal use 'default' by default when empty
+	defaultVal string
 
 	list []string
 }
@@ -61,6 +64,7 @@ func (t *Config) init() {
 		goutil.InitAndGetString(&t.Validator, defaultTagValidator),
 		goutil.InitAndGetString(&t.protobufBody, tagProtobuf),
 		goutil.InitAndGetString(&t.jsonBody, tagJSON),
+		goutil.InitAndGetString(&t.defaultVal, tagDefault),
 	}
 }
 
