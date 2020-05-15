@@ -541,7 +541,7 @@ func TestDefault(t *testing.T) {
 	header.Set("Content-Type", "application/json")
 	req := newRequest("", header, nil, bodyReader)
 	recv := new(Recv)
-	binder := binding.New(&binding.Config{StructPointer: recv})
+	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, new(testPathParams2))
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
