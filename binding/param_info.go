@@ -1,7 +1,9 @@
 package binding
 
 import (
+	ejson "encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -259,14 +261,17 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 	case reflect.Slice:
-		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
+		strings, err := splitSlice(a[0])
 		if err == nil {
-			v.Set(vv)
-			return nil
+			vv, err := stringsToValue(v.Type().Elem(), strings, p.looseZeroMode)
+			if err == nil {
+				v.Set(vv)
+				return nil
+			}
 		}
 		fallthrough
 	case reflect.Map:
-		resMap, err := stringsToMap(v.Type().Elem(), a)
+		resMap, err := unmarshalMap(v.Type().Elem(), a[0])
 		if err == nil {
 			v.Set(reflect.ValueOf(resMap))
 			return nil
@@ -285,43 +290,35 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 	return info.typeError
 }
 
-// stringsToMap converts a slice of map tuple strings to a map
-func stringsToMap(t reflect.Type, a []string) (interface{}, error) {
-	res := make(map[string]string, len(a))
-	for _, item := range a {
-		tuple := strings.Split(item, ":")
-		if len(tuple) != 2 {
-			return nil, errors.New("invalid map in default tag")
-		}
-		res[tuple[0]] = tuple[1]
+func splitSlice(input string) ([]string, error) {
+	replaced := strings.Replace(input, "'", "\"", -1)
+	tmp := make([]interface{}, 0, 8)
+	err := ejson.Unmarshal([]byte(replaced), &tmp)
+
+	// convert slice of interface to slice of string
+	res := make([]string, 0, len(tmp))
+	for _, v := range tmp {
+		res = append(res, fmt.Sprintf("%v", v))
 	}
-	return convertMap(t, res)
+	return res, err
 }
 
-// convertMap converts map of string to corresponding map type
-func convertMap(t reflect.Type, input map[string]string) (interface{}, error) {
-	var err error
+// unmarshalMap converts a slice of map tuple strings to a map
+func unmarshalMap(t reflect.Type, input string) (interface{}, error) {
+	replaced := strings.Replace(input, "'", "\"", -1)
 	switch t.Kind() {
 	case reflect.String:
-		return input, nil
+		res := map[string]string{}
+		err := ejson.Unmarshal([]byte(replaced), &res)
+		return res, err
 	case reflect.Int64:
-		res := make(map[string]int64, len(input))
-		for k, v := range input {
-			res[k], err = strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				return nil, errMismatch
-			}
-		}
-		return res, nil
+		res := map[string]int64{}
+		err := ejson.Unmarshal([]byte(replaced), &res)
+		return res, err
 	case reflect.Float64:
-		res := make(map[string]float64, len(input))
-		for k, v := range input {
-			res[k], err = strconv.ParseFloat(v, 64)
-			if err != nil {
-				return nil, errMismatch
-			}
-		}
-		return res, nil
+		res := map[string]float64{}
+		err := ejson.Unmarshal([]byte(replaced), &res)
+		return res, err
 	default:
 		return nil, errors.New("map value only support string, int64 and float64")
 	}

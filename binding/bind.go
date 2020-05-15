@@ -149,7 +149,7 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 				err = param.bindRawBody(info, expr, bodyBytes)
 				found = err == nil
 			case default_val:
-				err = param.bindStringSlice(info, expr, strings.Split(strings.Trim(info.paramName, "[]{}"), ","))
+				err = param.bindStringSlice(info, expr, []string{info.paramName})
 				found = err == nil
 			}
 			if found && err == nil {
