@@ -34,8 +34,7 @@ func New(config *Config) *Binding {
 	}
 	b.config.init()
 	b.vd = validator.New(b.config.Validator)
-	b.SetErrorFactory(nil, nil)
-	return b
+	return b.SetErrorFactory(nil, nil)
 }
 
 // SetLooseZeroMode if set to true,
@@ -169,11 +168,11 @@ func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error
 		v = reflect.ValueOf(structPointer)
 	}
 	if v.Kind() != reflect.Ptr {
-		return v, b.bindErrFactory("", "StructPointer must be a non-nil struct pointer")
+		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
 	}
 	v = goutil.DereferenceValue(v)
 	if v.Kind() != reflect.Struct || !v.CanAddr() || !v.IsValid() {
-		return v, b.bindErrFactory("", "StructPointer must be a non-nil struct pointer")
+		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
 	}
 	return v, nil
 }
