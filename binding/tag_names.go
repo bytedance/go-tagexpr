@@ -51,6 +51,9 @@ type Config struct {
 	defaultVal string
 
 	list []string
+
+	// StructPointer is optional, used for pre-processing especially for default value purpose
+	StructPointer interface{}
 }
 
 func (t *Config) init() {

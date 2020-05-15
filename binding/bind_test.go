@@ -527,6 +527,7 @@ func TestDefault(t *testing.T) {
 		W string    `json:"w"`
 		V []int64   `json:"u" default:"[1,2,3]"`
 		U []float32 `json:"u" default:"[1.1,2,3]"`
+		T *string   `json:"t" default:"t1"`
 	}
 
 	bodyReader := strings.NewReader(`{
@@ -540,7 +541,7 @@ func TestDefault(t *testing.T) {
 	header.Set("Content-Type", "application/json")
 	req := newRequest("", header, nil, bodyReader)
 	recv := new(Recv)
-	binder := binding.New(nil)
+	binder := binding.New(&binding.Config{StructPointer: recv})
 	err := binder.BindAndValidate(recv, req, new(testPathParams2))
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
@@ -552,6 +553,7 @@ func TestDefault(t *testing.T) {
 	assert.Equal(t, map[string]int64{"a": 1, "b": 2, "c": 3}, (**recv.X).G)
 	assert.Equal(t, map[string]float64{"a": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).H)
 	assert.Equal(t, "y1", recv.Y)
+	assert.Equal(t, "t1", *recv.T)
 	assert.Equal(t, int64(6), recv.Z)
 	assert.Equal(t, []int64{1, 2, 3}, recv.V)
 	assert.Equal(t, []float32{1.1, 2, 3}, recv.U)

@@ -1,8 +1,6 @@
 package binding
 
 import (
-	ejson "encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -261,19 +259,9 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 	case reflect.Slice:
-		strings, err := splitSlice(a[0])
+		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
 		if err == nil {
-			vv, err := stringsToValue(v.Type().Elem(), strings, p.looseZeroMode)
-			if err == nil {
-				v.Set(vv)
-				return nil
-			}
-		}
-		fallthrough
-	case reflect.Map:
-		resMap, err := unmarshalMap(v.Type().Elem(), a[0])
-		if err == nil {
-			v.Set(reflect.ValueOf(resMap))
+			v.Set(vv)
 			return nil
 		}
 		fallthrough
@@ -290,36 +278,17 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 	return info.typeError
 }
 
-func splitSlice(input string) ([]string, error) {
-	replaced := strings.Replace(input, "'", "\"", -1)
-	tmp := make([]interface{}, 0, 8)
-	err := ejson.Unmarshal([]byte(replaced), &tmp)
-
-	// convert slice of interface to slice of string
-	res := make([]string, 0, len(tmp))
-	for _, v := range tmp {
-		res = append(res, fmt.Sprintf("%v", v))
+func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue reflect.Value) (bool, error) {
+	if defaultValue.IsZero() {
+		return false, nil
 	}
-	return res, err
-}
 
-// unmarshalMap converts a slice of map tuple strings to a map
-func unmarshalMap(t reflect.Type, input string) (interface{}, error) {
-	replaced := strings.Replace(input, "'", "\"", -1)
-	switch t.Kind() {
-	case reflect.String:
-		res := map[string]string{}
-		err := ejson.Unmarshal([]byte(replaced), &res)
-		return res, err
-	case reflect.Int64:
-		res := map[string]int64{}
-		err := ejson.Unmarshal([]byte(replaced), &res)
-		return res, err
-	case reflect.Float64:
-		res := map[string]float64{}
-		err := ejson.Unmarshal([]byte(replaced), &res)
-		return res, err
-	default:
-		return nil, errors.New("map value only support string, int64 and float64")
+	v, err := p.getField(expr, true)
+	if err != nil || !v.IsValid() {
+		return false, err
 	}
+
+	fmt.Println("default", defaultValue, defaultValue.Type())
+	v.Set(defaultValue)
+	return true, nil
 }

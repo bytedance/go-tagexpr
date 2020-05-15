@@ -1,6 +1,8 @@
 package binding
 
 import (
+	ejson "encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -19,6 +21,7 @@ type Binding struct {
 	lock           sync.RWMutex
 	bindErrFactory func(failField, msg string) error
 	config         Config
+	defaultValues  map[string]reflect.Value
 }
 
 // New creates a binding tool.
@@ -34,7 +37,9 @@ func New(config *Config) *Binding {
 	}
 	b.config.init()
 	b.vd = validator.New(b.config.Validator)
-	return b.SetErrorFactory(nil, nil)
+	b.SetErrorFactory(nil, nil)
+	b.prepreocess()
+	return b
 }
 
 // SetLooseZeroMode if set to true,
@@ -66,6 +71,50 @@ func (b *Binding) SetErrorFactory(bindErrFactory, validatingErrFactory func(fail
 	b.bindErrFactory = bindErrFactory
 	b.vd.SetErrorFactory(validatingErrFactory)
 	return b
+}
+
+// prepreocess is needed to be set when user uses default tag, it will preprocess the default tags and store the parsed value for binding later on
+func (b *Binding) prepreocess() error {
+	if b.config.StructPointer == nil {
+		return nil
+	}
+	b.defaultValues = make(map[string]reflect.Value, 8)
+
+	value, err := b.structValueOf(b.config.StructPointer)
+	if err != nil {
+		return err
+	}
+	recv, err := b.getOrPrepareReceiver(value)
+	if err != nil {
+		return err
+	}
+
+	for _, param := range recv.params {
+		for _, info := range param.tagInfos {
+			if info.paramIn != default_val {
+				continue
+			}
+
+			defaultVal := info.paramName
+
+			st := param.structField.Type
+			// get dereference of structField type
+			for st.Kind() == reflect.Ptr || st.Kind() == reflect.Interface {
+				st = st.Elem()
+			}
+			switch st.Kind() {
+			case reflect.Slice, reflect.Array, reflect.Map:
+				defaultVal = strings.Replace(defaultVal, "'", "\"", -1)
+			case reflect.String:
+				defaultVal = fmt.Sprintf(`"%s"`, defaultVal)
+			}
+
+			newFieldPtr := reflect.New(param.structField.Type).Interface()
+			ejson.Unmarshal([]byte(defaultVal), newFieldPtr)
+			b.defaultValues[param.fieldSelector] = reflect.ValueOf(newFieldPtr).Elem()
+		}
+	}
+	return nil
 }
 
 // BindAndValidate binds the request parameters and validates them if needed.
@@ -149,8 +198,7 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 				err = param.bindRawBody(info, expr, bodyBytes)
 				found = err == nil
 			case default_val:
-				err = param.bindStringSlice(info, expr, []string{info.paramName})
-				found = err == nil
+				found, err = param.bindDefaultVal(expr, b.defaultValues[param.fieldSelector])
 			}
 			if found && err == nil {
 				break
@@ -169,11 +217,11 @@ func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error
 		v = reflect.ValueOf(structPointer)
 	}
 	if v.Kind() != reflect.Ptr {
-		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
+		return v, b.bindErrFactory("", "StructPointer must be a non-nil struct pointer")
 	}
 	v = goutil.DereferenceValue(v)
 	if v.Kind() != reflect.Struct || !v.CanAddr() || !v.IsValid() {
-		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
+		return v, b.bindErrFactory("", "StructPointer must be a non-nil struct pointer")
 	}
 	return v, nil
 }
