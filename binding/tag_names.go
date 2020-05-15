@@ -140,7 +140,7 @@ func defaultSplitTag(value string) *tagInfo {
 	return info
 }
 
-// splitTagComplex checks whether the tag value has composite type and splits it accordingly
+// splitTagComposite checks whether the tag value has composite type and splits it accordingly
 func splitTagComposite(value string) (*tagInfo, bool) {
 	// check whether the value has type slice
 	if strings.HasPrefix(value, "[") && strings.Index(value, "]") > 0 {
