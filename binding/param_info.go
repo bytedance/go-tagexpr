@@ -1,6 +1,8 @@
 package binding
 
 import (
+	ejson "encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -19,6 +21,7 @@ type paramInfo struct {
 	omitIns        map[in]bool
 	bindErrFactory func(failField, msg string) error
 	looseZeroMode  bool
+	defaultVal     reflect.Value
 }
 
 func (p *paramInfo) name(paramIn in) string {
@@ -289,4 +292,32 @@ func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue reflect.V
 
 	v.Set(defaultValue)
 	return true, nil
+}
+
+// setDefaultVal preprocess the default tags and store the parsed value
+func (p *paramInfo) setDefaultVal() error {
+	for _, info := range p.tagInfos {
+		if info.paramIn != default_val {
+			continue
+		}
+
+		defaultVal := info.paramName
+
+		st := p.structField.Type
+		// get dereference of structField type
+		for st.Kind() == reflect.Ptr || st.Kind() == reflect.Interface {
+			st = st.Elem()
+		}
+		switch st.Kind() {
+		case reflect.Slice, reflect.Array, reflect.Map:
+			defaultVal = strings.Replace(defaultVal, "'", "\"", -1)
+		case reflect.String:
+			defaultVal = fmt.Sprintf(`"%s"`, defaultVal)
+		}
+
+		newFieldPtr := reflect.New(p.structField.Type).Interface()
+		ejson.Unmarshal([]byte(defaultVal), newFieldPtr)
+		p.defaultVal = reflect.ValueOf(newFieldPtr).Elem()
+	}
+	return nil
 }
