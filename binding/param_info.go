@@ -1,7 +1,6 @@
 package binding
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -288,7 +287,6 @@ func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue reflect.V
 		return false, err
 	}
 
-	fmt.Println("default", defaultValue, defaultValue.Type())
 	v.Set(defaultValue)
 	return true, nil
 }
