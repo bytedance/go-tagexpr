@@ -11,6 +11,7 @@ func Example() {
 		Year          []int    `query:"year"`
 		Email         *string  `json:"email" vd:"email($)"`
 		Friendly      bool     `json:"friendly"`
+		Status        string   `json:"status" default:"single"`
 		Pie           float32  `json:"pie,required"`
 		Hobby         []string `json:",required"`
 		BodyNotFound  *int     `json:"BodyNotFound"`
@@ -57,6 +58,7 @@ func Example() {
 	// 	],
 	// 	"email": "henrylee2cn@gmail.com",
 	// 	"friendly": true,
+	// 	"status": "single",
 	// 	"pie": 3.1415925,
 	// 	"Hobby": [
 	// 		"Coding",
@@ -87,6 +89,7 @@ The parameter position in HTTP request:
 |`json:"$name"` or `json:"$name,required"`|No|The field in body, support:<br>`application/json`|
 |`header:"$name"` or `header:"$name,required"`|Yes|Header parameter|
 |`cookie:"$name"` or `cookie:"$name,required"`|Yes|Cookie parameter|
+|`default:"$value"`|Yes|default parameter|
 |`vd:"...(tagexpr validator syntax)"`|Yes|The tagexpr expression of validator|
 
 **NOTE:**
@@ -95,6 +98,7 @@ The parameter position in HTTP request:
 - If `"$name"` is empty, use the name of field
 - If `"$name"` is `-`, omit the field
 - Expression `required` or `req` indicates that the parameter is required
+- `default:"$value"" defines the default value for fallback when no binding is successful
 - If no position is tagged, try bind parameters from the body when the request has body,
 <br>otherwise try bind from the URL query
 - When there are multiple tags or no tags, the order in which to try to bind is:
@@ -105,6 +109,7 @@ The parameter position in HTTP request:
   5. header
   6. protobuf
   7. json
+  8. default
 
 ## Type Unmarshalor
 

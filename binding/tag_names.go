@@ -20,6 +20,7 @@ const (
 	defaultTagValidator = "vd"
 	tagProtobuf         = "protobuf"
 	tagJSON             = "json"
+	tagDefault          = "default"
 )
 
 // Config the struct tag naming and so on
@@ -46,6 +47,8 @@ type Config struct {
 	protobufBody string
 	// jsonBody use 'json' by default when empty
 	jsonBody string
+	// defaultVal use 'default' by default when empty
+	defaultVal string
 
 	list []string
 }
@@ -61,6 +64,7 @@ func (t *Config) init() {
 		goutil.InitAndGetString(&t.Validator, defaultTagValidator),
 		goutil.InitAndGetString(&t.protobufBody, tagProtobuf),
 		goutil.InitAndGetString(&t.jsonBody, tagJSON),
+		goutil.InitAndGetString(&t.defaultVal, tagDefault),
 	}
 }
 
@@ -76,7 +80,7 @@ func (t *Config) parse(field reflect.StructField) tagKVs {
 		if !ok {
 			continue
 		}
-		if value != "-" {
+		if name != t.defaultVal && value != "-" {
 			value = strings.Replace(strings.TrimSpace(value), " ", "", -1)
 			value = strings.Replace(value, "\t", "", -1)
 			if name == t.RawBody {
@@ -127,6 +131,7 @@ func defaultSplitTag(value string) *tagInfo {
 			}
 		}
 	}
+
 	return info
 }
 

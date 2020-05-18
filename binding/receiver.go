@@ -26,6 +26,7 @@ const (
 	protobuf
 	json
 	raw_body
+	default_val
 	maxIn
 )
 
@@ -215,5 +216,6 @@ func (r *receiver) initParams() {
 			info.cannotError = p.bindErrFactory(info.namePath, "parameter cannot be bound")
 			info.contentTypeError = p.bindErrFactory(info.namePath, "does not support binding to the content type body")
 		}
+		p.setDefaultVal()
 	}
 }

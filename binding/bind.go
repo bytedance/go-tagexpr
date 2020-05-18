@@ -126,7 +126,6 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 	cookies := recv.getCookies(req)
 
 	for _, param := range recv.params {
-
 		for i, info := range param.tagInfos {
 			var found bool
 			switch info.paramIn {
@@ -149,6 +148,8 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 			case raw_body:
 				err = param.bindRawBody(info, expr, bodyBytes)
 				found = err == nil
+			case default_val:
+				found, err = param.bindDefaultVal(expr, param.defaultVal)
 			}
 			if found && err == nil {
 				break
@@ -230,15 +231,21 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 				paramIn = json
 			case b.config.RawBody:
 				paramIn = raw_body
+			case b.config.defaultVal:
+				paramIn = default_val
 			default:
 				continue L
 			}
-			tagInfos[paramIn] = tagKV.defaultSplit()
+			if paramIn == default_val {
+				tagInfos[paramIn] = &tagInfo{paramIn: default_val, paramName: tagKV.value}
+			} else {
+				tagInfos[paramIn] = tagKV.defaultSplit()
+			}
 		}
 
 		for i, info := range tagInfos {
 			if info != nil {
-				if info.paramName == "-" {
+				if info.paramIn != default_val && info.paramName == "-" {
 					p.omitIns[in(i)] = true
 					recv.assginIn(in(i), false)
 				} else {

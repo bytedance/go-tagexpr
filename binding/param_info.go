@@ -1,6 +1,8 @@
 package binding
 
 import (
+	ejson "encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -12,6 +14,10 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const (
+	specialChar = '\x07'
+)
+
 type paramInfo struct {
 	fieldSelector  string
 	structField    reflect.StructField
@@ -19,6 +25,7 @@ type paramInfo struct {
 	omitIns        map[in]bool
 	bindErrFactory func(failField, msg string) error
 	looseZeroMode  bool
+	defaultVal     reflect.Value
 }
 
 func (p *paramInfo) name(paramIn in) string {
@@ -116,8 +123,7 @@ func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, body
 	case bodyForm:
 		return p.bindMapStrings(info, expr, postForm)
 	case bodyJSON:
-		err := p.checkRequireJSON(info, expr, bodyString, false)
-		return err == nil, err
+		return p.checkRequireJSON(info, expr, bodyString, false)
 	case bodyProtobuf:
 		err := p.checkRequireProtobuf(info, expr, false)
 		return err == nil, err
@@ -136,22 +142,25 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 	return nil
 }
 
-func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) error {
-	if jsonIndependentRequired && (checkOpt || info.required) {
-		if !gjson.Get(bodyString, info.namePath).Exists() {
-			idx := strings.LastIndex(info.namePath, ".")
-			// There should be a superior but it is empty, no error is reported
-			if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
-				return nil
-			}
-			return info.requiredError
-		}
-		v, err := p.getField(expr, false)
-		if err != nil || !v.IsValid() {
-			return info.requiredError
-		}
+func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) (bool, error) {
+	var requiredError error
+	if jsonIndependentRequired && (checkOpt || info.required) { // only return error if it's a required field
+		requiredError = info.requiredError
 	}
-	return nil
+
+	if !gjson.Get(bodyString, info.namePath).Exists() {
+		idx := strings.LastIndex(info.namePath, ".")
+		// There should be a superior but it is empty, no error is reported
+		if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
+			return true, nil
+		}
+		return false, requiredError
+	}
+	v, err := p.getField(expr, false)
+	if err != nil || !v.IsValid() {
+		return false, requiredError
+	}
+	return true, nil
 }
 
 func (p *paramInfo) bindMapStrings(info *tagInfo, expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {
@@ -273,4 +282,49 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		}
 	}
 	return info.typeError
+}
+
+func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue reflect.Value) (bool, error) {
+	if defaultValue.IsZero() {
+		return false, nil
+	}
+
+	v, err := p.getField(expr, true)
+	if err != nil || !v.IsValid() {
+		return false, err
+	}
+
+	v.Set(defaultValue)
+	return true, nil
+}
+
+// setDefaultVal preprocess the default tags and store the parsed value
+func (p *paramInfo) setDefaultVal() error {
+	for _, info := range p.tagInfos {
+		if info.paramIn != default_val {
+			continue
+		}
+
+		defaultVal := info.paramName
+		st := p.structField.Type
+		// get dereference of structField type
+		for st.Kind() == reflect.Ptr || st.Kind() == reflect.Interface {
+			st = st.Elem()
+		}
+		switch st.Kind() {
+		case reflect.Slice, reflect.Array, reflect.Map, reflect.Struct:
+			// escape single quote and double quote, replace single quote with double quote
+			defaultVal = strings.Replace(defaultVal, "\"", "\\\"", -1)
+			defaultVal = strings.Replace(defaultVal, "\\'", string(specialChar), -1)
+			defaultVal = strings.Replace(defaultVal, "'", "\"", -1)
+			defaultVal = strings.Replace(defaultVal, string(specialChar), "'", -1)
+		case reflect.String:
+			defaultVal = fmt.Sprintf(`"%s"`, defaultVal)
+		}
+
+		newFieldPtr := reflect.New(p.structField.Type).Interface()
+		ejson.Unmarshal([]byte(defaultVal), newFieldPtr)
+		p.defaultVal = reflect.ValueOf(newFieldPtr).Elem()
+	}
+	return nil
 }

@@ -499,6 +499,91 @@ func TestPath(t *testing.T) {
 	assert.Equal(t, (*int64)(nil), recv.Z)
 }
 
+type testPathParams2 struct{}
+
+func (testPathParams2) Get(name string) (string, bool) {
+	switch name {
+	case "e":
+		return "123", true
+	default:
+		return "", false
+	}
+}
+
+func TestDefault(t *testing.T) {
+	type S struct {
+		SS string `json:"ss"`
+	}
+
+	type Recv struct {
+		X **struct {
+			A          []string           `path:"a" json:"a"`
+			B          int32              `path:"b" default:"32"`
+			C          bool               `json:"c" default:"true"`
+			D          *float32           `default:"123.4"`
+			E          *[]string          `default:"['a','b','c','d,e,f']"`
+			F          map[string]string  `default:"{'a':'\"\\'1','\"b':'c','c':'2'}"`
+			G          map[string]int64   `default:"{'a':1,'b':2,'c':3}"`
+			H          map[string]float64 `default:"{'a':0.1,'b':1.2,'c':2.3}"`
+			I          map[string]float64 `default:"{'\"a\"':0.1,'b':1.2,'c':2.3}"`
+			Empty      string             `default:""`
+			Null       string             `default:""`
+			CommaSpace string             `default:",a:c "`
+			Dash       string             `default:"-"`
+			InvalidInt int                `default:"abc"`
+			InvalidMap map[string]string  `default:"abc"`
+		}
+		Y       string `json:"y" default:"y1"`
+		Z       int64
+		W       string                          `json:"w"`
+		V       []int64                         `json:"u" default:"[1,2,3]"`
+		U       []float32                       `json:"u" default:"[1.1,2,3]"`
+		T       *string                         `json:"t" default:"t1"`
+		S       S                               `default:"{'ss':'test'}"`
+		O       *S                              `default:"{'ss':'test2'}"`
+		Complex map[string][]map[string][]int64 `default:"{'a':[{'aa':[1,2,3], 'bb':[4,5]}],'b':[{}]}"`
+	}
+
+	bodyReader := strings.NewReader(`{
+		"X": {
+			"a": ["a1","a2"],
+		},
+		"Z": 6
+	}`)
+
+	var nilMap map[string]string
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	req := newRequest("", header, nil, bodyReader)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, new(testPathParams2))
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a1", "a2"}, (**recv.X).A)
+	assert.Equal(t, int32(32), (**recv.X).B)
+	assert.Equal(t, true, (**recv.X).C)
+	assert.Equal(t, float32(123.4), *(**recv.X).D)
+	assert.Equal(t, []string{"a", "b", "c", "d,e,f"}, *(**recv.X).E)
+	assert.Equal(t, map[string]string{"a": "\"'1", "\"b": "c", "c": "2"}, (**recv.X).F)
+	assert.Equal(t, map[string]int64{"a": 1, "b": 2, "c": 3}, (**recv.X).G)
+	assert.Equal(t, map[string]float64{"a": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).H)
+	assert.Equal(t, map[string]float64{"\"a\"": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).I)
+	assert.Equal(t, "", (**recv.X).Empty)
+	assert.Equal(t, "", (**recv.X).Null)
+	assert.Equal(t, ",a:c ", (**recv.X).CommaSpace)
+	assert.Equal(t, "-", (**recv.X).Dash)
+	assert.Equal(t, 0, (**recv.X).InvalidInt)
+	assert.Equal(t, nilMap, (**recv.X).InvalidMap)
+	assert.Equal(t, "y1", recv.Y)
+	assert.Equal(t, "t1", *recv.T)
+	assert.Equal(t, int64(6), recv.Z)
+	assert.Equal(t, []int64{1, 2, 3}, recv.V)
+	assert.Equal(t, []float32{1.1, 2, 3}, recv.U)
+	assert.Equal(t, S{SS: "test"}, recv.S)
+	assert.Equal(t, &S{SS: "test2"}, recv.O)
+	assert.Equal(t, map[string][]map[string][]int64{"a": {{"aa": {1, 2, 3}, "bb": []int64{4, 5}}}, "b": {map[string][]int64{}}}, recv.Complex)
+}
+
 func TestAuto(t *testing.T) {
 	type Recv struct {
 		A string `vd:"$!=''"`
