@@ -19,28 +19,8 @@ func TestDefaultSplitTag(t *testing.T) {
 		},
 		{
 			desc:     "default",
-			input:    "a",
-			expected: &tagInfo{paramName: "a"},
-		},
-		{
-			desc:     "slice",
-			input:    "[1,2,3]",
-			expected: &tagInfo{paramName: "[1,2,3]"},
-		},
-		{
-			desc:     "map",
-			input:    "{col1:a,col2:b}",
-			expected: &tagInfo{paramName: "{col1:a,col2:b}"},
-		},
-		{
-			desc:     "invalid map",
-			input:    "{col1:a,col2}",
-			expected: &tagInfo{paramName: "{col1:a"},
-		},
-		{
-			desc:     "invalid map",
-			input:    "{col1:a,col2}",
-			expected: &tagInfo{paramName: "{col1:a"},
+			input:    "a,required",
+			expected: &tagInfo{paramName: "a", required: true},
 		},
 	}
 

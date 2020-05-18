@@ -236,12 +236,16 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			default:
 				continue L
 			}
-			tagInfos[paramIn] = tagKV.defaultSplit()
+			if paramIn == default_val {
+				tagInfos[paramIn] = &tagInfo{paramIn: default_val, paramName: tagKV.value}
+			} else {
+				tagInfos[paramIn] = tagKV.defaultSplit()
+			}
 		}
 
 		for i, info := range tagInfos {
 			if info != nil {
-				if info.paramName == "-" {
+				if info.paramIn != default_val && info.paramName == "-" {
 					p.omitIns[in(i)] = true
 					recv.assginIn(in(i), false)
 				} else {

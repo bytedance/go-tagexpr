@@ -528,18 +528,20 @@ func TestDefault(t *testing.T) {
 			I          map[string]float64 `default:"{'\"a\"':0.1,'b':1.2,'c':2.3}"`
 			Empty      string             `default:""`
 			Null       string             `default:""`
-			Empty2     string             `default:",a:c "`
+			CommaSpace string             `default:",a:c "`
+			Dash       string             `default:"-"`
 			InvalidInt int                `default:"abc"`
 			InvalidMap map[string]string  `default:"abc"`
 		}
-		Y string `json:"y" default:"y1"`
-		Z int64
-		W string    `json:"w"`
-		V []int64   `json:"u" default:"[1,2,3]"`
-		U []float32 `json:"u" default:"[1.1,2,3]"`
-		T *string   `json:"t" default:"t1"`
-		S S         `default:"{'ss':'test'}"`
-		O *S        `default:"{'ss':'test2'}"`
+		Y       string `json:"y" default:"y1"`
+		Z       int64
+		W       string                          `json:"w"`
+		V       []int64                         `json:"u" default:"[1,2,3]"`
+		U       []float32                       `json:"u" default:"[1.1,2,3]"`
+		T       *string                         `json:"t" default:"t1"`
+		S       S                               `default:"{'ss':'test'}"`
+		O       *S                              `default:"{'ss':'test2'}"`
+		Complex map[string][]map[string][]int64 `default:"{'a':[{'aa':[1,2,3], 'bb':[4,5]}],'b':[{}]}"`
 	}
 
 	bodyReader := strings.NewReader(`{
@@ -568,7 +570,8 @@ func TestDefault(t *testing.T) {
 	assert.Equal(t, map[string]float64{"\"a\"": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).I)
 	assert.Equal(t, "", (**recv.X).Empty)
 	assert.Equal(t, "", (**recv.X).Null)
-	assert.Equal(t, "", (**recv.X).Empty2)
+	assert.Equal(t, ",a:c ", (**recv.X).CommaSpace)
+	assert.Equal(t, "-", (**recv.X).Dash)
 	assert.Equal(t, 0, (**recv.X).InvalidInt)
 	assert.Equal(t, nilMap, (**recv.X).InvalidMap)
 	assert.Equal(t, "y1", recv.Y)
@@ -578,6 +581,7 @@ func TestDefault(t *testing.T) {
 	assert.Equal(t, []float32{1.1, 2, 3}, recv.U)
 	assert.Equal(t, S{SS: "test"}, recv.S)
 	assert.Equal(t, &S{SS: "test2"}, recv.O)
+	assert.Equal(t, map[string][]map[string][]int64{"a": {{"aa": {1, 2, 3}, "bb": []int64{4, 5}}}, "b": {map[string][]int64{}}}, recv.Complex)
 }
 
 func TestAuto(t *testing.T) {

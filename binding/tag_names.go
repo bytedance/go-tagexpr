@@ -80,7 +80,7 @@ func (t *Config) parse(field reflect.StructField) tagKVs {
 		if !ok {
 			continue
 		}
-		if value != "-" {
+		if name != t.defaultVal && value != "-" {
 			value = strings.Replace(strings.TrimSpace(value), " ", "", -1)
 			value = strings.Replace(value, "\t", "", -1)
 			if name == t.RawBody {
@@ -88,7 +88,6 @@ func (t *Config) parse(field reflect.StructField) tagKVs {
 				if info.required || info.paramName == tagRequired {
 					value = "," + tagRequired
 				}
-			} else if name == t.defaultVal {
 			} else if value == "" {
 				value = fieldName
 			} else if value == ","+tagRequired {
@@ -121,11 +120,6 @@ func (t *tagKV) defaultSplit() *tagInfo {
 }
 
 func defaultSplitTag(value string) *tagInfo {
-	// check whether value is of type slice
-	if info, ok := splitTagComposite(value); ok {
-		return info
-	}
-
 	info := new(tagInfo)
 	for i, v := range strings.Split(value, ",") {
 		v = strings.TrimSpace(v)
@@ -139,31 +133,6 @@ func defaultSplitTag(value string) *tagInfo {
 	}
 
 	return info
-}
-
-// splitTagComposite checks whether the tag value has composite type and splits it accordingly, which is only used for default tag
-func splitTagComposite(value string) (*tagInfo, bool) {
-	// check whether the value has type slice
-	if strings.HasPrefix(value, "[") && strings.Index(value, "]") > 0 {
-		info := new(tagInfo)
-		end := strings.Index(value, "]")
-		info.paramName = value[:end+1]
-		return info, true
-	}
-
-	// check whether the value has type map
-	if strings.HasPrefix(value, "{") && strings.Index(value, "}") > 0 {
-		info := new(tagInfo)
-		end := strings.Index(value, "}")
-		info.paramName = value[:end+1]
-		for _, v := range strings.Split(value[:end+1], ",") {
-			if !strings.Contains(v, ":") { // the value chunk is not a map
-				return nil, false
-			}
-		}
-		return info, true
-	}
-	return nil, false
 }
 
 type tagKVs []*tagKV
