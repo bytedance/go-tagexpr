@@ -11,7 +11,7 @@ func Example() {
 		Year          []int    `query:"year"`
 		Email         *string  `json:"email" vd:"email($)"`
 		Friendly      bool     `json:"friendly"`
-        Status        string   `json:"status" default:"single"`
+		Status        string   `json:"status" default:"single"`
 		Pie           float32  `json:"pie,required"`
 		Hobby         []string `json:",required"`
 		BodyNotFound  *int     `json:"BodyNotFound"`
@@ -58,7 +58,7 @@ func Example() {
 	// 	],
 	// 	"email": "henrylee2cn@gmail.com",
 	// 	"friendly": true,
-    //  "status": "single",
+	// 	"status": "single",
 	// 	"pie": 3.1415925,
 	// 	"Hobby": [
 	// 		"Coding",
