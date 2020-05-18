@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	//specialChar = '\x07'
-	specialChar = "\\\""
+	specialChar = '\x07'
 )
 
 type paramInfo struct {
@@ -307,7 +306,6 @@ func (p *paramInfo) setDefaultVal() error {
 		}
 
 		defaultVal := info.paramName
-
 		st := p.structField.Type
 		// get dereference of structField type
 		for st.Kind() == reflect.Ptr || st.Kind() == reflect.Interface {
@@ -315,47 +313,18 @@ func (p *paramInfo) setDefaultVal() error {
 		}
 		switch st.Kind() {
 		case reflect.Slice, reflect.Array, reflect.Map, reflect.Struct:
-			defaultVal = strings.Replace(defaultVal, "\"", string(specialChar), -1)
+			// escape single quote and double quote, replace single quote with double quote
+			defaultVal = strings.Replace(defaultVal, "\"", "\\\"", -1)
+			defaultVal = strings.Replace(defaultVal, "\\'", string(specialChar), -1)
 			defaultVal = strings.Replace(defaultVal, "'", "\"", -1)
+			defaultVal = strings.Replace(defaultVal, string(specialChar), "'", -1)
 		case reflect.String:
 			defaultVal = fmt.Sprintf(`"%s"`, defaultVal)
 		}
 
-		fmt.Println(defaultVal)
 		newFieldPtr := reflect.New(p.structField.Type).Interface()
-		err := ejson.Unmarshal([]byte(defaultVal), newFieldPtr)
-		fmt.Println(newFieldPtr, err)
+		ejson.Unmarshal([]byte(defaultVal), newFieldPtr)
 		p.defaultVal = reflect.ValueOf(newFieldPtr).Elem()
-
 	}
 	return nil
-}
-
-func unescape(v reflect.Value) reflect.Value {
-	switch v.Kind() {
-	case reflect.Ptr:
-		v.Elem().Set(unescape(v.Elem()))
-	case reflect.String:
-		v = reflect.ValueOf(strings.Replace(v.String(), string('\x07'), "\"", -1))
-	case reflect.Struct:
-		for i := 0; i < v.NumField(); i++ {
-			f := v.Field(i)
-			f.Set(unescape(f))
-		}
-	case reflect.Map:
-		newV := reflect.MakeMapWithSize(v.Type(), v.Len())
-		for _, k := range v.MapKeys() {
-			newV.SetMapIndex(unescape(k), unescape(v.MapIndex(k)))
-		}
-		v = newV
-	case reflect.Slice, reflect.Array:
-		for i := 0; i < v.Len(); i++ {
-			e := v.Index(i)
-			e.Set(unescape(e))
-		}
-	case reflect.Interface:
-		v = unescape(v.Elem())
-	}
-
-	return v
 }

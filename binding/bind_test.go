@@ -517,15 +517,20 @@ func TestDefault(t *testing.T) {
 
 	type Recv struct {
 		X **struct {
-			A []string           `path:"a" json:"a"`
-			B int32              `path:"b" default:"32"`
-			C bool               `json:"c" default:"true"`
-			D *float32           `default:"123.4"`
-			E *[]string          `default:"['a','b','c','d,e,f']"`
-			F map[string]string  `default:"{'a':'1','b':'c','c':'2'}"`
-			G map[string]int64   `default:"{'a':1,'b':2,'c':3}"`
-			H map[string]float64 `default:"{'a':0.1,'b':1.2,'c':2.3}"`
-			I map[string]float64 `default:"{'\"a\"':0.1,'b':1.2,'c':2.3}"`
+			A          []string           `path:"a" json:"a"`
+			B          int32              `path:"b" default:"32"`
+			C          bool               `json:"c" default:"true"`
+			D          *float32           `default:"123.4"`
+			E          *[]string          `default:"['a','b','c','d,e,f']"`
+			F          map[string]string  `default:"{'a':'\"\\'1','\"b':'c','c':'2'}"`
+			G          map[string]int64   `default:"{'a':1,'b':2,'c':3}"`
+			H          map[string]float64 `default:"{'a':0.1,'b':1.2,'c':2.3}"`
+			I          map[string]float64 `default:"{'\"a\"':0.1,'b':1.2,'c':2.3}"`
+			Empty      string             `default:""`
+			Null       string             `default:""`
+			Empty2     string             `default:",a:c "`
+			InvalidInt int                `default:"abc"`
+			InvalidMap map[string]string  `default:"abc"`
 		}
 		Y string `json:"y" default:"y1"`
 		Z int64
@@ -544,6 +549,7 @@ func TestDefault(t *testing.T) {
 		"Z": 6
 	}`)
 
+	var nilMap map[string]string
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 	req := newRequest("", header, nil, bodyReader)
@@ -556,10 +562,15 @@ func TestDefault(t *testing.T) {
 	assert.Equal(t, true, (**recv.X).C)
 	assert.Equal(t, float32(123.4), *(**recv.X).D)
 	assert.Equal(t, []string{"a", "b", "c", "d,e,f"}, *(**recv.X).E)
-	assert.Equal(t, map[string]string{"a": "1", "b": "c", "c": "2"}, (**recv.X).F)
+	assert.Equal(t, map[string]string{"a": "\"'1", "\"b": "c", "c": "2"}, (**recv.X).F)
 	assert.Equal(t, map[string]int64{"a": 1, "b": 2, "c": 3}, (**recv.X).G)
 	assert.Equal(t, map[string]float64{"a": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).H)
 	assert.Equal(t, map[string]float64{"\"a\"": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).I)
+	assert.Equal(t, "", (**recv.X).Empty)
+	assert.Equal(t, "", (**recv.X).Null)
+	assert.Equal(t, "", (**recv.X).Empty2)
+	assert.Equal(t, 0, (**recv.X).InvalidInt)
+	assert.Equal(t, nilMap, (**recv.X).InvalidMap)
 	assert.Equal(t, "y1", recv.Y)
 	assert.Equal(t, "t1", *recv.T)
 	assert.Equal(t, int64(6), recv.Z)
