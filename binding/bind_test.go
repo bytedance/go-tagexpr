@@ -511,6 +511,10 @@ func (testPathParams2) Get(name string) (string, bool) {
 }
 
 func TestDefault(t *testing.T) {
+	type S struct {
+		SS string `json:"ss"`
+	}
+
 	type Recv struct {
 		X **struct {
 			A []string           `path:"a" json:"a"`
@@ -521,6 +525,7 @@ func TestDefault(t *testing.T) {
 			F map[string]string  `default:"{'a':'1','b':'c','c':'2'}"`
 			G map[string]int64   `default:"{'a':1,'b':2,'c':3}"`
 			H map[string]float64 `default:"{'a':0.1,'b':1.2,'c':2.3}"`
+			I map[string]float64 `default:"{'\"a\"':0.1,'b':1.2,'c':2.3}"`
 		}
 		Y string `json:"y" default:"y1"`
 		Z int64
@@ -528,6 +533,8 @@ func TestDefault(t *testing.T) {
 		V []int64   `json:"u" default:"[1,2,3]"`
 		U []float32 `json:"u" default:"[1.1,2,3]"`
 		T *string   `json:"t" default:"t1"`
+		S S         `default:"{'ss':'test'}"`
+		O *S        `default:"{'ss':'test2'}"`
 	}
 
 	bodyReader := strings.NewReader(`{
@@ -552,11 +559,14 @@ func TestDefault(t *testing.T) {
 	assert.Equal(t, map[string]string{"a": "1", "b": "c", "c": "2"}, (**recv.X).F)
 	assert.Equal(t, map[string]int64{"a": 1, "b": 2, "c": 3}, (**recv.X).G)
 	assert.Equal(t, map[string]float64{"a": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).H)
+	assert.Equal(t, map[string]float64{"\"a\"": 0.1, "b": 1.2, "c": 2.3}, (**recv.X).I)
 	assert.Equal(t, "y1", recv.Y)
 	assert.Equal(t, "t1", *recv.T)
 	assert.Equal(t, int64(6), recv.Z)
 	assert.Equal(t, []int64{1, 2, 3}, recv.V)
 	assert.Equal(t, []float32{1.1, 2, 3}, recv.U)
+	assert.Equal(t, S{SS: "test"}, recv.S)
+	assert.Equal(t, &S{SS: "test2"}, recv.O)
 }
 
 func TestAuto(t *testing.T) {
