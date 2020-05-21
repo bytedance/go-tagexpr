@@ -184,7 +184,7 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 	v = goutil.DereferenceValue(v)
 	switch v.Kind() {
 	case reflect.String:
-		v.Set(reflect.ValueOf(a[0]))
+		v.SetString(a[0])
 		return nil
 
 	case reflect.Bool:
