@@ -49,6 +49,9 @@ func TestRawBody(t *testing.T) {
 }
 
 func TestQueryString(t *testing.T) {
+	type metric string
+	type count int32
+
 	type Recv struct {
 		X **struct {
 			A []string  `query:"a"`
@@ -56,11 +59,13 @@ func TestQueryString(t *testing.T) {
 			C *[]string `query:"c,required"`
 			D *string   `query:"d"`
 			E *[]***int `query:"e"`
+			F metric    `query:"f"`
+			G count     `query:"g"`
 		}
 		Y string  `query:"y,required"`
 		Z *string `query:"z"`
 	}
-	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d2&e=&e=2&y=y1", nil, nil, nil)
+	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d&f=qps&g=1002&e=&e=2&y=y1", nil, nil, nil)
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
@@ -74,6 +79,8 @@ func TestQueryString(t *testing.T) {
 	assert.Equal(t, "b1", (**recv.X).B)
 	assert.Equal(t, []string{"c1", "c2"}, *(**recv.X).C)
 	assert.Equal(t, "d1", *(**recv.X).D)
+	assert.Equal(t, metric("qps"), (**recv.X).F)
+	assert.Equal(t, count(100), (**recv.X).G)
 	assert.Equal(t, "y1", recv.Y)
 	assert.Equal(t, (*string)(nil), recv.Z)
 }
@@ -335,12 +342,17 @@ func TestFormNum(t *testing.T) {
 
 func TestJSON(t *testing.T) {
 	// binding.ResetJSONUnmarshaler(false, json.Unmarshal)
+	type metric string
+	type count int32
+
 	type Recv struct {
 		X **struct {
 			A []string  `json:"a"`
 			B int32     `json:""`
 			C *[]uint16 `json:",required"`
 			D *float32  `json:"d"`
+			E metric    `json:"e"`
+			F count     `json:"f"`
 		}
 		Y string `json:"y,required"`
 		Z *int64
@@ -352,6 +364,8 @@ func TestJSON(t *testing.T) {
 			"B": 21,
 			"C": [31,32],
 			"d": 41
+			"e": "qps",
+			"f": 100
 		},
 		"Z": 6
 	}`)
@@ -368,6 +382,8 @@ func TestJSON(t *testing.T) {
 	assert.Equal(t, int32(21), (**recv.X).B)
 	assert.Equal(t, &[]uint16{31, 32}, (**recv.X).C)
 	assert.Equal(t, float32(41), *(**recv.X).D)
+	assert.Equal(t, metric("qps"), (**recv.X).E)
+	assert.Equal(t, count(100), (**recv.X).F)
 	assert.Equal(t, "", recv.Y)
 	assert.Equal(t, (int64)(6), *recv.Z)
 }
@@ -779,4 +795,50 @@ func TestQueryStringIssue(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, ameda.StringToStringPtr("test"), recv.Name)
 	assert.Equal(t, (*Timestamp)(nil), recv.T)
+}
+
+func TestQueryTypes(t *testing.T) {
+	type metric string
+	type count int32
+	type metrics []string
+	type filter struct {
+		Col1 string
+	}
+
+	type Recv struct {
+		A metric `vd:"$!=''"`
+		B count
+		C *count
+		D metrics `query:"D,required" form:"D,required"`
+		E metric  `cookie:"e" json:"e"`
+		F filter  `json:"f"`
+	}
+	query := make(url.Values)
+	query.Add("A", "qps")
+	query.Add("B", "123")
+	query.Add("C", "321")
+	query.Add("D", "dau")
+	query.Add("D", "dnu")
+	contentType, bodyReader, err := httpbody.NewJSONBody(
+		map[string]interface{}{
+			"e": "e-from-jsonbody",
+			"f": filter{Col1: "abc"},
+		},
+	)
+	assert.NoError(t, err)
+	header := make(http.Header)
+	header.Set("Content-Type", contentType)
+	req := newRequest("http://localhost/?"+query.Encode(), header, []*http.Cookie{
+		{Name: "e", Value: "e-from-cookie"},
+	}, bodyReader)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	err = binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, metric("qps"), recv.A)
+	assert.Equal(t, count(123), recv.B)
+	assert.Equal(t, count(321), *recv.C)
+	assert.Equal(t, metrics{"dau", "dnu"}, recv.D)
+	assert.Equal(t, metric("e-from-cookie"), recv.E)
+	assert.Equal(t, filter{Col1: "abc"}, recv.F)
 }

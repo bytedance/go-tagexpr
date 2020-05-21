@@ -89,7 +89,7 @@ The parameter position in HTTP request:
 |`json:"$name"` or `json:"$name,required"`|No|The field in body, support:<br>`application/json`|
 |`header:"$name"` or `header:"$name,required"`|Yes|Header parameter|
 |`cookie:"$name"` or `cookie:"$name,required"`|Yes|Cookie parameter|
-|`default:"$value"`|Yes|default parameter|
+|`default:"$value"`|Yes|Default parameter|
 |`vd:"...(tagexpr validator syntax)"`|Yes|The tagexpr expression of validator|
 
 **NOTE:**
@@ -98,7 +98,7 @@ The parameter position in HTTP request:
 - If `"$name"` is empty, use the name of field
 - If `"$name"` is `-`, omit the field
 - Expression `required` or `req` indicates that the parameter is required
-- `default:"$value"" defines the default value for fallback when no binding is successful
+- `default:"$value"` defines the default value for fallback when no binding is successful
 - If no position is tagged, try bind parameters from the body when the request has body,
 <br>otherwise try bind from the URL query
 - When there are multiple tags or no tags, the order in which to try to bind is:
