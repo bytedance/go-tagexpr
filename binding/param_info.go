@@ -1,21 +1,22 @@
 package binding
 
 import (
-	ejson "encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
 
-	"github.com/bytedance/go-tagexpr"
+	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil"
+	jsonpkg "github.com/json-iterator/go"
 	"github.com/tidwall/gjson"
+
+	"github.com/bytedance/go-tagexpr"
 )
 
 const (
-	specialChar = '\x07'
+	specialChar = "\x07"
 )
 
 type paramInfo struct {
@@ -25,7 +26,7 @@ type paramInfo struct {
 	omitIns        map[in]bool
 	bindErrFactory func(failField, msg string) error
 	looseZeroMode  bool
-	defaultVal     reflect.Value
+	defaultVal     []byte
 }
 
 func (p *paramInfo) name(paramIn in) string {
@@ -284,18 +285,15 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 	return info.typeError
 }
 
-func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue reflect.Value) (bool, error) {
-	if defaultValue.IsZero() {
+func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue []byte) (bool, error) {
+	if defaultValue == nil {
 		return false, nil
 	}
-
 	v, err := p.getField(expr, true)
 	if err != nil || !v.IsValid() {
 		return false, err
 	}
-
-	v.Set(defaultValue)
-	return true, nil
+	return true, jsonpkg.Unmarshal(defaultValue, v.Addr().Interface())
 }
 
 // setDefaultVal preprocess the default tags and store the parsed value
@@ -306,25 +304,19 @@ func (p *paramInfo) setDefaultVal() error {
 		}
 
 		defaultVal := info.paramName
-		st := p.structField.Type
-		// get dereference of structField type
-		for st.Kind() == reflect.Ptr || st.Kind() == reflect.Interface {
-			st = st.Elem()
-		}
+		st := ameda.DereferenceType(p.structField.Type)
 		switch st.Kind() {
+		case reflect.String:
+			p.defaultVal, _ = jsonpkg.Marshal(defaultVal)
+			continue
 		case reflect.Slice, reflect.Array, reflect.Map, reflect.Struct:
 			// escape single quote and double quote, replace single quote with double quote
-			defaultVal = strings.Replace(defaultVal, "\"", "\\\"", -1)
-			defaultVal = strings.Replace(defaultVal, "\\'", string(specialChar), -1)
-			defaultVal = strings.Replace(defaultVal, "'", "\"", -1)
-			defaultVal = strings.Replace(defaultVal, string(specialChar), "'", -1)
-		case reflect.String:
-			defaultVal = fmt.Sprintf(`"%s"`, defaultVal)
+			defaultVal = strings.Replace(defaultVal, `"`, `\"`, -1)
+			defaultVal = strings.Replace(defaultVal, `\'`, specialChar, -1)
+			defaultVal = strings.Replace(defaultVal, `'`, `"`, -1)
+			defaultVal = strings.Replace(defaultVal, specialChar, `'`, -1)
 		}
-
-		newFieldPtr := reflect.New(p.structField.Type).Interface()
-		ejson.Unmarshal([]byte(defaultVal), newFieldPtr)
-		p.defaultVal = reflect.ValueOf(newFieldPtr).Elem()
+		p.defaultVal = ameda.UnsafeStringToBytes(defaultVal)
 	}
 	return nil
 }

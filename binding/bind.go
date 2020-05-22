@@ -91,17 +91,17 @@ func (b *Binding) Validate(value interface{}) error {
 	return b.vd.Validate(value)
 }
 
-func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams PathParams) (value reflect.Value, hasVd bool, err error) {
-	value, err = b.structValueOf(structPointer)
+func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams PathParams) (structValue reflect.Value, hasVd bool, err error) {
+	structValue, err = b.structValueOf(structPointer)
 	if err != nil {
 		return
 	}
-	recv, err := b.getOrPrepareReceiver(value)
+	recv, err := b.getOrPrepareReceiver(structValue)
 	if err != nil {
 		return
 	}
 
-	expr, err := b.vd.VM().Run(value)
+	expr, err := b.vd.VM().Run(structValue)
 	if err != nil {
 		return
 	}
@@ -112,7 +112,7 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 	if err != nil {
 		return
 	}
-	err = recv.prebindBody(structPointer, value, bodyCodec, bodyBytes)
+	err = recv.prebindBody(structPointer, structValue, bodyCodec, bodyBytes)
 	if err != nil {
 		return
 	}
@@ -155,11 +155,11 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 				break
 			}
 			if (found || i == len(param.tagInfos)-1) && err != nil {
-				return value, recv.hasVd, err
+				return structValue, recv.hasVd, err
 			}
 		}
 	}
-	return value, recv.hasVd, nil
+	return structValue, recv.hasVd, nil
 }
 
 func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error) {

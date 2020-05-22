@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bytedance/go-tagexpr"
-	"github.com/bytedance/go-tagexpr/binding/jsonparam"
 	"github.com/gogo/protobuf/proto"
 	"github.com/henrylee2cn/goutil"
-	"github.com/tidwall/gjson"
+	jsonpkg "github.com/json-iterator/go"
+
+	"github.com/bytedance/go-tagexpr"
 )
 
 type in uint8
@@ -135,23 +135,22 @@ func (r *receiver) getBody(req *http.Request) ([]byte, string, error) {
 	return nil, "", nil
 }
 
-func (r *receiver) prebindBody(structPointer interface{}, value reflect.Value, bodyCodec codec, bodyBytes []byte) error {
+func (r *receiver) prebindBody(structPointer interface{}, structValue reflect.Value, bodyCodec codec, bodyBytes []byte) error {
 	switch bodyCodec {
 	case bodyJSON:
 		if jsonUnmarshalFunc != nil {
 			return jsonUnmarshalFunc(bodyBytes, structPointer)
 		}
-		jsonparam.Assign(gjson.Parse(goutil.BytesToString(bodyBytes)), value)
+		return jsonpkg.Unmarshal(bodyBytes, structPointer)
 	case bodyProtobuf:
 		msg, ok := structPointer.(proto.Message)
 		if !ok {
 			return errors.New("protobuf content type is not supported")
 		}
-		if err := proto.Unmarshal(bodyBytes, msg); err != nil {
-			return err
-		}
+		return proto.Unmarshal(bodyBytes, msg)
+	default:
+		return nil
 	}
-	return nil
 }
 
 const (
