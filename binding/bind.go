@@ -163,10 +163,7 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 }
 
 func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error) {
-	v, ok := structPointer.(reflect.Value)
-	if !ok {
-		v = reflect.ValueOf(structPointer)
-	}
+	v := reflect.ValueOf(structPointer)
 	if v.Kind() != reflect.Ptr {
 		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
 	}
