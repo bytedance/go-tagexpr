@@ -390,6 +390,31 @@ func TestJSON(t *testing.T) {
 	assert.Equal(t, (int64)(6), *recv.Z)
 }
 
+func TestNonstruct(t *testing.T) {
+	bodyReader := strings.NewReader(`{
+		"X": {
+			"a": ["a1","a2"],
+			"B": 21,
+			"C": [31,32],
+			"d": 41,
+			"e": "qps",
+			"f": 100
+		},
+		"Z": 6
+	}`)
+
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	req := newRequest("", header, nil, bodyReader)
+	var recv interface{}
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(&recv, req, nil)
+	assert.NoError(t, err)
+	b, err := json.Marshal(recv)
+	assert.NoError(t, err)
+	t.Logf("%s", b)
+}
+
 func BenchmarkBindJSON(b *testing.B) {
 	type Recv struct {
 		X **struct {

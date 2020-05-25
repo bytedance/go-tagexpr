@@ -6,10 +6,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bytedance/go-tagexpr"
-	"github.com/bytedance/go-tagexpr/validator"
+	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil"
 	"github.com/henrylee2cn/goutil/tpack"
+	jsonpkg "github.com/json-iterator/go"
+
+	"github.com/bytedance/go-tagexpr"
+	"github.com/bytedance/go-tagexpr/validator"
 )
 
 // Binding binding and verification tool for http request
@@ -69,8 +72,8 @@ func (b *Binding) SetErrorFactory(bindErrFactory, validatingErrFactory func(fail
 }
 
 // BindAndValidate binds the request parameters and validates them if needed.
-func (b *Binding) BindAndValidate(structPointer interface{}, req *http.Request, pathParams PathParams) error {
-	v, hasVd, err := b.bind(structPointer, req, pathParams)
+func (b *Binding) BindAndValidate(recvPointer interface{}, req *http.Request, pathParams PathParams) error {
+	v, hasVd, err := b.bind(recvPointer, req, pathParams)
 	if err != nil {
 		return err
 	}
@@ -81,8 +84,8 @@ func (b *Binding) BindAndValidate(structPointer interface{}, req *http.Request, 
 }
 
 // Bind binds the request parameters.
-func (b *Binding) Bind(structPointer interface{}, req *http.Request, pathParams PathParams) error {
-	_, _, err := b.bind(structPointer, req, pathParams)
+func (b *Binding) Bind(recvPointer interface{}, req *http.Request, pathParams PathParams) error {
+	_, _, err := b.bind(recvPointer, req, pathParams)
 	return err
 }
 
@@ -91,11 +94,47 @@ func (b *Binding) Validate(value interface{}) error {
 	return b.vd.Validate(value)
 }
 
-func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams PathParams) (structValue reflect.Value, hasVd bool, err error) {
-	structValue, err = b.structValueOf(structPointer)
+func (b *Binding) bind(pointer interface{}, req *http.Request, pathParams PathParams) (elemValue reflect.Value, hasVd bool, err error) {
+	elemValue, err = b.receiverValueOf(pointer)
 	if err != nil {
 		return
 	}
+	if elemValue.Kind() == reflect.Struct {
+		hasVd, err = b.bindStruct(pointer, elemValue, req, pathParams)
+	} else {
+		hasVd, err = b.bindNonstruct(pointer, elemValue, req, pathParams)
+	}
+	return
+}
+
+func (b *Binding) bindNonstruct(pointer interface{}, _ reflect.Value, req *http.Request, _ PathParams) (hasVd bool, err error) {
+	bodyCodec := getBodyCodec(req)
+	var bodyBytes []byte
+	switch bodyCodec {
+	case bodyJSON:
+		hasVd = true
+		bodyBytes, err = getBody(req, bodyCodec)
+		if err == nil {
+			err = bindJSON(pointer, bodyBytes)
+		}
+	case bodyProtobuf:
+		hasVd = true
+		bodyBytes, err = getBody(req, bodyCodec)
+		if err == nil {
+			err = bindProtobuf(pointer, bodyBytes)
+		}
+	case bodyForm:
+		b, _ := jsonpkg.Marshal(req.PostForm)
+		err = jsonpkg.Unmarshal(b, pointer)
+	default:
+		// query and form
+		b, _ := jsonpkg.Marshal(req.Form)
+		err = jsonpkg.Unmarshal(b, pointer)
+	}
+	return
+}
+
+func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Value, req *http.Request, pathParams PathParams) (hasVd bool, err error) {
 	recv, err := b.getOrPrepareReceiver(structValue)
 	if err != nil {
 		return
@@ -106,22 +145,15 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 		return
 	}
 
-	bodyCodec := recv.getBodyCodec(req)
-
-	bodyBytes, bodyString, err := recv.getBody(req)
+	bodyCodec, bodyBytes, err := recv.getBodyInfo(req)
+	if err == nil {
+		err = recv.prebindBody(structPointer, structValue, bodyCodec, bodyBytes)
+	}
 	if err != nil {
 		return
 	}
-	err = recv.prebindBody(structPointer, structValue, bodyCodec, bodyBytes)
-	if err != nil {
-		return
-	}
-
-	postForm, err := recv.getPostForm(req, bodyCodec)
-	if err != nil {
-		return
-	}
-
+	bodyString := ameda.UnsafeBytesToString(bodyBytes)
+	postForm := req.PostForm
 	queryValues := recv.getQuery(req)
 	cookies := recv.getCookies(req)
 
@@ -155,23 +187,22 @@ func (b *Binding) bind(structPointer interface{}, req *http.Request, pathParams 
 				break
 			}
 			if (found || i == len(param.tagInfos)-1) && err != nil {
-				return structValue, recv.hasVd, err
+				return recv.hasVd, err
 			}
 		}
 	}
-	return structValue, recv.hasVd, nil
+	return recv.hasVd, nil
 }
 
-func (b *Binding) structValueOf(structPointer interface{}) (reflect.Value, error) {
-	v := reflect.ValueOf(structPointer)
-	if v.Kind() != reflect.Ptr {
-		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
+func (b *Binding) receiverValueOf(receiver interface{}) (reflect.Value, error) {
+	v := reflect.ValueOf(receiver)
+	if v.Kind() == reflect.Ptr {
+		v = goutil.DereferencePtrValue(v)
+		if v.IsValid() && v.CanAddr() {
+			return v, nil
+		}
 	}
-	v = goutil.DereferenceValue(v)
-	if v.Kind() != reflect.Struct || !v.CanAddr() || !v.IsValid() {
-		return v, b.bindErrFactory("", "structPointer must be a non-nil struct pointer")
-	}
-	return v, nil
+	return v, b.bindErrFactory("", "receiver must be a non-nil pointer")
 }
 
 func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {

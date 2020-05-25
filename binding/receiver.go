@@ -1,15 +1,9 @@
 package binding
 
 import (
-	"errors"
 	"net/http"
 	"net/url"
 	"reflect"
-	"strings"
-
-	"github.com/gogo/protobuf/proto"
-	"github.com/henrylee2cn/goutil"
-	jsonpkg "github.com/json-iterator/go"
 
 	"github.com/bytedance/go-tagexpr"
 )
@@ -103,51 +97,19 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(f
 	return p
 }
 
-func (r *receiver) getBodyCodec(req *http.Request) codec {
-	ct := req.Header.Get("Content-Type")
-	idx := strings.Index(ct, ";")
-	if idx != -1 {
-		ct = strings.TrimRight(ct[:idx], " ")
-	}
-	switch ct {
-	case "application/json":
-		return bodyJSON
-	case "application/x-protobuf":
-		return bodyProtobuf
-	case "application/x-www-form-urlencoded", "multipart/form-data":
-		return bodyForm
-	default:
-		return bodyUnsupport
-	}
-}
-
-func (r *receiver) getBody(req *http.Request) ([]byte, string, error) {
+func (r *receiver) getBodyInfo(req *http.Request) (codec, []byte, error) {
 	if r.hasBody {
-		switch req.Method {
-		case "POST", "PUT", "PATCH", "DELETE":
-			bodyBytes, err := copyBody(req)
-			if err == nil {
-				return bodyBytes, goutil.BytesToString(bodyBytes), nil
-			}
-			return bodyBytes, "", nil
-		}
+		return getBodyInfo(req)
 	}
-	return nil, "", nil
+	return bodyUnsupport, nil, nil
 }
 
-func (r *receiver) prebindBody(structPointer interface{}, structValue reflect.Value, bodyCodec codec, bodyBytes []byte) error {
+func (r *receiver) prebindBody(pointer interface{}, val reflect.Value, bodyCodec codec, bodyBytes []byte) error {
 	switch bodyCodec {
 	case bodyJSON:
-		if jsonUnmarshalFunc != nil {
-			return jsonUnmarshalFunc(bodyBytes, structPointer)
-		}
-		return jsonpkg.Unmarshal(bodyBytes, structPointer)
+		return bindJSON(pointer, bodyBytes)
 	case bodyProtobuf:
-		msg, ok := structPointer.(proto.Message)
-		if !ok {
-			return errors.New("protobuf content type is not supported")
-		}
-		return proto.Unmarshal(bodyBytes, msg)
+		return bindProtobuf(pointer, bodyBytes)
 	default:
 		return nil
 	}
@@ -156,16 +118,6 @@ func (r *receiver) prebindBody(structPointer interface{}, structValue reflect.Va
 const (
 	defaultMaxMemory = 32 << 20 // 32 MB
 )
-
-func (r *receiver) getPostForm(req *http.Request, bodyCodec codec) (url.Values, error) {
-	if bodyCodec == bodyForm && (r.hasBody) {
-		if req.PostForm == nil {
-			req.ParseMultipartForm(defaultMaxMemory)
-		}
-		return req.PostForm, nil
-	}
-	return nil, nil
-}
 
 func (r *receiver) getQuery(req *http.Request) url.Values {
 	if r.hasQuery {
