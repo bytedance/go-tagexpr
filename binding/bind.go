@@ -108,27 +108,20 @@ func (b *Binding) bind(pointer interface{}, req *http.Request, pathParams PathPa
 }
 
 func (b *Binding) bindNonstruct(pointer interface{}, _ reflect.Value, req *http.Request, _ PathParams) (hasVd bool, err error) {
-	bodyCodec := getBodyCodec(req)
-	var bodyBytes []byte
+	bodyCodec, bodyBytes, err := getBodyInfo(req)
+	if err != nil {
+		return
+	}
 	switch bodyCodec {
 	case bodyJSON:
 		hasVd = true
-		bodyBytes, err = getBody(req, bodyCodec)
-		if err == nil {
-			err = bindJSON(pointer, bodyBytes)
-		}
+		err = bindJSON(pointer, bodyBytes)
 	case bodyProtobuf:
 		hasVd = true
-		bodyBytes, err = getBody(req, bodyCodec)
-		if err == nil {
-			err = bindProtobuf(pointer, bodyBytes)
-		}
+		err = bindProtobuf(pointer, bodyBytes)
 	case bodyForm:
-		bodyBytes, err = getBody(req, bodyCodec)
-		if err == nil {
-			b, _ := jsonpkg.Marshal(req.PostForm)
-			err = jsonpkg.Unmarshal(b, pointer)
-		}
+		b, _ := jsonpkg.Marshal(req.PostForm)
+		err = jsonpkg.Unmarshal(b, pointer)
 	default:
 		// query and form
 		b, _ := jsonpkg.Marshal(req.Form)
