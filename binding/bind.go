@@ -124,8 +124,11 @@ func (b *Binding) bindNonstruct(pointer interface{}, _ reflect.Value, req *http.
 			err = bindProtobuf(pointer, bodyBytes)
 		}
 	case bodyForm:
-		b, _ := jsonpkg.Marshal(req.PostForm)
-		err = jsonpkg.Unmarshal(b, pointer)
+		bodyBytes, err = getBody(req, bodyCodec)
+		if err == nil {
+			b, _ := jsonpkg.Marshal(req.PostForm)
+			err = jsonpkg.Unmarshal(b, pointer)
+		}
 	default:
 		// query and form
 		b, _ := jsonpkg.Marshal(req.Form)

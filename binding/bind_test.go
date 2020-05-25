@@ -413,6 +413,16 @@ func TestNonstruct(t *testing.T) {
 	b, err := json.Marshal(recv)
 	assert.NoError(t, err)
 	t.Logf("%s", b)
+
+	bodyReader = strings.NewReader("b=334ddddd&token=yoMba34uspjVQEbhflgTRe2ceeDFUK32&type=url_verification")
+	header.Set("Content-Type", "application/x-www-form-urlencoded; charset=utf-8")
+	req = newRequest("", header, nil, bodyReader)
+	recv = nil
+	err = binder.BindAndValidate(&recv, req, nil)
+	assert.NoError(t, err)
+	b, err = json.Marshal(recv)
+	assert.NoError(t, err)
+	t.Logf("%s", b)
 }
 
 func BenchmarkBindJSON(b *testing.B) {
