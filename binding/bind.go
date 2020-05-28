@@ -257,6 +257,9 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 				paramIn = raw_body
 			case b.config.defaultVal:
 				paramIn = default_val
+			case b.config.timeLayout:
+				p.timeLayout = tagKV.value
+				continue L
 			default:
 				continue L
 			}

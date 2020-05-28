@@ -21,6 +21,7 @@ const (
 	tagProtobuf         = "protobuf"
 	tagJSON             = "json"
 	tagDefault          = "default"
+	tagLayout           = "layout"
 )
 
 // Config the struct tag naming and so on
@@ -49,6 +50,8 @@ type Config struct {
 	jsonBody string
 	// defaultVal use 'default' by default when empty
 	defaultVal string
+	// timeLayout use 'layout' by default when empty
+	timeLayout string
 
 	list []string
 }
@@ -65,6 +68,7 @@ func (t *Config) init() {
 		goutil.InitAndGetString(&t.protobufBody, tagProtobuf),
 		goutil.InitAndGetString(&t.jsonBody, tagJSON),
 		goutil.InitAndGetString(&t.defaultVal, tagDefault),
+		goutil.InitAndGetString(&t.timeLayout, tagLayout),
 	}
 }
 

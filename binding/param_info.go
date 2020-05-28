@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil"
@@ -17,7 +18,28 @@ import (
 )
 
 const (
-	specialChar = "\x07"
+	specialChar   = "\x07"
+	defaultLayout = time.RFC1123
+)
+
+var (
+	layoutMap = map[string]string{
+		"ANSIC":       time.ANSIC,
+		"UnixDate":    time.UnixDate,
+		"RubyDate":    time.RubyDate,
+		"RFC822":      time.RFC822,
+		"RFC822Z":     time.RFC822Z,
+		"RFC850":      time.RFC850,
+		"RFC1123":     time.RFC1123,
+		"RFC1123Z":    time.RFC1123Z,
+		"RFC3339":     time.RFC3339,
+		"RFC3339Nano": time.RFC3339Nano,
+		"Kitchen":     time.Kitchen,
+		"Stamp":       time.Stamp,
+		"StampMilli":  time.StampMilli,
+		"StampMicro":  time.StampMicro,
+		"StampNano":   time.StampNano,
+	}
 )
 
 type paramInfo struct {
@@ -28,6 +50,7 @@ type paramInfo struct {
 	bindErrFactory func(failField, msg string) error
 	looseZeroMode  bool
 	defaultVal     []byte
+	timeLayout     string // only applicable to time.Time param
 }
 
 func (p *paramInfo) name(paramIn in) string {
@@ -77,6 +100,14 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 	case reflect.String:
 		v.Set(reflect.ValueOf(goutil.BytesToString(bodyBytes)))
 		return nil
+	case reflect.Struct:
+		if v.Type() == reflect.TypeOf(time.Time{}) {
+			// try to parse with layout if the field has type time.TIme
+			t, _ := time.Parse(p.timeLayout, goutil.BytesToString(bodyBytes))
+			v.Set(reflect.ValueOf(t))
+			return nil
+		}
+		fallthrough
 	default:
 		return info.typeError
 	}
@@ -273,6 +304,14 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 		fallthrough
+	case reflect.Struct:
+		if v.Type() == reflect.TypeOf(time.Time{}) {
+			// try to parse with layout if the field has type time.TIme
+			t, _ := time.Parse(p.timeLayout, a[0])
+			v.Set(reflect.ValueOf(t))
+			return nil
+		}
+		fallthrough
 	default:
 		fn := typeUnmarshalFuncs[v.Type()]
 		if fn != nil {
@@ -294,11 +333,16 @@ func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue []byte) (
 	if err != nil || !v.IsValid() {
 		return false, err
 	}
+	if v.Type() == reflect.TypeOf(time.Time{}) {
+		t, _ := time.Parse(p.timeLayout, goutil.BytesToString(defaultValue))
+		v.Set(reflect.ValueOf(t))
+		return true, nil
+	}
 	return true, jsonpkg.Unmarshal(defaultValue, v.Addr().Interface())
 }
 
 // setDefaultVal preprocess the default tags and store the parsed value
-func (p *paramInfo) setDefaultVal() error {
+func (p *paramInfo) setDefaultVal() {
 	for _, info := range p.tagInfos {
 		if info.paramIn != default_val {
 			continue
@@ -319,7 +363,20 @@ func (p *paramInfo) setDefaultVal() error {
 		}
 		p.defaultVal = ameda.UnsafeStringToBytes(defaultVal)
 	}
-	return nil
+}
+
+func (p *paramInfo) SetTimeLayout() {
+	if p.structField.Type != reflect.ValueOf(time.Time{}).Type() {
+		return
+	}
+
+	if p.timeLayout == "" {
+		p.timeLayout = defaultLayout
+	}
+
+	if realLayout, ok := layoutMap[p.timeLayout]; ok {
+		p.timeLayout = realLayout
+	}
 }
 
 var errMismatch = errors.New("type mismatch")
