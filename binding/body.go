@@ -3,6 +3,7 @@ package binding
 import (
 	"bytes"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -41,11 +42,34 @@ func getBody(req *http.Request, bodyCodec codec) ([]byte, error) {
 		bodyBytes, err := copyBody(req)
 		if err == nil && bodyCodec == bodyForm && req.PostForm == nil {
 			req.ParseMultipartForm(defaultMaxMemory)
-			req.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+			req.Body = newBody(bodyBytes)
 		}
 		return bodyBytes, err
 	default:
 		return nil, nil
+	}
+}
+
+type Body struct {
+	io.Reader
+	bodyBytes []byte
+}
+
+func (Body) Close() error { return nil }
+
+// GetCopiedBody after binding, try to quickly extract the body from http.Request
+func GetCopiedBody(r *http.Request) ([]byte, bool) {
+	body, ok := r.Body.(*Body)
+	if ok {
+		return body.bodyBytes, true
+	}
+	return nil, r.Body == nil
+}
+
+func newBody(bodyBytes []byte) io.ReadCloser {
+	return &Body{
+		Reader:    bytes.NewReader(bodyBytes),
+		bodyBytes: bodyBytes,
 	}
 }
 
@@ -58,7 +82,7 @@ func copyBody(req *http.Request) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Body = ioutil.NopCloser(bytes.NewReader(b))
+	req.Body = newBody(b)
 	return b, nil
 }
 
