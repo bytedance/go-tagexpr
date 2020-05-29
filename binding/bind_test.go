@@ -702,11 +702,14 @@ func TestTimeLayout(t *testing.T) {
 }
 
 func TestTimeLayout_RawBody(t *testing.T) {
+	type alias time.Time
+
 	type Recv struct {
 		X struct {
 			A time.Time `raw_body:"a" layout:"2006-01-02"`
 		}
 		Z time.Time `raw_body:"z" layout:"2006-01-02"`
+		Y alias     `raw_body:"y" layout:"2006-01-02"`
 	}
 
 	header := make(http.Header)
@@ -720,6 +723,7 @@ func TestTimeLayout_RawBody(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, ts, recv.X.A)
 	assert.Equal(t, ts, recv.Z)
+	assert.Equal(t, alias(ts), recv.Y)
 }
 
 func TestAuto(t *testing.T) {

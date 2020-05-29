@@ -101,10 +101,9 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 		v.Set(reflect.ValueOf(goutil.BytesToString(bodyBytes)))
 		return nil
 	case reflect.Struct:
-		if v.Type() == reflect.TypeOf(time.Time{}) {
-			// try to parse with layout if the field has type time.Time
+		if isTimeType(v.Type()) {
 			t, _ := time.Parse(p.timeLayout, goutil.BytesToString(bodyBytes))
-			v.Set(reflect.ValueOf(t))
+			v.Set(reflect.ValueOf(t).Convert(v.Type()))
 			return nil
 		}
 		fallthrough
