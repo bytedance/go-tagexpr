@@ -48,7 +48,7 @@ func TestRawBody(t *testing.T) {
 	}
 	bodyCopied, err := binding.GetBody(req)
 	assert.NoError(t, err)
-	assert.Equal(t, bodyBytes, bodyCopied.BodyBytes())
+	assert.Equal(t, bodyBytes, bodyCopied.Bytes())
 	t.Logf("%s", bodyCopied)
 }
 

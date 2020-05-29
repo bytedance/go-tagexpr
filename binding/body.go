@@ -63,8 +63,8 @@ func (b *Body) Reset() {
 	b.Buffer = bytes.NewBuffer(b.bodyBytes)
 }
 
-// BodyBytes returns all of body bytes.
-func (b *Body) BodyBytes() []byte {
+// Bytes returns all of body bytes.
+func (b *Body) Bytes() []byte {
 	return b.bodyBytes
 }
 
