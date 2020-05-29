@@ -63,9 +63,14 @@ func (b *Body) Reset() {
 	b.Buffer = bytes.NewBuffer(b.bodyBytes)
 }
 
-// Bytes returns all of body bytes.
+// Bytes returns all of the body bytes.
 func (b *Body) Bytes() []byte {
 	return b.bodyBytes
+}
+
+// Len returns all of the body length.
+func (b *Body) Len() int {
+	return len(b.bodyBytes)
 }
 
 // GetBody get the body from http.Request
