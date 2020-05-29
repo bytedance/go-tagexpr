@@ -638,19 +638,23 @@ func TestDefault(t *testing.T) {
 }
 
 func TestTimeLayout(t *testing.T) {
+	type alias time.Time
+
 	type Recv struct {
 		X struct {
-			A time.Time    `path:"a" layout:"2006-01-02"`
-			B time.Time    `cookie:"b"` // using default layout
-			C time.Time    `query:"c" layout:"2006-01-02"`
-			D time.Time    `form:"d" layout:"2006-01-02"`
-			E time.Time    `cookie:"e" layout:"2006-01-02"`
-			F time.Time    `header:"F" layout:"2006-01-02"`
-			G time.Time    `query:"g" layout:"2006-01-02"`
-			H time.Time    `cookie:"h" layout:"2006-01-02"`
-			I time.Time    `query:"i" layout:"2006-01-02" default:"2020-03-03"`
-			J []time.Time  `query:"j" layout:"2006-01-02"`
-			K []*time.Time `cookie:"k" layout:"2006-01-02"`
+			A  time.Time    `path:"a" layout:"2006-01-02"`
+			B  time.Time    `cookie:"b"` // using default layout
+			C  time.Time    `query:"c" layout:"2006-01-02"`
+			D  time.Time    `form:"d" layout:"2006-01-02"`
+			E  time.Time    `cookie:"e" layout:"2006-01-02"`
+			F  time.Time    `header:"F" layout:"2006-01-02"`
+			G  time.Time    `query:"g" layout:"2006-01-02"`
+			H  time.Time    `cookie:"h" layout:"2006-01-02"`
+			I  time.Time    `query:"i" layout:"2006-01-02" default:"2020-03-03"`
+			J  []time.Time  `query:"j" layout:"2006-01-02"`
+			K  []*time.Time `cookie:"k" layout:"2006-01-02"`
+			L  alias        `form:"L" layout:"2006-01-02" default:"2020-03-03"`
+			II alias        `form:"I" layout:"2006-01-02" default:"2020-03-03"`
 		}
 		Z time.Time  `layout:"2006-01-02"` // auto binding
 		Y *time.Time `layout:"2006-01-02"` // auto binding
@@ -660,6 +664,7 @@ func TestTimeLayout(t *testing.T) {
 	form.Add("d", "2020-03-03")
 	form.Add("Y", "2020-03-03")
 	form.Add("Z", "2020-03-03")
+	form.Add("L", "2020-03-03")
 
 	header := make(http.Header)
 	contentType, bodyReader := httpbody.NewFormBody2(form, nil)
@@ -688,8 +693,10 @@ func TestTimeLayout(t *testing.T) {
 	assert.Equal(t, time.Time{}, recv.X.G) // not assigned value
 	assert.Equal(t, time.Time{}, recv.X.H) // invalid time value
 	assert.Equal(t, ts1, recv.X.I)
+	assert.Equal(t, alias(ts1), recv.X.II)
 	assert.Equal(t, []time.Time{ts1, ts2}, recv.X.J)
 	assert.Equal(t, []*time.Time{&ts1, &ts2}, recv.X.K)
+	assert.Equal(t, alias(ts1), recv.X.L)
 	assert.Equal(t, ts1, recv.Z)
 	assert.Equal(t, ts1, *recv.Y)
 }

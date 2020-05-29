@@ -102,7 +102,7 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 		return nil
 	case reflect.Struct:
 		if v.Type() == reflect.TypeOf(time.Time{}) {
-			// try to parse with layout if the field has type time.TIme
+			// try to parse with layout if the field has type time.Time
 			t, _ := time.Parse(p.timeLayout, goutil.BytesToString(bodyBytes))
 			v.Set(reflect.ValueOf(t))
 			return nil
@@ -305,10 +305,9 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		}
 		fallthrough
 	case reflect.Struct:
-		if v.Type() == reflect.TypeOf(time.Time{}) {
-			// try to parse with layout if the field has type time.TIme
+		if isTimeType(v.Type()) {
 			t, _ := time.Parse(p.timeLayout, a[0])
-			v.Set(reflect.ValueOf(t))
+			v.Set(reflect.ValueOf(t).Convert(v.Type()))
 			return nil
 		}
 		fallthrough
@@ -333,9 +332,9 @@ func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue []byte) (
 	if err != nil || !v.IsValid() {
 		return false, err
 	}
-	if v.Type() == reflect.TypeOf(time.Time{}) {
+	if isTimeType(v.Type()) {
 		t, _ := time.Parse(p.timeLayout, goutil.BytesToString(defaultValue))
-		v.Set(reflect.ValueOf(t))
+		v.Set(reflect.ValueOf(t).Convert(v.Type()))
 		return true, nil
 	}
 	return true, jsonpkg.Unmarshal(defaultValue, v.Addr().Interface())
@@ -366,7 +365,7 @@ func (p *paramInfo) setDefaultVal() {
 }
 
 func (p *paramInfo) SetTimeLayout() {
-	if p.structField.Type != reflect.ValueOf(time.Time{}).Type() {
+	if !isTimeType(p.structField.Type) {
 		return
 	}
 
@@ -421,7 +420,7 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool, timeLayout str
 	case reflect.Uint8:
 		i, err = goutil.StringsToUint8s(a, emptyAsZero)
 	case reflect.Struct:
-		if t == reflect.TypeOf(time.Time{}) {
+		if isTimeType(t) {
 			i, err = stringsToTime(a, timeLayout, emptyAsZero)
 			goto End
 		}
@@ -468,4 +467,9 @@ func stringToTime(v string, layout string, emptyAsZero ...bool) (time.Time, erro
 		}
 	}
 	return t, nil
+}
+
+func isTimeType(t reflect.Type) bool {
+	timeType := reflect.TypeOf(time.Time{})
+	return t == timeType || t.ConvertibleTo(timeType)
 }
