@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -39,23 +38,28 @@ func getBodyCodec(req *http.Request) codec {
 func getBody(req *http.Request, bodyCodec codec) ([]byte, error) {
 	switch req.Method {
 	case "POST", "PUT", "PATCH", "DELETE":
-		bodyBytes, err := copyBody(req)
+		body, err := copyBody(req)
 		if err == nil && bodyCodec == bodyForm && req.PostForm == nil {
 			req.ParseMultipartForm(defaultMaxMemory)
-			req.Body = newBody(bodyBytes)
+			body.renew()
 		}
-		return bodyBytes, err
+		return body.bodyBytes, err
 	default:
 		return nil, nil
 	}
 }
 
 type Body struct {
-	io.Reader
+	*bytes.Buffer
 	bodyBytes []byte
 }
 
 func (Body) Close() error { return nil }
+
+func (b *Body) renew() {
+	b.Buffer.Reset()
+	b.Buffer = bytes.NewBuffer(b.bodyBytes)
+}
 
 // GetCopiedBody after binding, try to quickly extract the body from http.Request
 func GetCopiedBody(r *http.Request) ([]byte, bool) {
@@ -66,24 +70,26 @@ func GetCopiedBody(r *http.Request) ([]byte, bool) {
 	return nil, r.Body == nil
 }
 
-func newBody(bodyBytes []byte) io.ReadCloser {
+func newBody(body *bytes.Buffer) *Body {
 	return &Body{
-		Reader:    bytes.NewReader(bodyBytes),
-		bodyBytes: bodyBytes,
+		Buffer:    body,
+		bodyBytes: body.Bytes(),
 	}
 }
 
-func copyBody(req *http.Request) ([]byte, error) {
+func copyBody(req *http.Request) (*Body, error) {
 	if req.Body == nil {
 		return nil, nil
 	}
-	b, err := ioutil.ReadAll(req.Body)
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, req.Body)
 	req.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	req.Body = newBody(b)
-	return b, nil
+	body := newBody(&buf)
+	req.Body = body
+	return body, nil
 }
 
 func bindJSON(pointer interface{}, bodyBytes []byte) error {
