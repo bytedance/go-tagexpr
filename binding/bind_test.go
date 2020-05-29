@@ -640,15 +640,17 @@ func TestDefault(t *testing.T) {
 func TestTimeLayout(t *testing.T) {
 	type Recv struct {
 		X struct {
-			A time.Time `path:"a" layout:"2006-01-02"`
-			B time.Time `cookie:"b"` // using default layout
-			C time.Time `query:"c" layout:"2006-01-02"`
-			D time.Time `form:"d" layout:"2006-01-02"`
-			E time.Time `cookie:"e" layout:"2006-01-02"`
-			F time.Time `header:"F" layout:"2006-01-02"`
-			G time.Time `query:"g" layout:"2006-01-02"`
-			H time.Time `cookie:"h" layout:"2006-01-02"`
-			I time.Time `query:"i" layout:"2006-01-02" default:"2020-03-03"`
+			A time.Time    `path:"a" layout:"2006-01-02"`
+			B time.Time    `cookie:"b"` // using default layout
+			C time.Time    `query:"c" layout:"2006-01-02"`
+			D time.Time    `form:"d" layout:"2006-01-02"`
+			E time.Time    `cookie:"e" layout:"2006-01-02"`
+			F time.Time    `header:"F" layout:"2006-01-02"`
+			G time.Time    `query:"g" layout:"2006-01-02"`
+			H time.Time    `cookie:"h" layout:"2006-01-02"`
+			I time.Time    `query:"i" layout:"2006-01-02" default:"2020-03-03"`
+			J []time.Time  `query:"j" layout:"2006-01-02"`
+			K []*time.Time `cookie:"k" layout:"2006-01-02"`
 		}
 		Z time.Time  `layout:"2006-01-02"` // auto binding
 		Y *time.Time `layout:"2006-01-02"` // auto binding
@@ -664,27 +666,32 @@ func TestTimeLayout(t *testing.T) {
 	header.Set("Content-Type", contentType)
 	header.Set("F", "2020-03-03")
 
-	req := newRequest("http://localhost?c=2020-03-03", header, []*http.Cookie{
+	req := newRequest("http://localhost?c=2020-03-03&j=2020-03-03&j=2020-03-04", header, []*http.Cookie{
 		{Name: "b", Value: "Mon, 03 Mar 2020 00:00:00 UTC"},
 		{Name: "e", Value: "2020-03-03"},
 		{Name: "h", Value: "20200303"},
+		{Name: "k", Value: "2020-03-03"},
+		{Name: "k", Value: "2020-03-04"},
 	}, bodyReader)
 	recv := new(Recv)
 	binder := binding.New(nil)
 
-	ts, _ := time.Parse("2006-01-02", "2020-03-03")
+	ts1, _ := time.Parse("2006-01-02", "2020-03-03")
+	ts2, _ := time.Parse("2006-01-02", "2020-03-04")
 	err := binder.BindAndValidate(recv, req, new(testPathParams2))
 	assert.NoError(t, err)
-	assert.Equal(t, ts, recv.X.B)
-	assert.Equal(t, ts, recv.X.C)
-	assert.Equal(t, ts, recv.X.D)
-	assert.Equal(t, ts, recv.X.E)
-	assert.Equal(t, ts, recv.X.F)
+	assert.Equal(t, ts1, recv.X.B)
+	assert.Equal(t, ts1, recv.X.C)
+	assert.Equal(t, ts1, recv.X.D)
+	assert.Equal(t, ts1, recv.X.E)
+	assert.Equal(t, ts1, recv.X.F)
 	assert.Equal(t, time.Time{}, recv.X.G) // not assigned value
 	assert.Equal(t, time.Time{}, recv.X.H) // invalid time value
-	assert.Equal(t, ts, recv.X.I)
-	assert.Equal(t, ts, recv.Z)
-	assert.Equal(t, ts, *recv.Y)
+	assert.Equal(t, ts1, recv.X.I)
+	assert.Equal(t, []time.Time{ts1, ts2}, recv.X.J)
+	assert.Equal(t, []*time.Time{&ts1, &ts2}, recv.X.K)
+	assert.Equal(t, ts1, recv.Z)
+	assert.Equal(t, ts1, *recv.Y)
 }
 
 func TestTimeLayout_RawBody(t *testing.T) {

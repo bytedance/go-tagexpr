@@ -298,7 +298,7 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 	case reflect.Slice:
-		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
+		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode, p.timeLayout)
 		if err == nil {
 			v.Set(vv)
 			return nil
@@ -381,7 +381,7 @@ func (p *paramInfo) SetTimeLayout() {
 
 var errMismatch = errors.New("type mismatch")
 
-func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value, error) {
+func stringsToValue(t reflect.Type, a []string, emptyAsZero bool, timeLayout string) (reflect.Value, error) {
 	var i interface{}
 	var err error
 	var ptrDepth int
@@ -420,6 +420,12 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value
 		i, err = goutil.StringsToUint16s(a, emptyAsZero)
 	case reflect.Uint8:
 		i, err = goutil.StringsToUint8s(a, emptyAsZero)
+	case reflect.Struct:
+		if t == reflect.TypeOf(time.Time{}) {
+			i, err = stringsToTime(a, timeLayout, emptyAsZero)
+			goto End
+		}
+		fallthrough
 	default:
 		fn := typeUnmarshalFuncs[t]
 		if fn == nil {
@@ -435,8 +441,31 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value
 		}
 		return goutil.ReferenceSlice(v, ptrDepth), nil
 	}
+End:
 	if err != nil {
 		return reflect.Value{}, errMismatch
 	}
 	return goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth), nil
+}
+
+func stringsToTime(s []string, layout string, emptyAsZero ...bool) ([]time.Time, error) {
+	var err error
+	t := make([]time.Time, len(s))
+	for k, v := range s {
+		t[k], err = stringToTime(v, layout, emptyAsZero...)
+		if err != nil {
+			return t, err
+		}
+	}
+	return t, nil
+}
+
+func stringToTime(v string, layout string, emptyAsZero ...bool) (time.Time, error) {
+	t, err := time.Parse(layout, v)
+	if err != nil {
+		if len(emptyAsZero) == 0 || !emptyAsZero[0] {
+			return time.Time{}, err
+		}
+	}
+	return t, nil
 }
