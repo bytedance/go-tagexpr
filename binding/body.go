@@ -2,7 +2,6 @@ package binding
 
 import (
 	"bytes"
-	jsonpkg "encoding/json"
 	"errors"
 	"io"
 	"net/http"

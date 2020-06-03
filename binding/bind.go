@@ -1,7 +1,6 @@
 package binding
 
 import (
-	jsonpkg "encoding/json"
 	"net/http"
 	"reflect"
 	"strings"
@@ -10,10 +9,13 @@ import (
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil"
 	"github.com/henrylee2cn/goutil/tpack"
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/bytedance/go-tagexpr"
 	"github.com/bytedance/go-tagexpr/validator"
 )
+
+var jsonpkg = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Binding binding and verification tool for http request
 type Binding struct {
