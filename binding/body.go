@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
-	jsonpkg "github.com/json-iterator/go"
 )
 
 func getBodyInfo(req *http.Request) (codec, []byte, error) {
