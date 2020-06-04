@@ -146,7 +146,7 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 
 func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) (bool, error) {
 	var requiredError error
-	if jsonIndependentRequired && (checkOpt || info.required) { // only return error if it's a required field
+	if checkOpt || info.required { // only return error if it's a required field
 		requiredError = info.requiredError
 	}
 

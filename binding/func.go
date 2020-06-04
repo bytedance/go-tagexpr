@@ -7,15 +7,17 @@ import (
 	"time"
 )
 
+// JSONUnmarshaler is the interface implemented by types
+// that can unmarshal a JSON description of themselves.
+type JSONUnmarshaler func(data []byte, v interface{}) error
+
 var (
-	jsonUnmarshalFunc       func(data []byte, v interface{}) error
-	jsonIndependentRequired = true
+	jsonUnmarshalFunc func(data []byte, v interface{}) error
 )
 
 // ResetJSONUnmarshaler reset the JSON Unmarshal function.
 // NOTE: verifyingRequired is true if the required tag is supported.
-func ResetJSONUnmarshaler(verifyingRequired bool, fn func(data []byte, v interface{}) error) {
-	jsonIndependentRequired = !verifyingRequired
+func ResetJSONUnmarshaler(fn JSONUnmarshaler) {
 	jsonUnmarshalFunc = fn
 }
 
