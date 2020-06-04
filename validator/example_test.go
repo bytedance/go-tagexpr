@@ -82,7 +82,7 @@ func Example() {
 
 	// Output:
 	// true
-	// invalid parameter: Info.Email
+	// email format is incorrect
 	// true
 	// C must be false when S.A>0
 	// invalid d: [x y]

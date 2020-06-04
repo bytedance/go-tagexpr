@@ -24,7 +24,7 @@ func TestAll(t *testing.T) {
 			g int `vd:"$%3==1"`
 		}
 	}
-	assert.EqualError(t, vd.Validate(new(T), true), "invalid parameter: a\tinvalid parameter: f.g")
+	assert.EqualError(t, vd.Validate(new(T), true), "email format is incorrect\tinvalid parameter: f.g")
 }
 
 func TestIssue1(t *testing.T) {
@@ -66,7 +66,7 @@ func TestIssue1(t *testing.T) {
 			},
 		},
 	}
-	assert.EqualError(t, vd.Validate(req, true), "invalid parameter: Msg.Recipients[0].Address")
+	assert.EqualError(t, vd.Validate(req, true), "email format is incorrect")
 }
 
 func TestIssue2(t *testing.T) {

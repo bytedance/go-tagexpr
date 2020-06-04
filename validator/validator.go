@@ -75,7 +75,12 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			if strings.Contains(eh.StringSelector(), tagexpr.ExprNameSeparator) {
 				return nil
 			}
-			if eh.EvalBool() {
+			r := eh.Eval()
+			if r == nil {
+				return nil
+			}
+			rerr, ok := r.(error)
+			if !ok && tagexpr.FakeBool(r) {
 				return nil
 			}
 			// Ignore this error if the value of the parent is nil
@@ -91,10 +96,11 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 					}
 				}
 			}
-			errs = append(errs, v.errFactory(
-				eh.Path(),
-				eh.TagExpr().EvalString(eh.StringSelector()+tagexpr.ExprNameSeparator+ErrMsgExprName),
-			))
+			msg := eh.TagExpr().EvalString(eh.StringSelector() + tagexpr.ExprNameSeparator + ErrMsgExprName)
+			if msg == "" && rerr != nil {
+				msg = rerr.Error()
+			}
+			errs = append(errs, v.errFactory(eh.Path(), msg))
 			if all {
 				return nil
 			}
