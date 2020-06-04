@@ -33,7 +33,12 @@ func MustRegFunc(funcName string, fn func(args ...interface{}) error, force ...b
 //  The go string types always are string.
 func RegFunc(funcName string, fn func(args ...interface{}) error, force ...bool) error {
 	return tagexpr.RegFunc(funcName, func(args ...interface{}) interface{} {
-		return fn(args...)
+		err := fn(args...)
+		if err == nil {
+			// nil defaults to false, so returns true
+			return true
+		}
+		return err
 	}, force...)
 }
 
