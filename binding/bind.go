@@ -142,7 +142,7 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 	}
 
 	bodyCodec, bodyBytes, err := recv.getBodyInfo(req)
-	if err == nil {
+	if len(bodyBytes) > 0 {
 		err = recv.prebindBody(structPointer, structValue, bodyCodec, bodyBytes)
 	}
 	if err != nil {
