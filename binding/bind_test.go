@@ -353,12 +353,13 @@ func TestJSON(t *testing.T) {
 	}
 	type Recv struct {
 		X **struct {
-			A []string  `json:"a"`
-			B int32     `json:""`
-			C *[]uint16 `json:",required"`
-			D *float32  `json:"d"`
-			E metric    `json:"e"`
-			F count     `json:"f"`
+			A []string          `json:"a"`
+			B int32             `json:""`
+			C *[]uint16         `json:",required"`
+			D *float32          `json:"d"`
+			E metric            `json:"e"`
+			F count             `json:"f"`
+			M map[string]string `json:"m"`
 		}
 		Y string `json:"y,required"`
 		ZS
@@ -371,7 +372,8 @@ func TestJSON(t *testing.T) {
 			"C": [31,32],
 			"d": 41,
 			"e": "qps",
-			"f": 100
+			"f": 100,
+			"m": {"a":"x"}
 		},
 		"Z": 6
 	}`)
@@ -390,6 +392,7 @@ func TestJSON(t *testing.T) {
 	assert.Equal(t, float32(41), *(**recv.X).D)
 	assert.Equal(t, metric("qps"), (**recv.X).E)
 	assert.Equal(t, count(100), (**recv.X).F)
+	assert.Equal(t, map[string]string{"a": "x"}, (**recv.X).M)
 	assert.Equal(t, "", recv.Y)
 	assert.Equal(t, (int64)(6), *recv.Z)
 }
