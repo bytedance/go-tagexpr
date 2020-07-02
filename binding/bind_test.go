@@ -25,7 +25,7 @@ func TestRawBody(t *testing.T) {
 			C **[]byte `raw_body:"required"`
 			D string   `raw_body:""`
 			E *string  `raw_body:""`
-			F **string `raw_body:"" vd:"@:len($)<3; msg:'too long'"`
+			F **string `raw_body:"" vd:"@:len($)<3; msg:'f too long'"`
 		}
 		S string `raw_body:""`
 	}
@@ -34,7 +34,7 @@ func TestRawBody(t *testing.T) {
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.EqualError(t, err, "validating raw_body.F: too long")
+	assert.EqualError(t, err, "validating: expr_path=raw_body.F, cause=f too long")
 	for _, v := range []interface{}{
 		(**recv.raw_body).A,
 		*(**recv.raw_body).B,
@@ -73,7 +73,7 @@ func TestQueryString(t *testing.T) {
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.EqualError(t, err, "binding X.E: parameter type does not match binding data")
+	assert.EqualError(t, err, "binding: expr_path=X.E, cause=parameter type does not match binding data")
 	binder.SetLooseZeroMode(true)
 	err = binder.BindAndValidate(recv, req, nil)
 	assert.NoError(t, err)
@@ -692,7 +692,7 @@ func TestAuto(t *testing.T) {
 	assert.Equal(t, "c", recv.C)
 	assert.Equal(t, "d-from-form", recv.D)
 	err = binder.Validate(recv)
-	assert.EqualError(t, err, "validating A: fail")
+	assert.EqualError(t, err, "validating: expr_path=A, cause=invalid")
 }
 
 func TestTypeUnmarshal(t *testing.T) {
@@ -762,7 +762,7 @@ func TestOption(t *testing.T) {
 	recv = new(Recv)
 	binder = binding.New(nil)
 	err = binder.BindAndValidate(recv, req, nil)
-	assert.EqualError(t, err, "binding X.c: missing required parameter")
+	assert.EqualError(t, err, "binding: expr_path=X.c, cause=missing required parameter")
 	assert.Equal(t, 0, recv.X.C)
 	assert.Equal(t, 0, recv.X.D)
 	assert.Equal(t, "y1", recv.Y)
@@ -792,7 +792,7 @@ func TestOption(t *testing.T) {
 	recv2 := new(Recv2)
 	binder = binding.New(nil)
 	err = binder.BindAndValidate(recv2, req, nil)
-	assert.EqualError(t, err, "binding X: missing required parameter")
+	assert.EqualError(t, err, "binding: expr_path=X, cause=missing required parameter")
 	assert.True(t, recv2.X == nil)
 	assert.Equal(t, "y1", recv2.Y)
 }
