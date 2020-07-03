@@ -28,6 +28,14 @@ import (
 	"github.com/henrylee2cn/goutil/tpack"
 )
 
+// Internally unified data types
+type (
+	Number  = float64
+	Null    = interface{}
+	Boolean = bool
+	String  = string
+)
+
 // VM struct tag expression interpreter
 type VM struct {
 	tagName   string
