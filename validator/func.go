@@ -2,10 +2,12 @@ package validator
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 
-	tagexpr "github.com/bytedance/go-tagexpr"
 	"github.com/nyaruka/phonenumbers"
+
+	tagexpr "github.com/bytedance/go-tagexpr"
 )
 
 // ErrInvalidWithoutMsg verification error without error message.
@@ -95,5 +97,26 @@ func init() {
 			return errors.New("phone format is incorrect")
 		}
 		return nil
+	}, true)
+}
+
+func init() {
+	// in: Check if the first parameter is one of the enumerated parameters
+	MustRegFunc("in", func(args ...interface{}) error {
+		switch len(args) {
+		case 0:
+			return nil
+		case 1:
+			return errors.New("input parameters of the in function are at least two")
+		default:
+			elem := args[0]
+			set := args[1:]
+			for _, e := range set {
+				if elem == e {
+					return nil
+				}
+			}
+			return fmt.Errorf("%+v range exceeded", set)
+		}
 	}, true)
 }

@@ -168,6 +168,7 @@ type T struct {
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
 |`email((X)$)`|Regular match the struct field X, return true if it is email|
 |`phone((X)$,<'defaultRegion'>)`|Regular match the struct field X, return true if it is phone|
+|`in((X)$, enum_1, ...enum_n)`|Check if the first parameter is one of the enumerated parameters|
 
 <!-- |`(X)$k`|Traverse each element key of the struct field X(type: map, slice, array)|
 |`(X)$v`|Traverse each element value of the struct field X(type: map, slice, array)| -->

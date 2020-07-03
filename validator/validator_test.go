@@ -169,3 +169,36 @@ func TestIssue5(t *testing.T) {
 	v := vd.New("vd")
 	assert.NoError(t, v.Validate(data))
 }
+
+func TestIn(t *testing.T) {
+	type S string
+	type I int16
+	type T struct {
+		A S `vd:"in($,'a','b','c')"`
+		B I `vd:"in($,1,2.0,3)"`
+	}
+	v := vd.New("vd")
+	data := T{}
+	err := v.Validate(data)
+	assert.EqualError(t, err, "[a b c] range exceeded")
+	data.A = "b"
+	err = v.Validate(data)
+	assert.EqualError(t, err, "[1 2 3] range exceeded")
+	data.B = 2
+	err = v.Validate(data)
+	assert.NoError(t, err)
+
+	type T2 struct {
+		C string `vd:"in($)"`
+	}
+	data2 := T2{}
+	err = v.Validate(data2)
+	assert.EqualError(t, err, "input parameters of the in function are at least two")
+
+	type T3 struct {
+		C string `vd:"in($,1)"`
+	}
+	data3 := T3{}
+	err = v.Validate(data3)
+	assert.EqualError(t, err, "[1] range exceeded")
+}
