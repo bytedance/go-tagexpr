@@ -30,7 +30,7 @@ type paramInfo struct {
 	defaultVal     []byte
 }
 
-func (p *paramInfo) name(paramIn in) string {
+func (p *paramInfo) name(_ in) string {
 	var name string
 	for _, info := range p.tagInfos {
 		if info.paramIn == json {

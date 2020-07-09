@@ -92,14 +92,14 @@ func TestQueryString(t *testing.T) {
 func TestGetBody(t *testing.T) {
 	type Recv struct {
 		X **struct {
-			E string `json:"e,required"`
+			E string `json:"e,required" query:"e,required"`
 		}
 	}
 	req := newRequest("http://localhost:8080/", nil, nil, nil)
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.Error(t, &binding.Error{ErrType: "binding", FailField: "X.e", Msg: "missing required parameter"}, err)
+	assert.EqualError(t, err, "binding: expr_path=X.e, cause=missing required parameter")
 }
 
 func TestQueryNum(t *testing.T) {
