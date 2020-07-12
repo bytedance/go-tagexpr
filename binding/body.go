@@ -13,8 +13,17 @@ import (
 
 func getBodyInfo(req *http.Request) (codec, []byte, error) {
 	bodyCodec := getBodyCodec(req)
-	bodyBytes, err := getBody(req, bodyCodec)
-	return bodyCodec, bodyBytes, err
+	switch req.Method {
+	case "POST", "PUT", "PATCH", "DELETE":
+		body, err := GetBody(req)
+		if err == nil && bodyCodec == bodyForm && req.PostForm == nil {
+			req.ParseMultipartForm(defaultMaxMemory)
+			body.Reset()
+		}
+		return bodyCodec, body.bodyBytes, err
+	default:
+		return bodyUnsupport, nil, nil
+	}
 }
 
 func getBodyCodec(req *http.Request) codec {
@@ -32,20 +41,6 @@ func getBodyCodec(req *http.Request) codec {
 		return bodyForm
 	default:
 		return bodyUnsupport
-	}
-}
-
-func getBody(req *http.Request, bodyCodec codec) ([]byte, error) {
-	switch req.Method {
-	case "POST", "PUT", "PATCH", "DELETE":
-		body, err := GetBody(req)
-		if err == nil && bodyCodec == bodyForm && req.PostForm == nil {
-			req.ParseMultipartForm(defaultMaxMemory)
-			body.Reset()
-		}
-		return body.bodyBytes, err
-	default:
-		return nil, nil
 	}
 }
 
