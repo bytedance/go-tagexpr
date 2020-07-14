@@ -108,7 +108,7 @@ func (f *funcExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
 func init() {
 	funcList["regexp"] = readRegexpFuncExprNode
 	funcList["sprintf"] = readSprintfFuncExprNode
-	err := RegFunc("len", func(args ...interface{}) interface{} {
+	err := RegFunc("len", func(args ...interface{}) (n interface{}) {
 		if len(args) != 1 {
 			return 0
 		}
@@ -117,15 +117,19 @@ func init() {
 		case string:
 			return float64(len(e))
 		case float64, bool, nil:
-			return nil
+			return 0
 		}
-		defer func() { recover() }()
+		defer func() {
+			if recover() != nil {
+				n = 0
+			}
+		}()
 		return float64(reflect.ValueOf(v).Len())
 	}, true)
 	if err != nil {
 		panic(err)
 	}
-	err = RegFunc("mblen", func(args ...interface{}) interface{} {
+	err = RegFunc("mblen", func(args ...interface{}) (n interface{}) {
 		if len(args) != 1 {
 			return 0
 		}
@@ -134,9 +138,13 @@ func init() {
 		case string:
 			return float64(len([]rune(e)))
 		case float64, bool, nil:
-			return nil
+			return 0
 		}
-		defer func() { recover() }()
+		defer func() {
+			if recover() != nil {
+				n = 0
+			}
+		}()
 		return float64(reflect.ValueOf(v).Len())
 	}, true)
 	if err != nil {
