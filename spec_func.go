@@ -133,7 +133,7 @@ func init() {
 		switch e := v.(type) {
 		case string:
 			return float64(len([]rune(e)))
-		case float64, bool:
+		case float64, bool, nil:
 			return nil
 		}
 		defer func() { recover() }()

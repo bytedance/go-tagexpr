@@ -831,9 +831,9 @@ func TestIssue3(t *testing.T) {
 
 func TestIssue4(t *testing.T) {
 	type T struct {
-		A *string `te:"len($)"`
-		B *string `te:"len($)"`
-		C *string `te:"len($)"`
+		A *string `te:"len($)+mblen($)"`
+		B *string `te:"len($)+mblen($)"`
+		C *string `te:"len($)+mblen($)"`
 	}
 	c := "c"
 	v := &T{
