@@ -828,3 +828,22 @@ func TestIssue3(t *testing.T) {
 	})
 	assert.NoError(t, err)
 }
+
+func TestIssue4(t *testing.T) {
+	type T struct {
+		A *string `te:"len($)"`
+		B *string `te:"len($)"`
+		C *string `te:"len($)"`
+	}
+	c := "c"
+	v := &T{
+		B: new(string),
+		C: &c,
+	}
+	vm := New("te")
+	err := vm.MustRun(v).Range(func(eh *ExprHandler) error {
+		t.Logf("eval:%v, path:%s", eh.EvalFloat(), eh.Path())
+		return nil
+	})
+	assert.NoError(t, err)
+}
