@@ -22,8 +22,8 @@ func wrapRequest(req *http.Request) Request {
 		Request: req,
 	}
 	if getBodyCodec(r) == bodyForm && req.PostForm == nil {
-		_, _ = r.GetBody()
-		if r.body != nil {
+		b, _ := r.GetBody()
+		if b != nil {
 			req.ParseMultipartForm(defaultMaxMemory)
 		}
 	}
@@ -32,7 +32,6 @@ func wrapRequest(req *http.Request) Request {
 
 type httpRequest struct {
 	*http.Request
-	body *Body
 }
 
 func (r *httpRequest) GetQuery() url.Values {
@@ -60,13 +59,8 @@ func (r *httpRequest) GetMethod() string {
 }
 
 func (r *httpRequest) GetBody() ([]byte, error) {
-	if r.body != nil {
-		r.body.Reset()
-		return r.body.bodyBytes, nil
-	}
-	body, ok := r.Body.(*Body)
-	if ok {
-		r.body = body
+	body, _ := r.Body.(*Body)
+	if body != nil {
 		body.Reset()
 		return body.bodyBytes, nil
 	}
@@ -78,12 +72,12 @@ func (r *httpRequest) GetBody() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		r.body = &Body{
+		body = &Body{
 			Buffer:    &buf,
 			bodyBytes: buf.Bytes(),
 		}
-		r.Body = r.body
-		return r.body.bodyBytes, nil
+		r.Body = body
+		return body.bodyBytes, nil
 	default:
 		return nil, nil
 	}
