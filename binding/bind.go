@@ -73,6 +73,16 @@ func (b *Binding) SetErrorFactory(bindErrFactory, validatingErrFactory func(fail
 
 // BindAndValidate binds the request parameters and validates them if needed.
 func (b *Binding) BindAndValidate(recvPointer interface{}, req *http.Request, pathParams PathParams) error {
+	return b.IBindAndValidate(recvPointer, wrapRequest(req), pathParams)
+}
+
+// Bind binds the request parameters.
+func (b *Binding) Bind(recvPointer interface{}, req *http.Request, pathParams PathParams) error {
+	return b.IBind(recvPointer, wrapRequest(req), pathParams)
+}
+
+// IBindAndValidate binds the request parameters and validates them if needed.
+func (b *Binding) IBindAndValidate(recvPointer interface{}, req Request, pathParams PathParams) error {
 	v, hasVd, err := b.bind(recvPointer, req, pathParams)
 	if err != nil {
 		return err
@@ -83,8 +93,8 @@ func (b *Binding) BindAndValidate(recvPointer interface{}, req *http.Request, pa
 	return nil
 }
 
-// Bind binds the request parameters.
-func (b *Binding) Bind(recvPointer interface{}, req *http.Request, pathParams PathParams) error {
+// IBind binds the request parameters.
+func (b *Binding) IBind(recvPointer interface{}, req Request, pathParams PathParams) error {
 	_, _, err := b.bind(recvPointer, req, pathParams)
 	return err
 }
@@ -94,7 +104,7 @@ func (b *Binding) Validate(value interface{}) error {
 	return b.vd.Validate(value)
 }
 
-func (b *Binding) bind(pointer interface{}, req *http.Request, pathParams PathParams) (elemValue reflect.Value, hasVd bool, err error) {
+func (b *Binding) bind(pointer interface{}, req Request, pathParams PathParams) (elemValue reflect.Value, hasVd bool, err error) {
 	elemValue, err = b.receiverValueOf(pointer)
 	if err != nil {
 		return
@@ -107,30 +117,43 @@ func (b *Binding) bind(pointer interface{}, req *http.Request, pathParams PathPa
 	return
 }
 
-func (b *Binding) bindNonstruct(pointer interface{}, _ reflect.Value, req *http.Request, _ PathParams) (hasVd bool, err error) {
-	bodyCodec, bodyBytes, err := getBodyInfo(req)
-	if err != nil {
-		return
-	}
+func (b *Binding) bindNonstruct(pointer interface{}, _ reflect.Value, req Request, _ PathParams) (hasVd bool, err error) {
+	bodyCodec := getBodyCodec(req)
 	switch bodyCodec {
 	case bodyJSON:
 		hasVd = true
+		bodyBytes, err := req.GetBody()
+		if err != nil {
+			return hasVd, err
+		}
 		err = bindJSON(pointer, bodyBytes)
 	case bodyProtobuf:
 		hasVd = true
+		bodyBytes, err := req.GetBody()
+		if err != nil {
+			return hasVd, err
+		}
 		err = bindProtobuf(pointer, bodyBytes)
 	case bodyForm:
-		b, _ := jsonpkg.Marshal(req.PostForm)
+		postForm, err := req.GetPostForm()
+		if err != nil {
+			return false, err
+		}
+		b, _ := jsonpkg.Marshal(postForm)
 		err = jsonpkg.Unmarshal(b, pointer)
 	default:
 		// query and form
-		b, _ := jsonpkg.Marshal(req.Form)
+		form, err := req.GetForm()
+		if err != nil {
+			return false, err
+		}
+		b, _ := jsonpkg.Marshal(form)
 		err = jsonpkg.Unmarshal(b, pointer)
 	}
 	return
 }
 
-func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Value, req *http.Request, pathParams PathParams) (hasVd bool, err error) {
+func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Value, req Request, pathParams PathParams) (hasVd bool, err error) {
 	recv, err := b.getOrPrepareReceiver(structValue)
 	if err != nil {
 		return
@@ -149,7 +172,10 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 		return
 	}
 	bodyString := ameda.UnsafeBytesToString(bodyBytes)
-	postForm := req.PostForm
+	postForm, err := req.GetPostForm()
+	if err != nil {
+		return
+	}
 	queryValues := recv.getQuery(req)
 	cookies := recv.getCookies(req)
 
@@ -165,7 +191,7 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 				err = param.bindCookie(info, expr, cookies)
 				found = err == nil
 			case header:
-				found, err = param.bindHeader(info, expr, req.Header)
+				found, err = param.bindHeader(info, expr, req.GetHeader())
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
 					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)

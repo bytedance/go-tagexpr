@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bytedance/go-tagexpr/binding"
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil/httpbody"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bytedance/go-tagexpr/binding"
 )
 
 func TestRawBody(t *testing.T) {

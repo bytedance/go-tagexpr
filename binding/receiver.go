@@ -97,9 +97,11 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(f
 	return p
 }
 
-func (r *receiver) getBodyInfo(req *http.Request) (codec, []byte, error) {
+func (r *receiver) getBodyInfo(req Request) (codec, []byte, error) {
 	if r.hasBody {
-		return getBodyInfo(req)
+		c := getBodyCodec(req)
+		b, err := req.GetBody()
+		return c, b, err
 	}
 	return bodyUnsupport, nil, nil
 }
@@ -119,16 +121,16 @@ const (
 	defaultMaxMemory = 32 << 20 // 32 MB
 )
 
-func (r *receiver) getQuery(req *http.Request) url.Values {
+func (r *receiver) getQuery(req Request) url.Values {
 	if r.hasQuery {
-		return req.URL.Query()
+		return req.GetQuery()
 	}
 	return nil
 }
 
-func (r *receiver) getCookies(req *http.Request) []*http.Cookie {
+func (r *receiver) getCookies(req Request) []*http.Cookie {
 	if r.hasCookie {
-		return req.Cookies()
+		return req.GetCookies()
 	}
 	return nil
 }

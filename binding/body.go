@@ -11,23 +11,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-func getBodyInfo(req *http.Request) (codec, []byte, error) {
-	bodyCodec := getBodyCodec(req)
-	switch req.Method {
-	case "POST", "PUT", "PATCH", "DELETE":
-		body, err := GetBody(req)
-		if err == nil && bodyCodec == bodyForm && req.PostForm == nil {
-			req.ParseMultipartForm(defaultMaxMemory)
-			body.Reset()
-		}
-		return bodyCodec, body.bodyBytes, err
-	default:
-		return bodyUnsupport, nil, nil
-	}
-}
-
-func getBodyCodec(req *http.Request) codec {
-	ct := req.Header.Get("Content-Type")
+func getBodyCodec(req Request) codec {
+	ct := req.GetHeader().Get("Content-Type")
 	idx := strings.Index(ct, ";")
 	if idx != -1 {
 		ct = strings.TrimRight(ct[:idx], " ")
