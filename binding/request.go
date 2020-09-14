@@ -64,6 +64,12 @@ func (r *httpRequest) GetBody() ([]byte, error) {
 		r.body.Reset()
 		return r.body.bodyBytes, nil
 	}
+	body, ok := r.Body.(*Body)
+	if ok {
+		r.body = body
+		body.Reset()
+		return body.bodyBytes, nil
+	}
 	switch r.Method {
 	case "POST", "PUT", "PATCH", "DELETE":
 		var buf bytes.Buffer
