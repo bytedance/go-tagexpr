@@ -8,13 +8,14 @@ import (
 )
 
 type Request interface {
+	GetMethod() string
 	GetQuery() url.Values
+	GetContentType() string
+	GetHeader() http.Header
+	GetCookies() []*http.Cookie
+	GetBody() ([]byte, error)
 	GetPostForm() (url.Values, error)
 	GetForm() (url.Values, error)
-	GetCookies() []*http.Cookie
-	GetHeader() http.Header
-	GetMethod() string
-	GetBody() ([]byte, error)
 }
 
 func wrapRequest(req *http.Request) Request {
@@ -34,28 +35,23 @@ type httpRequest struct {
 	*http.Request
 }
 
+func (r *httpRequest) GetMethod() string {
+	return r.Method
+}
 func (r *httpRequest) GetQuery() url.Values {
 	return r.URL.Query()
 }
 
-func (r *httpRequest) GetPostForm() (url.Values, error) {
-	return r.PostForm, nil
-}
-
-func (r *httpRequest) GetForm() (url.Values, error) {
-	return r.Form, nil
-}
-
-func (r *httpRequest) GetCookies() []*http.Cookie {
-	return r.Cookies()
+func (r *httpRequest) GetContentType() string {
+	return r.GetHeader().Get("Content-Type")
 }
 
 func (r *httpRequest) GetHeader() http.Header {
 	return r.Header
 }
 
-func (r *httpRequest) GetMethod() string {
-	return r.Method
+func (r *httpRequest) GetCookies() []*http.Cookie {
+	return r.Cookies()
 }
 
 func (r *httpRequest) GetBody() ([]byte, error) {
@@ -81,4 +77,12 @@ func (r *httpRequest) GetBody() ([]byte, error) {
 	default:
 		return nil, nil
 	}
+}
+
+func (r *httpRequest) GetPostForm() (url.Values, error) {
+	return r.PostForm, nil
+}
+
+func (r *httpRequest) GetForm() (url.Values, error) {
+	return r.Form, nil
 }

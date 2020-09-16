@@ -12,7 +12,7 @@ import (
 )
 
 func getBodyCodec(req Request) codec {
-	ct := req.GetHeader().Get("Content-Type")
+	ct := req.GetContentType()
 	idx := strings.Index(ct, ";")
 	if idx != -1 {
 		ct = strings.TrimRight(ct[:idx], " ")
