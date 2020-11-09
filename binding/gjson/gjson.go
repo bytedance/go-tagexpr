@@ -131,8 +131,21 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 			return true
 		})
 	case reflect.Map:
-		if t.Key().Kind() == reflect.String && t.Elem().Kind() == reflect.Interface {
-			goval.Set(reflect.ValueOf(jsval.Value()))
+		if t.Key().Kind() == reflect.String {
+			if t.Elem().Kind() == reflect.Interface {
+				goval.Set(reflect.ValueOf(jsval.Value()))
+			} else {
+				if goval.IsNil() {
+					goval.Set(reflect.MakeMap(t))
+				}
+				valType := t.Elem()
+				jsval.ForEach(func(key, value gjson.Result) bool {
+					val := reflect.New(valType)
+					assign(value, val)
+					goval.SetMapIndex(reflect.ValueOf(key.String()), val.Elem())
+					return true
+				})
+			}
 		}
 	case reflect.Interface:
 		goval.Set(reflect.ValueOf(jsval.Value()))
