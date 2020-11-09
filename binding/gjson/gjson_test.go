@@ -34,7 +34,32 @@ func TestMap(t *testing.T) {
 	t.Log(string(data))
 
 	var x2 X
+
 	err := unmarshal(data, &x2)
 	assert.NoError(t, err)
 	assert.Equal(t, x, x2)
+
+	data = []byte(`{
+          "M1": {
+            "i": 9,
+            "j": "*"
+          },
+          "M2": {
+            "k2": {
+              "A": "a2",
+              "B": 12
+            }
+          },
+          "M3": {
+            "k3": {
+              "A": "a2",
+              "B": "13"
+            }
+          }
+        }`)
+
+	x3 := X{}
+	err = unmarshal(data, &x3)
+	assert.NoError(t, err)
+	assert.Equal(t, x, x3)
 }

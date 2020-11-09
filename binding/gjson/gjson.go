@@ -131,7 +131,7 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 			return true
 		})
 	case reflect.Map:
-		if t.Key().Kind() == reflect.String {
+		if jsval.Type == gjson.JSON && t.Key().Kind() == reflect.String {
 			if t.Elem().Kind() == reflect.Interface {
 				goval.Set(reflect.ValueOf(jsval.Value()))
 			} else {
