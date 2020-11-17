@@ -26,7 +26,7 @@ func TestDefaultSplitTag(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			assert.Equal(t, c.expected, defaultSplitTag(c.input))
+			assert.Equal(t, c.expected, newTagInfo(c.input, false))
 		})
 	}
 }

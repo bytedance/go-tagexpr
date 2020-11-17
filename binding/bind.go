@@ -289,7 +289,7 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			if paramIn == default_val {
 				tagInfos[paramIn] = &tagInfo{paramIn: default_val, paramName: tagKV.value}
 			} else {
-				tagInfos[paramIn] = tagKV.defaultSplit()
+				tagInfos[paramIn] = tagKV.toInfo(paramIn == header)
 			}
 		}
 

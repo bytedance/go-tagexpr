@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bytedance/go-tagexpr/binding"
 	"github.com/henrylee2cn/goutil/httpbody"
+
+	"github.com/bytedance/go-tagexpr/binding"
 )
 
 func Example() {
@@ -22,6 +23,7 @@ func Example() {
 		Hobby         []string `json:",required"`
 		BodyNotFound  *int     `json:"BodyNotFound"`
 		Authorization string   `header:"Authorization,required" vd:"$=='Basic 123456'"`
+		userIdHeader  string   `header:"x-user_ID,required"`
 		SessionID     string   `cookie:"sessionid,required"`
 		AutoBody      string
 		AutoNotFound  *string
@@ -48,6 +50,7 @@ func Example() {
 	// Authorization: Basic 123456
 	// Content-Type: application/json;charset=utf-8
 	// Cookie: sessionid=987654
+	// X-User_id: 123456
 	//
 	// 83
 	// {"AutoBody":"autobody_test","Hobby":["Coding","Mountain climbing"],"email":"henrylee2cn@gmail.com","friendly":true,"pie":3.1415926}
@@ -89,6 +92,7 @@ func requestExample() *http.Request {
 	header := make(http.Header)
 	header.Add("Content-Type", contentType)
 	header.Add("Authorization", "Basic 123456")
+	header.Add("x-user_ID", "123456")
 	cookies := []*http.Cookie{
 		{Name: "sessionid", Value: "987654"},
 	}
