@@ -102,6 +102,8 @@ var unsupportNil = errors.New("unsupport data: nil")
 // NOTE:
 //  If the structure type has not been warmed up,
 //  it will be slower when it is first called.
+// Disable new -d=checkptr behaviour for Go 1.14
+//go:nocheckptr
 func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error) {
 	var u tpack.U
 	v, isReflectValue := structOrStructPtrOrReflectValue.(reflect.Value)
@@ -1066,6 +1068,7 @@ func safeIsNil(v reflect.Value) bool {
 	return false
 }
 
+//go:nocheckptr
 func ptrElem(ptr unsafe.Pointer) unsafe.Pointer {
 	return unsafe.Pointer(*(*uintptr)(ptr))
 }

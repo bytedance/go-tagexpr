@@ -166,7 +166,7 @@ func TestBuiltInFunc(t *testing.T) {
 	}{
 		{expr: "len('abc')", val: 3.0},
 		{expr: "len('abc')+2*2/len('cd')", val: 5.0},
-		{expr: "len(0)", val: nil},
+		{expr: "len(0)", val: 0},
 
 		{expr: "regexp('a\\d','a0')", val: true},
 		{expr: "regexp('^a\\d$','a0')", val: true},
