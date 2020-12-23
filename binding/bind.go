@@ -314,7 +314,12 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 					break
 				}
 			}
-			// Support default binding order when there is no valid tag in the superior fields
+			if canDefault {
+				if !goutil.IsExportedName(p.structField.Name) {
+					canDefault = false
+				}
+			}
+			// Supports the default binding order when there is no valid tag in the superior field of the exportable field
 			if canDefault {
 				for _, i := range sortedDefaultIn {
 					if p.omitIns[i] {

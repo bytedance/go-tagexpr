@@ -100,8 +100,9 @@ The parameter position in HTTP request:
 - Expression `required` or `req` indicates that the parameter is required
 - `default:"$value"` defines the default value for fallback when no binding is successful
 - If no position is tagged, try bind parameters from the body when the request has body,
-<br>otherwise try bind from the URL query
-- When there are multiple tags or no tags, the order in which to try to bind is:
+  <br>otherwise try bind from the URL query
+- When there is unexportable and no tags, omit the field
+- When there are multiple tags, or exportable and no tags, the order in which to try to bind is:
   1. path
   2. form
   3. query

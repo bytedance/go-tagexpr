@@ -64,7 +64,7 @@ func (r *receiver) assginIn(i in, v bool) {
 		r.hasPath = r.hasPath || v
 	case query:
 		r.hasQuery = r.hasQuery || v
-	case form, json, protobuf:
+	case form, json, protobuf, raw_body:
 		r.hasBody = r.hasBody || v
 	case cookie:
 		r.hasCookie = r.hasCookie || v

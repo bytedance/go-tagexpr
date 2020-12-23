@@ -20,33 +20,16 @@ import (
 
 func TestRawBody(t *testing.T) {
 	type Recv struct {
-		raw_body **struct {
-			A []byte   `raw_body:""`
-			B *[]byte  `raw_body:",required"`
-			C **[]byte `raw_body:"required"`
-			D string   `raw_body:""`
-			E *string  `raw_body:""`
-			F **string `raw_body:"" vd:"@:len($)<3; msg:'f too long'"`
-		}
-		S string `raw_body:""`
+		S []byte   `raw_body:""`
+		F **string `raw_body:"" vd:"@:len($)<3; msg:'f too long'"`
 	}
 	bodyBytes := []byte("raw_body.............")
 	req := newRequest("", nil, nil, bytes.NewReader(bodyBytes))
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.EqualError(t, err, "validating: expr_path=raw_body.F, cause=f too long")
-	for _, v := range []interface{}{
-		(**recv.raw_body).A,
-		*(**recv.raw_body).B,
-		**(**recv.raw_body).C,
-		[]byte((**recv.raw_body).D),
-		[]byte(*(**recv.raw_body).E),
-		[]byte(**(**recv.raw_body).F),
-		[]byte(recv.S),
-	} {
-		assert.Equal(t, bodyBytes, v)
-	}
+	assert.EqualError(t, err, "validating: expr_path=F, cause=f too long")
+	assert.Equal(t, bodyBytes, []byte(recv.S))
 	bodyCopied, err := binding.GetBody(req)
 	assert.NoError(t, err)
 	assert.Equal(t, bodyBytes, bodyCopied.Bytes())
@@ -886,4 +869,24 @@ func TestQueryTypes(t *testing.T) {
 	assert.Equal(t, metrics{"dau", "dnu"}, recv.D)
 	assert.Equal(t, metric("e-from-cookie"), recv.E)
 	assert.Equal(t, filter{Col1: "abc"}, recv.F)
+}
+
+func TestNoTagIssue(t *testing.T) {
+	type x int
+	type T struct {
+		x
+		x2 x
+		a  int
+		B  int
+	}
+	req := newRequest("http://localhost:8080/?x=11&x2=12&a=1&B=2", nil, nil, nil)
+	recv := new(T)
+	binder := binding.New(nil)
+	binder.SetLooseZeroMode(true)
+	err := binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, x(0), recv.x)
+	assert.Equal(t, x(0), recv.x2)
+	assert.Equal(t, 0, recv.a)
+	assert.Equal(t, 2, recv.B)
 }
