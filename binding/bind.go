@@ -18,7 +18,7 @@ import (
 // Binding binding and verification tool for http request
 type Binding struct {
 	vd             *validator.Validator
-	recvs          map[int32]*receiver
+	recvs          map[uintptr]*receiver
 	lock           sync.RWMutex
 	bindErrFactory func(failField, msg string) error
 	config         Config
@@ -32,7 +32,7 @@ func New(config *Config) *Binding {
 		config = new(Config)
 	}
 	b := &Binding{
-		recvs:  make(map[int32]*receiver, 1024),
+		recvs:  make(map[uintptr]*receiver, 1024),
 		config: *config,
 	}
 	b.config.init()

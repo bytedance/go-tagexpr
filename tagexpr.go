@@ -39,7 +39,7 @@ type (
 // VM struct tag expression interpreter
 type VM struct {
 	tagName   string
-	structJar map[int32]*structVM
+	structJar map[uintptr]*structVM
 	rw        sync.RWMutex
 }
 
@@ -83,7 +83,7 @@ func New(tagName ...string) *VM {
 	}
 	return &VM{
 		tagName:   tagName[0],
-		structJar: make(map[int32]*structVM, 256),
+		structJar: make(map[uintptr]*structVM, 256),
 	}
 }
 
@@ -224,7 +224,7 @@ func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn fun
 	return nil
 }
 
-func (vm *VM) subRun(path string, t reflect.Type, tid int32, ptr unsafe.Pointer) (*TagExpr, error) {
+func (vm *VM) subRun(path string, t reflect.Type, tid uintptr, ptr unsafe.Pointer) (*TagExpr, error) {
 	var err error
 	vm.rw.RLock()
 	s, ok := vm.structJar[tid]
