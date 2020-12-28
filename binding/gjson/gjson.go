@@ -36,7 +36,7 @@ import (
 )
 
 var fieldsmu sync.RWMutex
-var fields = make(map[int32]map[string]int)
+var fields = make(map[uintptr]map[string]int)
 
 func init() {
 	gjson.DisableModifiers = true
