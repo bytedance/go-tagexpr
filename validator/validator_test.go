@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	vd "github.com/bytedance/go-tagexpr/validator"
 	"github.com/stretchr/testify/assert"
+
+	vd "github.com/bytedance/go-tagexpr/validator"
 )
 
 func TestNil(t *testing.T) {
@@ -201,4 +202,21 @@ func TestIn(t *testing.T) {
 	data3 := T3{}
 	err = v.Validate(data3)
 	assert.EqualError(t, err, "[1] range exceeded")
+}
+
+type (
+	Issue23A struct {
+		b *Issue23B
+		v int64 `vd:"$==0"`
+	}
+	Issue23B struct {
+		a *Issue23A
+		v int64 `vd:"$==0"`
+	}
+)
+
+func TestIssue23(t *testing.T) {
+	var data = &Issue23B{a: &Issue23A{b: new(Issue23B)}}
+	err := vd.Validate(data, true)
+	assert.NoError(t, err)
 }
