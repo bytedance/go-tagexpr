@@ -15,7 +15,7 @@ import (
 	"github.com/henrylee2cn/goutil/httpbody"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/bytedance/go-tagexpr/binding"
+	"github.com/bytedance/go-tagexpr/v2/binding"
 )
 
 func TestRawBody(t *testing.T) {

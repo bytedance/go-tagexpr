@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"reflect"
 
-	"github.com/bytedance/go-tagexpr"
+	"github.com/bytedance/go-tagexpr/v2"
 )
 
 type in uint8

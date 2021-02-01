@@ -13,7 +13,7 @@ import (
 	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 
-	"github.com/bytedance/go-tagexpr"
+	"github.com/bytedance/go-tagexpr/v2"
 )
 
 const (

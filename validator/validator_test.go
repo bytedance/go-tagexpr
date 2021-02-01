@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	vd "github.com/bytedance/go-tagexpr/validator"
+	vd "github.com/bytedance/go-tagexpr/v2/validator"
 )
 
 func TestNil(t *testing.T) {

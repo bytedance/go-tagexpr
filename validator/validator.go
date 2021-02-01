@@ -22,7 +22,7 @@ import (
 	"strings"
 	_ "unsafe"
 
-	tagexpr "github.com/bytedance/go-tagexpr"
+	tagexpr "github.com/bytedance/go-tagexpr/v2"
 )
 
 const (

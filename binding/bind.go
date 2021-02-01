@@ -11,8 +11,8 @@ import (
 	"github.com/henrylee2cn/goutil"
 	"github.com/henrylee2cn/goutil/tpack"
 
-	"github.com/bytedance/go-tagexpr"
-	"github.com/bytedance/go-tagexpr/validator"
+	"github.com/bytedance/go-tagexpr/v2"
+	"github.com/bytedance/go-tagexpr/v2/validator"
 )
 
 // Binding binding and verification tool for http request

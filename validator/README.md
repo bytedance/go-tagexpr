@@ -1,4 +1,4 @@
-# validator [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/bytedance/go-tagexpr/validator)
+# validator [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/bytedance/go-tagexpr/v2/validator)
 
 A powerful validator that supports struct tag expression.
 
@@ -22,7 +22,7 @@ package validator_test
 import (
 	"fmt"
 
-	vd "github.com/bytedance/go-tagexpr/validator"
+	vd "github.com/bytedance/go-tagexpr/v2/validator"
 )
 
 func Example() {
