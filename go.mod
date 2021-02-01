@@ -1,4 +1,4 @@
-module github.com/bytedance/go-tagexpr
+module github.com/bytedance/go-tagexpr/v2
 
 go 1.14
 
