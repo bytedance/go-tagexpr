@@ -701,7 +701,7 @@ func FakeBool(v interface{}) bool {
 		return r != ""
 	case bool:
 		return r
-	case nil:
+	case nil, error:
 		return false
 	default:
 		return true
