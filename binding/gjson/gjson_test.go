@@ -63,3 +63,34 @@ func TestMap(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, x, x3)
 }
+
+func TestStruct(t *testing.T) {
+	type PageParam struct {
+		Page int `form:"page" json:"page"`
+		Size int `form:"size" json:"size"`
+	}
+	type SearchParam struct {
+		PageParam
+	}
+	data := []byte(`{
+"page":1,
+"size":2
+}`)
+	p := SearchParam{}
+	err := unmarshal(data, &p)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, p.Page)
+	assert.Equal(t, 2, p.Size)
+
+	data2 := []byte(`{
+"PageParam":{
+"page":1,
+"size":2
+}
+}`)
+	p2 := SearchParam{}
+	err = unmarshal(data2, &p2)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, p2.Page)
+	assert.Equal(t, 2, p2.Size)
+}

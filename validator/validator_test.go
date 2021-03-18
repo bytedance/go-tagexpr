@@ -220,3 +220,36 @@ func TestIssue23(t *testing.T) {
 	err := vd.Validate(data, true)
 	assert.NoError(t, err)
 }
+
+func TestIssue24(t *testing.T) {
+	type SubmitDoctorImportItem struct {
+		Name       string   `form:"name,required" json:"name,required" query:"name,required"`
+		Avatar     *string  `form:"avatar,omitempty" json:"avatar,omitempty" query:"avatar,omitempty"`
+		Idcard     string   `form:"idcard,required" json:"idcard,required" query:"idcard,required" vd:"len($)==18"`
+		IdcardPics []string `form:"idcard_pics,omitempty" json:"idcard_pics,omitempty" query:"idcard_pics,omitempty"`
+		Hosp       string   `form:"hosp,required" json:"hosp,required" query:"hosp,required"`
+		HospDept   string   `form:"hosp_dept,required" json:"hosp_dept,required" query:"hosp_dept,required"`
+		HospProv   *string  `form:"hosp_prov,omitempty" json:"hosp_prov,omitempty" query:"hosp_prov,omitempty"`
+		HospCity   *string  `form:"hosp_city,omitempty" json:"hosp_city,omitempty" query:"hosp_city,omitempty"`
+		HospCounty *string  `form:"hosp_county,omitempty" json:"hosp_county,omitempty" query:"hosp_county,omitempty"`
+		ProTit     string   `form:"pro_tit,required" json:"pro_tit,required" query:"pro_tit,required"`
+		ThTit      *string  `form:"th_tit,omitempty" json:"th_tit,omitempty" query:"th_tit,omitempty"`
+		ServDepts  *string  `form:"serv_depts,omitempty" json:"serv_depts,omitempty" query:"serv_depts,omitempty"`
+		TitCerts   []string `form:"tit_certs,omitempty" json:"tit_certs,omitempty" query:"tit_certs,omitempty"`
+		ThTitCerts []string `form:"th_tit_certs,omitempty" json:"th_tit_certs,omitempty" query:"th_tit_certs,omitempty"`
+		PracCerts  []string `form:"prac_certs,omitempty" json:"prac_certs,omitempty" query:"prac_certs,omitempty"`
+		QualCerts  []string `form:"qual_certs,omitempty" json:"qual_certs,omitempty" query:"qual_certs,omitempty"`
+		PracCertNo string   `form:"prac_cert_no,required" json:"prac_cert_no,required" query:"prac_cert_no,required" vd:"len($)==15"`
+		Goodat     *string  `form:"goodat,omitempty" json:"goodat,omitempty" query:"goodat,omitempty"`
+		Intro      *string  `form:"intro,omitempty" json:"intro,omitempty" query:"intro,omitempty"`
+		Linkman    string   `form:"linkman,required" json:"linkman,required" query:"linkman,required" vd:"email($)"`
+		Phone      string   `form:"phone,required" json:"phone,required" query:"phone,required" vd:"phone($,'CN')"`
+	}
+
+	type SubmitDoctorImportRequest struct {
+		SubmitDoctorImport []*SubmitDoctorImportItem `form:"submit_doctor_import,required" json:"submit_doctor_import,required"`
+	}
+	var data = &SubmitDoctorImportRequest{SubmitDoctorImport: []*SubmitDoctorImportItem{{}}}
+	err := vd.Validate(data, true)
+	assert.EqualError(t, err, "invalid parameter: SubmitDoctorImport[0].Idcard\tinvalid parameter: SubmitDoctorImport[0].PracCertNo\temail format is incorrect\tthe phone number supplied is not a number")
+}

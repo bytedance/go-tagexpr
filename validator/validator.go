@@ -149,7 +149,6 @@ func (e *Error) Error() string {
 	return "invalid parameter: " + e.FailPath
 }
 
-//go:linkname defaultErrorFactory validator.defaultErrorFactory
 //go:nosplit
 func defaultErrorFactory(failPath, msg string) error {
 	return &Error{
