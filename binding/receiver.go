@@ -170,5 +170,6 @@ func (r *receiver) initParams() {
 			info.contentTypeError = p.bindErrFactory(info.namePath, "does not support binding to the content type body")
 		}
 		p.setDefaultVal()
+		p.SetTimeLayout()
 	}
 }

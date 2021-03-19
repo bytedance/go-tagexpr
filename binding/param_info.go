@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil"
@@ -17,7 +18,28 @@ import (
 )
 
 const (
-	specialChar = "\x07"
+	specialChar   = "\x07"
+	defaultLayout = time.RFC1123
+)
+
+var (
+	layoutMap = map[string]string{
+		"ANSIC":       time.ANSIC,
+		"UnixDate":    time.UnixDate,
+		"RubyDate":    time.RubyDate,
+		"RFC822":      time.RFC822,
+		"RFC822Z":     time.RFC822Z,
+		"RFC850":      time.RFC850,
+		"RFC1123":     time.RFC1123,
+		"RFC1123Z":    time.RFC1123Z,
+		"RFC3339":     time.RFC3339,
+		"RFC3339Nano": time.RFC3339Nano,
+		"Kitchen":     time.Kitchen,
+		"Stamp":       time.Stamp,
+		"StampMilli":  time.StampMilli,
+		"StampMicro":  time.StampMicro,
+		"StampNano":   time.StampNano,
+	}
 )
 
 type paramInfo struct {
@@ -28,6 +50,7 @@ type paramInfo struct {
 	bindErrFactory func(failField, msg string) error
 	looseZeroMode  bool
 	defaultVal     []byte
+	timeLayout     string // only applicable to time.Time param
 }
 
 func (p *paramInfo) name(_ in) string {
@@ -77,6 +100,13 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 	case reflect.String:
 		v.Set(reflect.ValueOf(goutil.BytesToString(bodyBytes)))
 		return nil
+	case reflect.Struct:
+		if isTimeType(v.Type()) {
+			t, _ := time.Parse(p.timeLayout, goutil.BytesToString(bodyBytes))
+			v.Set(reflect.ValueOf(t).Convert(v.Type()))
+			return nil
+		}
+		fallthrough
 	default:
 		return info.typeError
 	}
@@ -267,9 +297,16 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 	case reflect.Slice:
-		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
+		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode, p.timeLayout)
 		if err == nil {
 			v.Set(vv)
+			return nil
+		}
+		fallthrough
+	case reflect.Struct:
+		if isTimeType(v.Type()) {
+			t, _ := time.Parse(p.timeLayout, a[0])
+			v.Set(reflect.ValueOf(t).Convert(v.Type()))
 			return nil
 		}
 		fallthrough
@@ -294,11 +331,16 @@ func (p *paramInfo) bindDefaultVal(expr *tagexpr.TagExpr, defaultValue []byte) (
 	if err != nil || !v.IsValid() {
 		return false, err
 	}
+	if isTimeType(v.Type()) {
+		t, _ := time.Parse(p.timeLayout, goutil.BytesToString(defaultValue))
+		v.Set(reflect.ValueOf(t).Convert(v.Type()))
+		return true, nil
+	}
 	return true, jsonpkg.Unmarshal(defaultValue, v.Addr().Interface())
 }
 
 // setDefaultVal preprocess the default tags and store the parsed value
-func (p *paramInfo) setDefaultVal() error {
+func (p *paramInfo) setDefaultVal() {
 	for _, info := range p.tagInfos {
 		if info.paramIn != default_val {
 			continue
@@ -319,12 +361,25 @@ func (p *paramInfo) setDefaultVal() error {
 		}
 		p.defaultVal = ameda.UnsafeStringToBytes(defaultVal)
 	}
-	return nil
+}
+
+func (p *paramInfo) SetTimeLayout() {
+	if !isTimeType(p.structField.Type) {
+		return
+	}
+
+	if p.timeLayout == "" {
+		p.timeLayout = defaultLayout
+	}
+
+	if realLayout, ok := layoutMap[p.timeLayout]; ok {
+		p.timeLayout = realLayout
+	}
 }
 
 var errMismatch = errors.New("type mismatch")
 
-func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value, error) {
+func stringsToValue(t reflect.Type, a []string, emptyAsZero bool, timeLayout string) (reflect.Value, error) {
 	var i interface{}
 	var err error
 	var ptrDepth int
@@ -363,6 +418,12 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value
 		i, err = goutil.StringsToUint16s(a, emptyAsZero)
 	case reflect.Uint8:
 		i, err = goutil.StringsToUint8s(a, emptyAsZero)
+	case reflect.Struct:
+		if isTimeType(t) {
+			i, err = stringsToTime(a, timeLayout, emptyAsZero)
+			goto End
+		}
+		fallthrough
 	default:
 		fn := typeUnmarshalFuncs[t]
 		if fn == nil {
@@ -378,8 +439,36 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value
 		}
 		return goutil.ReferenceSlice(v, ptrDepth), nil
 	}
+End:
 	if err != nil {
 		return reflect.Value{}, errMismatch
 	}
 	return goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth), nil
+}
+
+func stringsToTime(s []string, layout string, emptyAsZero ...bool) ([]time.Time, error) {
+	var err error
+	t := make([]time.Time, len(s))
+	for k, v := range s {
+		t[k], err = stringToTime(v, layout, emptyAsZero...)
+		if err != nil {
+			return t, err
+		}
+	}
+	return t, nil
+}
+
+func stringToTime(v string, layout string, emptyAsZero ...bool) (time.Time, error) {
+	t, err := time.Parse(layout, v)
+	if err != nil {
+		if len(emptyAsZero) == 0 || !emptyAsZero[0] {
+			return time.Time{}, err
+		}
+	}
+	return t, nil
+}
+
+func isTimeType(t reflect.Type) bool {
+	timeType := reflect.TypeOf(time.Time{})
+	return t == timeType || t.ConvertibleTo(timeType)
 }
