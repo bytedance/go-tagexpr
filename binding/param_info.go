@@ -281,7 +281,6 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		if err == nil {
 			return nil
 		}
-		return p.bindErrFactory(info.namePath, err.Error())
 		// fn := typeUnmarshalFuncs[v.Type()]
 		// if fn != nil {
 		// 	vv, err := fn(a[0], p.looseZeroMode)
