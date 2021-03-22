@@ -272,11 +272,16 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			v.Set(vv)
 			return nil
 		}
-		if retry {
-			return unsafeUnmarshalValue(v, a[0], p.looseZeroMode)
+		if !retry {
+			return info.typeError
 		}
+		fallthrough
 	default:
-		return unsafeUnmarshalValue(v, a[0], p.looseZeroMode)
+		err = unsafeUnmarshalValue(v, a[0], p.looseZeroMode)
+		if err == nil {
+			return nil
+		}
+		return p.bindErrFactory(info.namePath, err.Error())
 		// fn := typeUnmarshalFuncs[v.Type()]
 		// if fn != nil {
 		// 	vv, err := fn(a[0], p.looseZeroMode)
