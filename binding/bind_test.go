@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -898,29 +897,25 @@ func TestRegTypeUnmarshal(t *testing.T) {
 		B string
 	}
 	type T struct {
-		Q Q `query:"q"`
+		Q  Q    `query:"q"`
+		Qs []*Q `query:"qs"`
 	}
-	err := binding.RegTypeUnmarshal(reflect.TypeOf(Q{}), func(v string, emptyAsZero bool) (reflect.Value, error) {
-		var q Q
-		if len(v) == 0 {
-			return reflect.ValueOf(q), nil
-		}
-		err := json.Unmarshal([]byte(v), &q)
-		if err != nil {
-			return reflect.Value{}, err
-		}
-		return reflect.ValueOf(q), nil
-	})
-	assert.NoError(t, err)
 	var values = url.Values{}
 	b, err := json.Marshal(Q{A: 2, B: "y"})
 	assert.NoError(t, err)
 	values.Add("q", string(b))
+	bs, err := json.Marshal([]Q{{A: 1, B: "x"}, {A: 2, B: "y"}})
+	values.Add("qs", string(bs))
 	req := newRequest("http://localhost:8080/?"+values.Encode(), nil, nil, nil)
 	recv := new(T)
 	binder := binding.New(nil)
 	err = binder.BindAndValidate(recv, req, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, recv.Q.A)
-	assert.Equal(t, "y", recv.Q.B)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 2, recv.Q.A)
+		assert.Equal(t, "y", recv.Q.B)
+		assert.Equal(t, 1, recv.Qs[0].A)
+		assert.Equal(t, "x", recv.Qs[0].B)
+		assert.Equal(t, 2, recv.Qs[1].A)
+		assert.Equal(t, "y", recv.Qs[1].B)
+	}
 }

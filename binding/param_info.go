@@ -267,21 +267,24 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 	case reflect.Slice:
-		vv, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
+		vv, retry, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
 		if err == nil {
 			v.Set(vv)
 			return nil
 		}
-		fallthrough
-	default:
-		fn := typeUnmarshalFuncs[v.Type()]
-		if fn != nil {
-			vv, err := fn(a[0], p.looseZeroMode)
-			if err == nil {
-				v.Set(vv)
-				return nil
-			}
+		if retry {
+			return unsafeUnmarshalValue(v, a[0], p.looseZeroMode)
 		}
+	default:
+		return unsafeUnmarshalValue(v, a[0], p.looseZeroMode)
+		// fn := typeUnmarshalFuncs[v.Type()]
+		// if fn != nil {
+		// 	vv, err := fn(a[0], p.looseZeroMode)
+		// 	if err == nil {
+		// 		v.Set(vv)
+		// 		return nil
+		// 	}
+		// }
 	}
 	return info.typeError
 }
@@ -324,9 +327,8 @@ func (p *paramInfo) setDefaultVal() error {
 
 var errMismatch = errors.New("type mismatch")
 
-func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value, error) {
+func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (v reflect.Value, retry bool, err error) {
 	var i interface{}
-	var err error
 	var ptrDepth int
 	elemKind := t.Kind()
 	for elemKind == reflect.Ptr {
@@ -364,22 +366,27 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (reflect.Value
 	case reflect.Uint8:
 		i, err = goutil.StringsToUint8s(a, emptyAsZero)
 	default:
-		fn := typeUnmarshalFuncs[t]
-		if fn == nil {
-			return reflect.Value{}, errMismatch
+		v, err := unsafeUnmarshalSlice(t, a, emptyAsZero)
+		if err == nil {
+			return goutil.ReferenceSlice(v, ptrDepth), false, nil
 		}
-		v := reflect.New(reflect.SliceOf(t)).Elem()
-		for _, s := range a {
-			vv, err := fn(s, emptyAsZero)
-			if err != nil {
-				return reflect.Value{}, errMismatch
-			}
-			v = reflect.Append(v, vv)
-		}
-		return goutil.ReferenceSlice(v, ptrDepth), nil
+		return reflect.Value{}, true, err
+		// fn := typeUnmarshalFuncs[t]
+		// if fn == nil {
+		// 	return reflect.Value{}, errMismatch
+		// }
+		// v := reflect.New(reflect.SliceOf(t)).Elem()
+		// for _, s := range a {
+		// 	vv, err := fn(s, emptyAsZero)
+		// 	if err != nil {
+		// 		return reflect.Value{}, errMismatch
+		// 	}
+		// 	v = reflect.Append(v, vv)
+		// }
+		// return goutil.ReferenceSlice(v, ptrDepth), nil
 	}
 	if err != nil {
-		return reflect.Value{}, errMismatch
+		return reflect.Value{}, false, errMismatch
 	}
-	return goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth), nil
+	return goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth), false, nil
 }
