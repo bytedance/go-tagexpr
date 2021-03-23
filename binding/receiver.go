@@ -160,7 +160,7 @@ func (r *receiver) initParams() {
 				}
 				name := names[fs][info.paramIn]
 				if name != "" {
-					info.namePath = name + "."
+					info.namePath += name + "."
 				}
 			}
 			info.namePath = info.namePath + p.name(info.paramIn)

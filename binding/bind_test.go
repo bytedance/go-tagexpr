@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -918,4 +919,45 @@ func TestRegTypeUnmarshal(t *testing.T) {
 		assert.Equal(t, 2, recv.Qs[1].A)
 		assert.Equal(t, "y", recv.Qs[1].B)
 	}
+}
+
+func TestPathnameBUG(t *testing.T) {
+	type Currency struct {
+		CurrencyName   *string `form:"currency_name,required" json:"currency_name,required" protobuf:"bytes,1,req,name=currency_name,json=currencyName" query:"currency_name,required"`
+		CurrencySymbol *string `form:"currency_symbol,required" json:"currency_symbol,required" protobuf:"bytes,2,req,name=currency_symbol,json=currencySymbol" query:"currency_symbol,required"`
+		SymbolPosition *int32  `form:"symbol_position,required" json:"symbol_position,required" protobuf:"varint,3,req,name=symbol_position,json=symbolPosition" query:"symbol_position,required"`
+		DecimalPlaces  *int32  `form:"decimal_places,required" json:"decimal_places,required" protobuf:"varint,4,req,name=decimal_places,json=decimalPlaces" query:"decimal_places,required"` // 56x56
+		DecimalSymbol  *string `form:"decimal_symbol,required" json:"decimal_symbol,required" protobuf:"bytes,5,req,name=decimal_symbol,json=decimalSymbol" query:"decimal_symbol,required"`
+		Separator      *string `form:"separator,required" json:"separator,required" protobuf:"bytes,6,req,name=separator" query:"separator,required"`
+		SeparatorIndex *string `form:"separator_index,required" json:"separator_index,required" protobuf:"bytes,7,req,name=separator_index,json=separatorIndex" query:"separator_index,required"`
+		Between        *string `form:"between,required" json:"between,required" protobuf:"bytes,8,req,name=between" query:"between,required"`
+		MinPrice       *string `form:"min_price" json:"min_price,omitempty" protobuf:"bytes,9,opt,name=min_price,json=minPrice" query:"min_price"`
+		MaxPrice       *string `form:"max_price" json:"max_price,omitempty" protobuf:"bytes,10,opt,name=max_price,json=maxPrice" query:"max_price"`
+	}
+
+	type CurrencyData struct {
+		Amount   *string   `form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
+		Currency *Currency `form:"currency,required" json:"currency,required" protobuf:"bytes,2,req,name=currency" query:"currency,required"`
+	}
+
+	type ExchangeCurrencyRequest struct {
+		PromotionRegion *string       `form:"promotion_region,required" json:"promotion_region,required" protobuf:"bytes,1,req,name=promotion_region,json=promotionRegion" query:"promotion_region,required"`
+		Currency        *CurrencyData `form:"currency,required" json:"currency,required" protobuf:"bytes,2,req,name=currency" query:"currency,required"`
+		Version         *int32        `json:"version,omitempty" path:"version" protobuf:"varint,100,opt,name=version"`
+	}
+
+	z := &ExchangeCurrencyRequest{}
+	v := ameda.InitSampleValue(reflect.TypeOf(z), 10).Interface().(*ExchangeCurrencyRequest)
+	b, err := json.MarshalIndent(v, "", "  ")
+	assert.NoError(t, err)
+	t.Log(string(b))
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json;charset=utf-8")
+	req := newRequest("http://localhost", header, nil, bytes.NewReader(b))
+	recv := new(ExchangeCurrencyRequest)
+	binder := binding.New(nil)
+	err = binder.Bind(recv, req, nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, v, recv)
 }

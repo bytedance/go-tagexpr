@@ -149,7 +149,6 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 	if checkOpt || info.required { // only return error if it's a required field
 		requiredError = info.requiredError
 	}
-
 	if !gjson.Get(bodyString, info.namePath).Exists() {
 		idx := strings.LastIndex(info.namePath, ".")
 		// There should be a superior but it is empty, no error is reported
