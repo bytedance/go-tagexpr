@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/henrylee2cn/ameda"
-	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2"
@@ -75,7 +74,7 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 		v.Set(reflect.ValueOf(bodyBytes))
 		return nil
 	case reflect.String:
-		v.Set(reflect.ValueOf(goutil.BytesToString(bodyBytes)))
+		v.Set(reflect.ValueOf(ameda.UnsafeBytesToString(bodyBytes)))
 		return nil
 	default:
 		return info.typeError
@@ -343,31 +342,31 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (v reflect.Val
 	case reflect.String:
 		i = a
 	case reflect.Bool:
-		i, err = goutil.StringsToBools(a, emptyAsZero)
+		i, err = ameda.StringsToBools(a, emptyAsZero)
 	case reflect.Float32:
-		i, err = goutil.StringsToFloat32s(a, emptyAsZero)
+		i, err = ameda.StringsToFloat32s(a, emptyAsZero)
 	case reflect.Float64:
-		i, err = goutil.StringsToFloat64s(a, emptyAsZero)
+		i, err = ameda.StringsToFloat64s(a, emptyAsZero)
 	case reflect.Int:
-		i, err = goutil.StringsToInts(a, emptyAsZero)
+		i, err = ameda.StringsToInts(a, emptyAsZero)
 	case reflect.Int64:
-		i, err = goutil.StringsToInt64s(a, emptyAsZero)
+		i, err = ameda.StringsToInt64s(a, emptyAsZero)
 	case reflect.Int32:
-		i, err = goutil.StringsToInt32s(a, emptyAsZero)
+		i, err = ameda.StringsToInt32s(a, emptyAsZero)
 	case reflect.Int16:
-		i, err = goutil.StringsToInt16s(a, emptyAsZero)
+		i, err = ameda.StringsToInt16s(a, emptyAsZero)
 	case reflect.Int8:
-		i, err = goutil.StringsToInt8s(a, emptyAsZero)
+		i, err = ameda.StringsToInt8s(a, emptyAsZero)
 	case reflect.Uint:
-		i, err = goutil.StringsToUints(a, emptyAsZero)
+		i, err = ameda.StringsToUints(a, emptyAsZero)
 	case reflect.Uint64:
-		i, err = goutil.StringsToUint64s(a, emptyAsZero)
+		i, err = ameda.StringsToUint64s(a, emptyAsZero)
 	case reflect.Uint32:
-		i, err = goutil.StringsToUint32s(a, emptyAsZero)
+		i, err = ameda.StringsToUint32s(a, emptyAsZero)
 	case reflect.Uint16:
-		i, err = goutil.StringsToUint16s(a, emptyAsZero)
+		i, err = ameda.StringsToUint16s(a, emptyAsZero)
 	case reflect.Uint8:
-		i, err = goutil.StringsToUint8s(a, emptyAsZero)
+		i, err = ameda.StringsToUint8s(a, emptyAsZero)
 	default:
 		v, err := unsafeUnmarshalSlice(t, a, emptyAsZero)
 		if err == nil {
