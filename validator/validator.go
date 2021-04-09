@@ -62,7 +62,7 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 		all = checkAll[0]
 	}
 	var errs = make([]error, 0, 8)
-	v.vm.RunAny(value, func(te *tagexpr.TagExpr, err error) error {
+	err := v.vm.RunAny(value, func(te *tagexpr.TagExpr, err error) error {
 		if err != nil {
 			errs = append(errs, err)
 			if all {
@@ -111,6 +111,9 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 		}
 		return nil
 	})
+	if err != io.EOF && err != nil {
+		return err
+	}
 	switch len(errs) {
 	case 0:
 		return nil

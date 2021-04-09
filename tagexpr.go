@@ -95,7 +95,10 @@ func (vm *VM) MustRun(structOrStructPtrOrReflectValue interface{}) *TagExpr {
 	return te
 }
 
-var unsupportNil = errors.New("unsupport data: nil")
+var (
+	unsupportNil        = errors.New("unsupport data: nil")
+	unsupportCannotAddr = errors.New("unsupport data: can not addr")
+)
 
 // Run returns the tag expression handler of the @structOrStructPtrOrReflectValue.
 // NOTE:
@@ -116,6 +119,9 @@ func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error)
 		return nil, unsupportNil
 	}
 	u = u.UnderlyingElem()
+	if !u.CanAddr() {
+		return nil, unsupportCannotAddr
+	}
 	tid := u.RuntimeTypeID()
 	var err error
 	vm.rw.RLock()
@@ -162,6 +168,9 @@ func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn fun
 	rv = ameda.DereferenceValue(rv)
 	switch rt.Kind() {
 	case reflect.Struct:
+		if !rv.CanAddr() {
+			return unsupportCannotAddr
+		}
 		ptr := unsafe.Pointer(ameda.ValueFrom(rv).Pointer())
 		if ptr == nil {
 			if omitNil {
@@ -207,13 +216,13 @@ func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn fun
 		}
 		for _, key := range rv.MapKeys() {
 			if canKey {
-				err := vm.subRunAll(omitNil, tePath+"{}", key, fn)
+				err := vm.subRunAll(omitNil, tePath+"{k}", key, fn)
 				if err != nil {
 					return err
 				}
 			}
 			if canValue {
-				err := vm.subRunAll(omitNil, tePath+"{K:"+key.String()+"}", rv.MapIndex(key), fn)
+				err := vm.subRunAll(omitNil, tePath+"{v for k="+key.String()+"}", rv.MapIndex(key), fn)
 				if err != nil {
 					return err
 				}
@@ -793,7 +802,7 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 
 			if f.elemKind == reflect.Map &&
 				(mapOrSliceElemStructVM != nil || mapKeyStructVM != nil || valueIface || keyIface) {
-				keyPath := f.fieldSelector + FieldSeparator + "{}"
+				keyPath := f.fieldSelector + "{k}"
 				for _, key := range v.MapKeys() {
 					if mapKeyStructVM != nil {
 						p := unsafe.Pointer(ameda.ValueFrom(derefValue(key)).Pointer())
@@ -815,12 +824,12 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 						if omitNil && p == nil {
 							continue
 						}
-						err = mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"{"+key.String()+"}").Range(fn)
+						err = mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"{v for k="+key.String()+"}").Range(fn)
 						if err != nil {
 							return err
 						}
 					} else if valueIface {
-						err = t.subRange(omitNil, f.fieldSelector+"{"+key.String()+"}", v.MapIndex(key), fn)
+						err = t.subRange(omitNil, f.fieldSelector+"{v for k="+key.String()+"}", v.MapIndex(key), fn)
 						if err != nil {
 							return err
 						}

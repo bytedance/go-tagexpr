@@ -15,7 +15,7 @@ func TestNil(t *testing.T) {
 			g int `vd:"$%3==1"`
 		}
 	}
-	assert.EqualError(t, vd.Validate((*F)(nil)), "unsupport data: nil")
+	assert.EqualError(t, vd.Validate((*F)(nil)), "unsupport data: can not addr")
 }
 
 func TestAll(t *testing.T) {
@@ -122,8 +122,8 @@ func TestIssue4(t *testing.T) {
 	a = &A{F1: new(C)}
 	assert.EqualError(t, v.Validate(a), "index is nil")
 
-	a = &A{F2: map[string]*C{"": &C{Index: new(int32)}}}
-	assert.EqualError(t, v.Validate(a), "invalid parameter: F2{}.Index2")
+	a = &A{F2: map[string]*C{"x": &C{Index: new(int32)}}}
+	assert.EqualError(t, v.Validate(a), "invalid parameter: F2{v for k=x}.Index2")
 
 	a = &A{F3: []*C{{Index: new(int32)}}}
 	assert.EqualError(t, v.Validate(a), "invalid parameter: F3[0].Index2")
@@ -168,7 +168,7 @@ func TestIssue5(t *testing.T) {
 	assert.Equal(t, 1, len(data.Requests))
 	assert.Nil(t, data.Requests[0].CopySheet)
 	v := vd.New("vd")
-	assert.NoError(t, v.Validate(data))
+	assert.NoError(t, v.Validate(&data))
 }
 
 func TestIn(t *testing.T) {
@@ -180,7 +180,7 @@ func TestIn(t *testing.T) {
 		B I    `vd:"in($,1,2.0,3)"`
 	}
 	v := vd.New("vd")
-	data := T{}
+	data := &T{}
 	err := v.Validate(data)
 	assert.EqualError(t, err, "[a b c] range exceeded")
 	data.A = "b"
@@ -193,14 +193,14 @@ func TestIn(t *testing.T) {
 	type T2 struct {
 		C string `vd:"in($)"`
 	}
-	data2 := T2{}
+	data2 := &T2{}
 	err = v.Validate(data2)
 	assert.EqualError(t, err, "input parameters of the in function are at least two")
 
 	type T3 struct {
 		C string `vd:"in($,1)"`
 	}
-	data3 := T3{}
+	data3 := &T3{}
 	err = v.Validate(data3)
 	assert.EqualError(t, err, "[1] range exceeded")
 }
@@ -253,4 +253,23 @@ func TestIssue24(t *testing.T) {
 	var data = &SubmitDoctorImportRequest{SubmitDoctorImport: []*SubmitDoctorImportItem{{}}}
 	err := vd.Validate(data, true)
 	assert.EqualError(t, err, "invalid parameter: SubmitDoctorImport[0].Idcard\tinvalid parameter: SubmitDoctorImport[0].PracCertNo\temail format is incorrect\tthe phone number supplied is not a number")
+}
+
+func TestStructSliceMap(t *testing.T) {
+	type F struct {
+		f struct {
+			g int `vd:"$%3==0"`
+		}
+	}
+	f := &F{}
+	f.f.g = 10
+	type S struct {
+		A map[string]*F
+		B []map[string]*F
+	}
+	err := vd.Validate(&S{
+		B: []map[string]*F{{"y": f}},
+		A: map[string]*F{"x": f},
+	}, true)
+	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g")
 }

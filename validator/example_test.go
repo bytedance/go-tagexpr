@@ -17,7 +17,7 @@ func Example() {
 		Info1        *InfoRequest `vd:"?"`
 		Info2        *InfoRequest `vd:"-"`
 	}
-	info := InfoRequest{
+	info := &InfoRequest{
 		Name:   "Alice",
 		Age:    18,
 		Email:  "henrylee2cn@gmail.com",
@@ -33,7 +33,6 @@ func Example() {
 	info.Email = "xxx"
 	a := &A{A: 107, Info: info}
 	fmt.Println(vd.Validate(a))
-
 	type B struct {
 		B string `vd:"len($)>1 && regexp('^\\w*$')"`
 	}
@@ -74,10 +73,17 @@ func Example() {
 	fmt.Println(vd.Validate(f))
 
 	fmt.Println(vd.Validate(map[string]*F{"a": f}))
+	fmt.Println(vd.Validate(map[string]map[string]*F{"a": {"b": f}}))
+	fmt.Println(vd.Validate([]map[string]*F{{"a": f}}))
+	fmt.Println(vd.Validate(struct {
+		A []map[string]*F
+	}{A: []map[string]*F{{"x": f}}}))
 	fmt.Println(vd.Validate(map[*F]int{f: 1}))
 	fmt.Println(vd.Validate([][1]*F{{f}}))
 	fmt.Println(vd.Validate((*F)(nil)))
 	fmt.Println(vd.Validate(map[string]*F{}))
+	fmt.Println(vd.Validate(map[string]map[string]*F{}))
+	fmt.Println(vd.Validate([]map[string]*F{}))
 	fmt.Println(vd.Validate([]*F{}))
 
 	// Output:
@@ -88,10 +94,15 @@ func Example() {
 	// invalid d: [x y]
 	// invalid parameter: e
 	// {"succ":false, "error":"validation failed: f.g"}
-	// {"succ":false, "error":"validation failed: {K:a}.f.g"}
-	// {"succ":false, "error":"validation failed: {}.f.g"}
+	// {"succ":false, "error":"validation failed: {v for k=a}.f.g"}
+	// {"succ":false, "error":"validation failed: {v for k=a}{v for k=b}.f.g"}
+	// {"succ":false, "error":"validation failed: [0]{v for k=a}.f.g"}
+	// unsupport data: can not addr
+	// {"succ":false, "error":"validation failed: {k}.f.g"}
 	// {"succ":false, "error":"validation failed: [0][0].f.g"}
-	// unsupport data: nil
+	// unsupport data: can not addr
+	// <nil>
+	// <nil>
 	// <nil>
 	// <nil>
 }
