@@ -66,7 +66,7 @@ func (p *paramInfo) bindRawBody(info *tagInfo, expr *tagexpr.TagExpr, bodyBytes 
 	if err != nil || !v.IsValid() {
 		return err
 	}
-	v = goutil.DereferenceValue(v)
+	v = ameda.DereferenceValue(v)
 	switch v.Kind() {
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
@@ -182,7 +182,7 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		return err
 	}
 
-	v = goutil.DereferenceValue(v)
+	v = ameda.DereferenceValue(v)
 	switch v.Kind() {
 	case reflect.String:
 		v.SetString(a[0])
@@ -371,7 +371,7 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (v reflect.Val
 	default:
 		v, err := unsafeUnmarshalSlice(t, a, emptyAsZero)
 		if err == nil {
-			return goutil.ReferenceSlice(v, ptrDepth), false, nil
+			return ameda.ReferenceSlice(v, ptrDepth), false, nil
 		}
 		return reflect.Value{}, true, err
 		// fn := typeUnmarshalFuncs[t]
@@ -386,10 +386,10 @@ func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (v reflect.Val
 		// 	}
 		// 	v = reflect.Append(v, vv)
 		// }
-		// return goutil.ReferenceSlice(v, ptrDepth), nil
+		// return ameda.ReferenceSlice(v, ptrDepth), nil
 	}
 	if err != nil {
 		return reflect.Value{}, false, errMismatch
 	}
-	return goutil.ReferenceSlice(reflect.ValueOf(i), ptrDepth), false, nil
+	return ameda.ReferenceSlice(reflect.ValueOf(i), ptrDepth), false, nil
 }

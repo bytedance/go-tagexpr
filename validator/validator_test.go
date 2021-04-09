@@ -175,8 +175,9 @@ func TestIn(t *testing.T) {
 	type S string
 	type I int16
 	type T struct {
-		A S `vd:"in($,'a','b','c')"`
-		B I `vd:"in($,1,2.0,3)"`
+		X *int `vd:"$==nil || len($)>0"`
+		A S    `vd:"in($,'a','b','c')"`
+		B I    `vd:"in($,1,2.0,3)"`
 	}
 	v := vd.New("vd")
 	data := T{}

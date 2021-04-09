@@ -24,8 +24,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/henrylee2cn/goutil"
-	"github.com/henrylee2cn/goutil/tpack"
+	"github.com/henrylee2cn/ameda"
 )
 
 // Internally unified data types
@@ -105,12 +104,12 @@ var unsupportNil = errors.New("unsupport data: nil")
 // Disable new -d=checkptr behaviour for Go 1.14
 //go:nocheckptr
 func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error) {
-	var u tpack.U
+	var u ameda.Value
 	v, isReflectValue := structOrStructPtrOrReflectValue.(reflect.Value)
 	if isReflectValue {
-		u = tpack.From(v)
+		u = ameda.ValueFrom(v)
 	} else {
-		u = tpack.Unpack(structOrStructPtrOrReflectValue)
+		u = ameda.ValueOf(structOrStructPtrOrReflectValue)
 	}
 	ptr := unsafe.Pointer(u.Pointer())
 	if ptr == nil {
@@ -155,29 +154,29 @@ func (vm *VM) RunAny(v interface{}, fn func(*TagExpr, error) error) error {
 }
 
 func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn func(*TagExpr, error) error) error {
-	rv := goutil.DereferenceIfaceValue(value)
+	rv := ameda.DereferenceInterfaceValue(value)
 	if !rv.IsValid() {
 		return nil
 	}
-	rt := goutil.DereferenceType(rv.Type())
-	rv = goutil.DereferenceValue(rv)
+	rt := ameda.DereferenceType(rv.Type())
+	rv = ameda.DereferenceValue(rv)
 	switch rt.Kind() {
 	case reflect.Struct:
-		ptr := unsafe.Pointer(tpack.From(rv).Pointer())
+		ptr := unsafe.Pointer(ameda.ValueFrom(rv).Pointer())
 		if ptr == nil {
 			if omitNil {
 				return nil
 			}
 			return fn(nil, unsupportNil)
 		}
-		return fn(vm.subRun(tePath, rt, tpack.RuntimeTypeID(rt), ptr))
+		return fn(vm.subRun(tePath, rt, ameda.RuntimeTypeID(rt), ptr))
 
 	case reflect.Slice, reflect.Array:
 		count := rv.Len()
 		if count == 0 {
 			return nil
 		}
-		switch goutil.DereferenceType(rv.Type().Elem()).Kind() {
+		switch ameda.DereferenceType(rv.Type().Elem()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			for i := count - 1; i >= 0; i-- {
 				err := vm.subRunAll(omitNil, tePath+"["+strconv.Itoa(i)+"]", rv.Index(i), fn)
@@ -195,11 +194,11 @@ func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn fun
 		}
 		var canKey, canValue bool
 		rt := rv.Type()
-		switch goutil.DereferenceType(rt.Key()).Kind() {
+		switch ameda.DereferenceType(rt.Key()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			canKey = true
 		}
-		switch goutil.DereferenceType(rt.Elem()).Kind() {
+		switch ameda.DereferenceType(rt.Elem()).Kind() {
 		case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Map:
 			canValue = true
 		}
@@ -249,7 +248,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 	if err != nil {
 		return nil, err
 	}
-	tid := tpack.RuntimeTypeID(structType)
+	tid := ameda.RuntimeTypeID(structType)
 	s, had := vm.structJar[tid]
 	if had {
 		return s, nil
@@ -797,7 +796,7 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 				keyPath := f.fieldSelector + FieldSeparator + "{}"
 				for _, key := range v.MapKeys() {
 					if mapKeyStructVM != nil {
-						p := unsafe.Pointer(tpack.From(derefValue(key)).Pointer())
+						p := unsafe.Pointer(ameda.ValueFrom(derefValue(key)).Pointer())
 						if omitNil && p == nil {
 							continue
 						}
@@ -812,7 +811,7 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 						}
 					}
 					if mapOrSliceElemStructVM != nil {
-						p := unsafe.Pointer(tpack.From(derefValue(v.MapIndex(key))).Pointer())
+						p := unsafe.Pointer(ameda.ValueFrom(derefValue(v.MapIndex(key))).Pointer())
 						if omitNil && p == nil {
 							continue
 						}
@@ -832,7 +831,7 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 				// slice or array
 				for i := v.Len() - 1; i >= 0; i-- {
 					if mapOrSliceElemStructVM != nil {
-						p := unsafe.Pointer(tpack.From(derefValue(v.Index(i))).Pointer())
+						p := unsafe.Pointer(ameda.ValueFrom(derefValue(v.Index(i))).Pointer())
 						if omitNil && p == nil {
 							continue
 						}

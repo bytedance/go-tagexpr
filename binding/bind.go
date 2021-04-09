@@ -9,7 +9,6 @@ import (
 
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil"
-	"github.com/henrylee2cn/goutil/tpack"
 
 	"github.com/bytedance/go-tagexpr/v2"
 	"github.com/bytedance/go-tagexpr/v2/validator"
@@ -219,7 +218,7 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 func (b *Binding) receiverValueOf(receiver interface{}) (reflect.Value, error) {
 	v := reflect.ValueOf(receiver)
 	if v.Kind() == reflect.Ptr {
-		v = goutil.DereferencePtrValue(v)
+		v = ameda.DereferencePtrValue(v)
 		if v.IsValid() && v.CanAddr() {
 			return v, nil
 		}
@@ -228,15 +227,15 @@ func (b *Binding) receiverValueOf(receiver interface{}) (reflect.Value, error) {
 }
 
 func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
-	runtimeTypeID := tpack.From(value).RuntimeTypeID()
+	runtimeTypeID := ameda.ValueFrom(value).RuntimeTypeID()
 	b.lock.RLock()
 	recv, ok := b.recvs[runtimeTypeID]
 	b.lock.RUnlock()
 	if ok {
 		return recv, nil
 	}
-
-	expr, err := b.vd.VM().Run(reflect.New(value.Type()).Elem())
+	t := value.Type()
+	expr, err := b.vd.VM().Run(reflect.New(t).Elem())
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +344,9 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 	if errMsg != "" {
 		return nil, b.bindErrFactory(errExprSelector.String(), errMsg)
 	}
-
+	if !recv.hasVd {
+		recv.hasVd, _ = b.findVdTag(ameda.DereferenceType(t), false, 20)
+	}
 	recv.initParams()
 
 	b.lock.Lock()
@@ -353,4 +354,34 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 	b.lock.Unlock()
 
 	return recv, nil
+}
+
+func (b *Binding) findVdTag(t reflect.Type, inMapOrSlice bool, depth int) (hasVd bool, err error) {
+	if depth <= 0 {
+		return
+	}
+	depth--
+	switch t.Kind() {
+	case reflect.Struct:
+		for i := t.NumField() - 1; i >= 0; i-- {
+			field := t.Field(i)
+			if inMapOrSlice {
+				tagKVs := b.config.parse(field)
+				for _, tagKV := range tagKVs {
+					if tagKV.name == b.config.Validator {
+						return true, nil
+					}
+				}
+			}
+			hasVd, _ = b.findVdTag(ameda.DereferenceType(field.Type), inMapOrSlice, depth)
+			if hasVd {
+				return true, nil
+			}
+		}
+		return false, nil
+	case reflect.Slice, reflect.Array, reflect.Map:
+		return b.findVdTag(ameda.DereferenceType(t.Elem()), true, depth)
+	default:
+		return false, nil
+	}
 }

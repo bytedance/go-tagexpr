@@ -956,8 +956,113 @@ func TestPathnameBUG(t *testing.T) {
 	req := newRequest("http://localhost", header, nil, bytes.NewReader(b))
 	recv := new(ExchangeCurrencyRequest)
 	binder := binding.New(nil)
-	err = binder.Bind(recv, req, nil)
+	err = binder.BindAndValidate(recv, req, nil)
 	assert.NoError(t, err)
 
 	assert.Equal(t, v, recv)
+}
+
+func TestPathnameBUG2(t *testing.T) {
+	type CurrencyData struct {
+		z      int
+		Amount *string `form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
+		Name   *string `form:"name,required" json:"name,required" protobuf:"bytes,2,req,name=name" query:"name,required"`
+		Symbol *string `form:"symbol" json:"symbol,omitempty" protobuf:"bytes,3,opt,name=symbol" query:"symbol"`
+	}
+	type TimeRange struct {
+		z         int
+		StartTime *int64 `form:"start_time,required" json:"start_time,required" protobuf:"varint,1,req,name=start_time,json=startTime" query:"start_time,required"`
+		EndTime   *int64 `form:"end_time,required" json:"end_time,required" protobuf:"varint,2,req,name=end_time,json=endTime" query:"end_time,required"`
+	}
+	type CreateFreeShippingRequest struct {
+		z                int
+		PromotionName    *string       `form:"promotion_name,required" json:"promotion_name,required" protobuf:"bytes,1,req,name=promotion_name,json=promotionName" query:"promotion_name,required"`
+		PromotionRegion  *string       `form:"promotion_region,required" json:"promotion_region,required" protobuf:"bytes,2,req,name=promotion_region,json=promotionRegion" query:"promotion_region,required"`
+		TimeRange        *TimeRange    `form:"time_range,required" json:"time_range,required" protobuf:"bytes,3,req,name=time_range,json=timeRange" query:"time_range,required"`
+		PromotionBudget  *CurrencyData `form:"promotion_budget,required" json:"promotion_budget,required" protobuf:"bytes,4,req,name=promotion_budget,json=promotionBudget" query:"promotion_budget,required"`
+		Loaded_SellerIds []string      `form:"loaded_Seller_ids" json:"loaded_Seller_ids,omitempty" protobuf:"bytes,5,rep,name=loaded_Seller_ids,json=loadedSellerIds" query:"loaded_Seller_ids"`
+		Version          *int32        `json:"version,omitempty" path:"version" protobuf:"varint,100,opt,name=version"`
+	}
+
+	// z := &CreateFreeShippingRequest{}
+	// v := ameda.InitSampleValue(reflect.TypeOf(z), 10).Interface().(*CreateFreeShippingRequest)
+	// b, err := json.MarshalIndent(v, "", "  ")
+	// assert.NoError(t, err)
+	// t.Log(string(b))
+	b := []byte(`{
+    "promotion_name": "mu",
+    "promotion_region": "ID",
+    "time_range": {
+        "start_time": 1616420139,
+        "end_time": 1616520139
+    },
+    "promotion_budget": {
+        "amount":"10000000",
+        "name":"USD",
+        "symbol":"$"
+    },
+    "loaded_Seller_ids": [
+        "7493989780026655762","11111","111212121"
+    ]
+}`)
+	var v = new(CreateFreeShippingRequest)
+	err := json.Unmarshal(b, v)
+	assert.NoError(t, err)
+
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json;charset=utf-8")
+	req := newRequest("http://localhost", header, nil, bytes.NewReader(b))
+	recv := new(CreateFreeShippingRequest)
+	binder := binding.New(nil)
+	err = binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, v, recv)
+}
+
+func TestRequiredBUG(t *testing.T) {
+	type Currency struct {
+		currencyName   *string `vd:"$=='x'" form:"currency_name,required" json:"currency_name,required" protobuf:"bytes,1,req,name=currency_name,json=currencyName" query:"currency_name,required"`
+		CurrencySymbol *string `vd:"$=='x'" form:"currency_symbol,required" json:"currency_symbol,required" protobuf:"bytes,2,req,name=currency_symbol,json=currencySymbol" query:"currency_symbol,required"`
+	}
+
+	type CurrencyData struct {
+		Amount *string              `form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
+		Slice  []*Currency          `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
+		Map    map[string]*Currency `form:"map,required" json:"map,required" protobuf:"bytes,2,req,name=map" query:"map,required"`
+	}
+
+	type ExchangeCurrencyRequest struct {
+		PromotionRegion *string       `form:"promotion_region,required" json:"promotion_region,required" protobuf:"bytes,1,req,name=promotion_region,json=promotionRegion" query:"promotion_region,required"`
+		Currency        *CurrencyData `form:"currency,required" json:"currency,required" protobuf:"bytes,2,req,name=currency" query:"currency,required"`
+	}
+
+	z := &ExchangeCurrencyRequest{}
+	// v := ameda.InitSampleValue(reflect.TypeOf(z), 10).Interface().(*ExchangeCurrencyRequest)
+	b := []byte(`{
+          "promotion_region": "?",
+          "currency": {
+            "amount": "?",
+            "slice": [
+              {
+                "currency_symbol": "?"
+              }
+            ],
+            "map": {
+              "?": {
+                "currency_name": "?"
+              }
+            }
+          }
+        }`)
+	t.Log(string(b))
+	json.Unmarshal(b, z)
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json;charset=utf-8")
+	req := newRequest("http://localhost", header, nil, bytes.NewReader(b))
+	recv := new(ExchangeCurrencyRequest)
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, nil)
+	assert.EqualError(t, err, "validating: expr_path=Currency.Slice[0].currencyName, cause=invalid")
+	assert.Equal(t, z, recv)
 }

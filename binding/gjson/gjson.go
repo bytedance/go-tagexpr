@@ -29,7 +29,6 @@ import (
 	"sync"
 
 	"github.com/henrylee2cn/ameda"
-	"github.com/henrylee2cn/goutil/tpack"
 	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
@@ -76,7 +75,7 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 			goval.Set(newval)
 		}
 	case reflect.Struct:
-		runtimeTypeID := tpack.From(goval).RuntimeTypeID()
+		runtimeTypeID := ameda.ValueFrom(goval).RuntimeTypeID()
 		fieldsmu.RLock()
 		sf := fields[runtimeTypeID]
 		fieldsmu.RUnlock()
