@@ -318,9 +318,52 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) error {
 	for i, t := range a {
 		kind := t.Kind()
 		if kind != reflect.Struct {
-			if kind == reflect.Interface {
+			switch kind {
+			case reflect.Interface:
 				field.mapOrSliceIfaceKinds[i] = true
 				field.origin.fieldsWithIndirectStructVM = append(field.origin.fieldsWithIndirectStructVM, field)
+				// case reflect.Slice, reflect.Array, reflect.Map:
+				// 	tt := t.Elem()
+				// 	checkMap := kind == reflect.Map
+				// F2:
+				// 	for {
+				// 		switch tt.Kind() {
+				// 		case reflect.Slice, reflect.Array, reflect.Map, reflect.Ptr:
+				// 			tt = tt.Elem()
+				// 		case reflect.Struct:
+				// 			s, err := vm.registerStructLocked(tt)
+				// 			if err != nil {
+				// 				return err
+				// 			}
+				// 			if len(s.exprSelectorList) > 0 ||
+				// 				len(s.ifaceTagExprGetters) > 0 ||
+				// 				len(s.fieldsWithIndirectStructVM) > 0 {
+				// 				if i == 0 {
+				// 					field.mapOrSliceElemStructVM = s
+				// 				} else {
+				// 					field.mapKeyStructVM = s
+				// 				}
+				// 				has := false
+				// 				for _, f := range field.origin.fieldsWithIndirectStructVM {
+				// 					if f == field {
+				// 						has = true
+				// 						break
+				// 					}
+				// 				}
+				// 				if !has {
+				// 					field.origin.fieldsWithIndirectStructVM = append(field.origin.fieldsWithIndirectStructVM, field)
+				// 				}
+				// 			}
+				// 			break F2
+				// 		default:
+				// 			break F2
+				// 		}
+				// 	}
+				// 	if checkMap {
+				// 		tt = t.Key()
+				// 		checkMap = false
+				// 		goto F2
+				// 	}
 			}
 			continue
 		}
@@ -905,7 +948,7 @@ func (t *TagExpr) checkout(fs string) (*TagExpr, error) {
 		return nil, errFieldSelector
 	}
 	ptr := f.getElemPtr(t.ptr)
-	if f.tagOp == tagOmitNil && unsafe.Pointer(ptr) == nil {
+	if f.tagOp == tagOmitNil && ptr == nil {
 		t.sub[fs] = nil
 		return nil, errOmitNil
 	}

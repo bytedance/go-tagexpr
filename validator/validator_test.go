@@ -67,7 +67,7 @@ func TestIssue1(t *testing.T) {
 			},
 		},
 	}
-	assert.EqualError(t, vd.Validate(req, true), "email format is incorrect")
+	assert.EqualError(t, vd.Validate(req, false), "email format is incorrect")
 }
 
 func TestIssue2(t *testing.T) {
@@ -268,8 +268,8 @@ func TestStructSliceMap(t *testing.T) {
 		B []map[string]*F
 	}
 	err := vd.Validate(&S{
-		B: []map[string]*F{{"y": f}},
 		A: map[string]*F{"x": f},
+		B: []map[string]*F{{"y": f}},
 	}, true)
-	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g")
+	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g\tinvalid parameter: B[0].f.g")
 }

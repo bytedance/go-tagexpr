@@ -688,12 +688,10 @@ func TestNilField(t *testing.T) {
 		Y **struct{} `tagexpr:"$"`
 	}
 	vm := New("tagexpr")
-	te := vm.MustRun(P{})
+	te := vm.MustRun(&P{})
 	te.Range(func(eh *ExprHandler) error {
 		r := eh.Eval()
-		if r != nil {
-			t.Fatal(eh.Path(), r)
-		}
+		assert.Nil(t, r, eh.Path())
 		return nil
 	})
 
@@ -701,15 +699,14 @@ func TestNilField(t *testing.T) {
 		Nil1 *int `tagexpr:"nil!=$"`
 		Nil2 *int `tagexpr:"$!=nil"`
 	}
-	g := G{
+	g := &G{
 		Nil1: new(int),
 		Nil2: new(int),
 	}
 	vm.MustRun(g).Range(func(eh *ExprHandler) error {
 		r, ok := eh.Eval().(bool)
-		if !ok || !r {
-			t.Fatal(eh.Path(), r)
-		}
+		assert.True(t, r, eh.Path())
+		assert.True(t, ok, eh.Path())
 		return nil
 	})
 
@@ -718,6 +715,7 @@ func TestNilField(t *testing.T) {
 			X  string                 `tagexpr:"len($)>0"`
 			S  []*N                   `tagexpr:"?"`
 			M  map[string]*N          `tagexpr:"?"`
+			M2 map[string]*N          `tagexpr:"?"`
 			I  interface{}            `tagexpr:"-"`
 			MI map[string]interface{} `tagexpr:"?"`
 			SI []interface{}
@@ -732,23 +730,20 @@ func TestNilField(t *testing.T) {
 		X:  "n",
 		S:  []*N{nil},
 		M:  map[string]*N{"": nil},
+		M2: map[string]*N{"": {X: "nn"}},
 		I:  new(N),
 		MI: map[string]interface{}{"": (*M)(nil)},
 		SI: []interface{}{&M{X: "nn"}},
 	}
 	var cnt int
 	vm.MustRun(n).Range(func(eh *ExprHandler) error {
-		r, ok := eh.Eval().(bool)
-		if !ok || !r {
-			t.Fatal(eh.Path(), r)
-		}
+		r := eh.EvalBool()
+		assert.True(t, r, eh.Path())
 		t.Log("path:", eh.Path(), "es:", eh.ExprSelector(), "val:", r)
 		cnt++
 		return nil
 	})
-	if cnt != 2 {
-		t.FailNow()
-	}
+	assert.Equal(t, 2, cnt)
 }
 
 func TestDeepNested(t *testing.T) {
