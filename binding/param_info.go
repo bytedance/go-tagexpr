@@ -126,8 +126,10 @@ func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, body
 	case bodyJSON:
 		return p.checkRequireJSON(info, expr, bodyString, false)
 	case bodyProtobuf:
-		err := p.checkRequireProtobuf(info, expr, false)
-		return err == nil, err
+		// It has been checked when binding, no need to check now
+		return true, nil
+		// err := p.checkRequireProtobuf(info, expr, false)
+		// return err == nil, err
 	default:
 		return false, info.contentTypeError
 	}
