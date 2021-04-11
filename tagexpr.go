@@ -335,16 +335,7 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) error {
 						return err
 					}
 					field.mapOrSliceIfaceKinds[i] = true
-					// if len(s.exprSelectorList) > 0 ||
-					// 	len(s.ifaceTagExprGetters) > 0 ||
-					// 	len(s.fieldsWithIndirectStructVM) > 0 {
-					// 	if i == 0 {
-					// 		field.mapOrSliceElemStructVM = s
-					// 	} else {
-					// 		field.mapKeyStructVM = s
-					// 	}
 					field.origin.fieldsWithIndirectStructVM = appendDistinct(field.origin.fieldsWithIndirectStructVM, field)
-					// }
 					break F2
 				default:
 					break F2
