@@ -65,32 +65,52 @@ func TestMap(t *testing.T) {
 }
 
 func TestStruct(t *testing.T) {
-	type PageParam struct {
-		Page int `form:"page" json:"page"`
-		Size int `form:"size" json:"size"`
+	type a struct {
+		V int `json:"v"`
 	}
-	type SearchParam struct {
-		PageParam
+	type B struct {
+		a
+		A2 **a
+	}
+	type C struct {
+		*B `json:"b"`
+	}
+	type D struct {
+		*C `json:","`
+	}
+	type E struct {
+		D
+		K int `json:"k"`
+		int
 	}
 	data := []byte(`{
-"page":1,
-"size":2
+"k":1,
+"b":{"v":2,"A2":{"v":3}}
 }`)
-	p := SearchParam{}
-	err := unmarshal(data, &p)
+	std := &E{}
+	err := json.Unmarshal(data, std)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, std.K)
+		assert.Equal(t, 2, std.V)
+		assert.Equal(t, 3, (*std.A2).V)
+	}
+	g := &E{}
+	err = unmarshal(data, g)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, p.Page)
-	assert.Equal(t, 2, p.Size)
+	assert.Equal(t, std, g)
 
-	data2 := []byte(`{
-"PageParam":{
-"page":1,
-"size":2
-}
-}`)
-	p2 := SearchParam{}
-	err = unmarshal(data2, &p2)
+	type X struct {
+		*X
+		Y int
+	}
+	data2 := []byte(`{"X":{"Y":2}}`)
+	std2 := &X{}
+	err = json.Unmarshal(data2, std2)
+	if assert.NoError(t, err) {
+		t.Logf("%#v", std2)
+	}
+	g2 := &X{}
+	err = unmarshal(data2, g2)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, p2.Page)
-	assert.Equal(t, 2, p2.Size)
+	assert.Equal(t, std2, g2)
 }

@@ -29,13 +29,14 @@ import (
 	"sync"
 
 	"github.com/henrylee2cn/ameda"
+	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
 )
 
 var fieldsmu sync.RWMutex
-var fields = make(map[uintptr]map[string]int)
+var fields = make(map[uintptr]map[string][]int)
 
 func init() {
 	gjson.DisableModifiers = true
@@ -81,18 +82,26 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 		fieldsmu.RUnlock()
 		if sf == nil {
 			fieldsmu.Lock()
-			sf = make(map[string]int)
+			sf = make(map[string][]int)
 			numField := t.NumField()
 			for i := 0; i < numField; i++ {
 				f := t.Field(i)
-				tag := strings.Split(f.Tag.Get("json"), ",")[0]
-				if tag != "-" {
-					if tag != "" {
-						sf[tag] = i
-						sf[f.Name] = i
-					} else {
-						sf[f.Name] = i
+				if !f.Anonymous && !goutil.IsExportedName(f.Name) {
+					continue
+				}
+				tag := getJsonTag(f.Tag)
+				if tag == "-" {
+					continue
+				}
+				if tag != "" {
+					sf[tag] = []int{i}
+				} else if f.Anonymous {
+					if findAnonymous(ameda.DereferenceType(f.Type), []int{i}, sf, 20) {
+						continue
 					}
+				}
+				if tag != f.Name {
+					sf[f.Name] = []int{i}
 				}
 			}
 			fields[runtimeTypeID] = sf
@@ -100,7 +109,7 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 		}
 		jsval.ForEach(func(key, value gjson.Result) bool {
 			if idx, ok := sf[key.Str]; ok {
-				f := goval.Field(idx)
+				f := fieldByIndex(goval, idx)
 				if f.CanSet() {
 					assign(value, f)
 				}
@@ -167,4 +176,71 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 			}
 		}
 	}
+}
+
+func getJsonTag(tag reflect.StructTag) string {
+	return strings.Split(tag.Get("json"), ",")[0]
+}
+
+func findAnonymous(t reflect.Type, i []int, sf map[string][]int, depth int) bool {
+	depth--
+	if depth < 0 {
+		return false
+	}
+	if t.Kind() == reflect.Struct {
+		subNumField := t.NumField()
+		for ii := 0; ii < subNumField; ii++ {
+			ff := t.Field(ii)
+			subTag := getJsonTag(ff.Tag)
+			if subTag == "-" {
+				continue
+			}
+			a := append(i, ii)
+			if subTag != "" {
+				sf[subTag] = a
+			} else if ff.Anonymous {
+				tt := ameda.DereferenceType(ff.Type)
+				if tt.String() == t.String() {
+					continue
+				}
+				if findAnonymous(tt, a, sf, depth) {
+					continue
+				}
+			}
+			if subTag != ff.Name {
+				sf[ff.Name] = a
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func fieldByIndex(v reflect.Value, index []int) reflect.Value {
+	if len(index) == 1 {
+		return v.Field(index[0])
+	}
+	if v.Kind() != reflect.Struct {
+		return reflect.Value{}
+	}
+	for i, x := range index {
+		if i > 0 {
+			if v.Kind() == reflect.Ptr && v.Type().Elem().Kind() == reflect.Struct {
+				if v.IsNil() {
+					if v.CanSet() {
+						ptrDepth := 0
+						t := v.Type()
+						for t.Kind() == reflect.Ptr {
+							t = t.Elem()
+							ptrDepth++
+						}
+						v.Set(ameda.ReferenceValue(reflect.New(t), ptrDepth-1))
+					}
+				}
+				v = ameda.DereferencePtrValue(v)
+			}
+		}
+		v = v.Field(x)
+	}
+	return v
 }
