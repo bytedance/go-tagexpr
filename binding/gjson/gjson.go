@@ -235,9 +235,11 @@ func fieldByIndex(v reflect.Value, index []int) reflect.Value {
 							ptrDepth++
 						}
 						v.Set(ameda.ReferenceValue(reflect.New(t), ptrDepth-1))
+						v = ameda.DereferencePtrValue(v)
 					}
+				} else {
+					v = ameda.DereferencePtrValue(v)
 				}
-				v = ameda.DereferencePtrValue(v)
 			}
 		}
 		v = v.Field(x)
