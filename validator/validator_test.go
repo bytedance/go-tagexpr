@@ -266,10 +266,12 @@ func TestStructSliceMap(t *testing.T) {
 	type S struct {
 		A map[string]*F
 		B []map[string]*F
+		C map[string][]map[string]*F
 	}
 	err := vd.Validate(&S{
 		A: map[string]*F{"x": f},
 		B: []map[string]*F{{"y": f}},
+		C: map[string][]map[string]*F{"z": {{"zz": f}}},
 	}, true)
-	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g\tinvalid parameter: B[0]{v for k=y}.f.g")
+	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g\tinvalid parameter: B[0]{v for k=y}.f.g\tinvalid parameter: C{v for k=z}[0]{v for k=zz}.f.g")
 }
