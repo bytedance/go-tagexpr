@@ -271,5 +271,5 @@ func TestStructSliceMap(t *testing.T) {
 		A: map[string]*F{"x": f},
 		B: []map[string]*F{{"y": f}},
 	}, true)
-	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g\tinvalid parameter: B[0].f.g")
+	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g\tinvalid parameter: B[0]{v for k=y}.f.g")
 }

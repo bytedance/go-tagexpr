@@ -317,72 +317,76 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) error {
 	}
 	for i, t := range a {
 		kind := t.Kind()
-		if kind != reflect.Struct {
-			switch kind {
-			case reflect.Interface:
-				field.mapOrSliceIfaceKinds[i] = true
-				field.origin.fieldsWithIndirectStructVM = append(field.origin.fieldsWithIndirectStructVM, field)
-				// case reflect.Slice, reflect.Array, reflect.Map:
-				// 	tt := t.Elem()
-				// 	checkMap := kind == reflect.Map
-				// F2:
-				// 	for {
-				// 		switch tt.Kind() {
-				// 		case reflect.Slice, reflect.Array, reflect.Map, reflect.Ptr:
-				// 			tt = tt.Elem()
-				// 		case reflect.Struct:
-				// 			s, err := vm.registerStructLocked(tt)
-				// 			if err != nil {
-				// 				return err
-				// 			}
-				// 			if len(s.exprSelectorList) > 0 ||
-				// 				len(s.ifaceTagExprGetters) > 0 ||
-				// 				len(s.fieldsWithIndirectStructVM) > 0 {
-				// 				if i == 0 {
-				// 					field.mapOrSliceElemStructVM = s
-				// 				} else {
-				// 					field.mapKeyStructVM = s
-				// 				}
-				// 				has := false
-				// 				for _, f := range field.origin.fieldsWithIndirectStructVM {
-				// 					if f == field {
-				// 						has = true
-				// 						break
-				// 					}
-				// 				}
-				// 				if !has {
-				// 					field.origin.fieldsWithIndirectStructVM = append(field.origin.fieldsWithIndirectStructVM, field)
-				// 				}
-				// 			}
-				// 			break F2
-				// 		default:
-				// 			break F2
-				// 		}
-				// 	}
-				// 	if checkMap {
-				// 		tt = t.Key()
-				// 		checkMap = false
-				// 		goto F2
-				// 	}
+		switch kind {
+		case reflect.Interface:
+			field.mapOrSliceIfaceKinds[i] = true
+			field.origin.fieldsWithIndirectStructVM = appendDistinct(field.origin.fieldsWithIndirectStructVM, field)
+		case reflect.Slice, reflect.Array, reflect.Map:
+			tt := t.Elem()
+			checkMap := kind == reflect.Map
+		F2:
+			for {
+				switch tt.Kind() {
+				case reflect.Slice, reflect.Array, reflect.Map, reflect.Ptr:
+					tt = tt.Elem()
+				case reflect.Struct:
+					_, err := vm.registerStructLocked(tt)
+					if err != nil {
+						return err
+					}
+					field.mapOrSliceIfaceKinds[i] = true
+					// if len(s.exprSelectorList) > 0 ||
+					// 	len(s.ifaceTagExprGetters) > 0 ||
+					// 	len(s.fieldsWithIndirectStructVM) > 0 {
+					// 	if i == 0 {
+					// 		field.mapOrSliceElemStructVM = s
+					// 	} else {
+					// 		field.mapKeyStructVM = s
+					// 	}
+					field.origin.fieldsWithIndirectStructVM = appendDistinct(field.origin.fieldsWithIndirectStructVM, field)
+					// }
+					break F2
+				default:
+					break F2
+				}
 			}
-			continue
-		}
-		s, err := vm.registerStructLocked(t)
-		if err != nil {
-			return err
-		}
-		if len(s.exprSelectorList) > 0 ||
-			len(s.ifaceTagExprGetters) > 0 ||
-			len(s.fieldsWithIndirectStructVM) > 0 {
-			if i == 0 {
-				field.mapOrSliceElemStructVM = s
-			} else {
-				field.mapKeyStructVM = s
+			if checkMap {
+				tt = t.Key()
+				checkMap = false
+				goto F2
 			}
-			field.origin.fieldsWithIndirectStructVM = append(field.origin.fieldsWithIndirectStructVM, field)
+		case reflect.Struct:
+			s, err := vm.registerStructLocked(t)
+			if err != nil {
+				return err
+			}
+			if len(s.exprSelectorList) > 0 ||
+				len(s.ifaceTagExprGetters) > 0 ||
+				len(s.fieldsWithIndirectStructVM) > 0 {
+				if i == 0 {
+					field.mapOrSliceElemStructVM = s
+				} else {
+					field.mapKeyStructVM = s
+				}
+				field.origin.fieldsWithIndirectStructVM = appendDistinct(field.origin.fieldsWithIndirectStructVM, field)
+			}
 		}
 	}
 	return nil
+}
+
+func appendDistinct(a []*fieldVM, i *fieldVM) []*fieldVM {
+	has := false
+	for _, e := range a {
+		if e == i {
+			has = true
+			break
+		}
+	}
+	if !has {
+		return append(a, i)
+	}
+	return a
 }
 
 func (vm *VM) newStructVM() *structVM {
