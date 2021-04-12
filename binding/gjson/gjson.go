@@ -185,7 +185,7 @@ func getJsonTag(tag reflect.StructTag) string {
 func findAnonymous(t reflect.Type, i []int, sf map[string][]int, depth int) bool {
 	depth--
 	if depth < 0 {
-		return false
+		return true
 	}
 	if t.Kind() == reflect.Struct {
 		subNumField := t.NumField()
@@ -223,23 +223,24 @@ func fieldByIndex(v reflect.Value, index []int) reflect.Value {
 	if v.Kind() != reflect.Struct {
 		return reflect.Value{}
 	}
-	for i, x := range index {
-		if i > 0 {
-			if v.Kind() == reflect.Ptr && v.Type().Elem().Kind() == reflect.Struct {
-				if v.IsNil() {
-					if v.CanSet() {
-						ptrDepth := 0
-						t := v.Type()
-						for t.Kind() == reflect.Ptr {
-							t = t.Elem()
-							ptrDepth++
-						}
-						v.Set(ameda.ReferenceValue(reflect.New(t), ptrDepth-1))
-						v = ameda.DereferencePtrValue(v)
+	v = v.Field(index[0])
+	for _, x := range index[1:] {
+		for v.Kind() == reflect.Ptr && v.Type().Elem().Kind() == reflect.Struct {
+			if v.IsNil() {
+				if v.CanSet() {
+					ptrDepth := 0
+					t := v.Type()
+					for t.Kind() == reflect.Ptr {
+						t = t.Elem()
+						ptrDepth++
 					}
-				} else {
+					v.Set(ameda.ReferenceValue(reflect.New(t), ptrDepth-1))
 					v = ameda.DereferencePtrValue(v)
+				} else {
+					return reflect.Value{}
 				}
+			} else {
+				v = ameda.DereferencePtrValue(v)
 			}
 		}
 		v = v.Field(x)

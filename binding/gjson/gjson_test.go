@@ -77,6 +77,7 @@ func TestStruct(t *testing.T) {
 	}
 	type D struct {
 		*C `json:","`
+		C2 *int
 	}
 	type E struct {
 		D
@@ -85,6 +86,7 @@ func TestStruct(t *testing.T) {
 	}
 	data := []byte(`{
 "k":1,
+"C2":null,
 "b":{"v":2,"A2":{"v":3}}
 }`)
 	std := &E{}
