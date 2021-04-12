@@ -2,8 +2,10 @@ package gjson
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
+	"github.com/henrylee2cn/ameda"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -115,4 +117,23 @@ func TestStruct(t *testing.T) {
 	err = unmarshal(data2, g2)
 	assert.NoError(t, err)
 	assert.Equal(t, std2, g2)
+}
+
+func TestAliasBUG1(t *testing.T) {
+	type DeviceUUID string
+	type DeviceUUIDMap map[DeviceUUID]string
+	type AttachedMobiles struct {
+		AttachedAndroid DeviceUUIDMap `json:"android,omitempty"`
+		AttachedIOS     DeviceUUIDMap `json:"ios,omitempty"`
+	}
+	b, err := json.MarshalIndent(ameda.InitSampleValue(reflect.TypeOf(AttachedMobiles{}), 10).Interface(), "", "  ")
+	assert.NoError(t, err)
+	var r AttachedMobiles
+	err = unmarshal(b, &r)
+	assert.NoError(t, err)
+	// b, err = json.Marshal(map[float32]int{
+	// 	1.0: 4,
+	// })
+	// assert.NoError(t, err)
+	// t.Log(string(b))
 }

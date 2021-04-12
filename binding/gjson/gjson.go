@@ -24,6 +24,7 @@ package gjson
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -53,14 +54,13 @@ func unmarshal(data []byte, v interface{}) error {
 	if !ok {
 		val = reflect.ValueOf(v)
 	}
-	assign(gjson.Parse(ameda.UnsafeBytesToString(data)), val)
-	return nil
+	return assign(gjson.Parse(ameda.UnsafeBytesToString(data)), val)
 }
 
 // assign unmarshal
-func assign(jsval gjson.Result, goval reflect.Value) {
+func assign(jsval gjson.Result, goval reflect.Value) (err error) {
 	if jsval.Type == gjson.Null {
-		return
+		return nil
 	}
 	t := goval.Type()
 	switch goval.Kind() {
@@ -68,11 +68,15 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 	case reflect.Ptr:
 		if !goval.IsNil() {
 			newval := reflect.New(goval.Elem().Type())
-			assign(jsval, newval.Elem())
+			if err = assign(jsval, newval.Elem()); err != nil {
+				return err
+			}
 			goval.Elem().Set(newval.Elem())
 		} else {
 			newval := reflect.New(t.Elem())
-			assign(jsval, newval.Elem())
+			if err = assign(jsval, newval.Elem()); err != nil {
+				return err
+			}
 			goval.Set(newval)
 		}
 	case reflect.Struct:
@@ -111,20 +115,28 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 			if idx, ok := sf[key.Str]; ok {
 				f := fieldByIndex(goval, idx)
 				if f.CanSet() {
-					assign(value, f)
+					if err = assign(value, f); err != nil {
+						return false
+					}
 				}
 			}
 			return true
 		})
 	case reflect.Slice:
 		if t.Elem().Kind() == reflect.Uint8 && jsval.Type == gjson.String {
-			data, _ := base64.StdEncoding.DecodeString(jsval.String())
+			var data []byte
+			data, err = base64.StdEncoding.DecodeString(jsval.String())
+			if err != nil {
+				return err
+			}
 			goval.Set(reflect.ValueOf(data))
 		} else {
 			jsvals := jsval.Array()
 			slice := reflect.MakeSlice(t, len(jsvals), len(jsvals))
 			for i := 0; i < len(jsvals); i++ {
-				assign(jsvals[i], slice.Index(i))
+				if err = assign(jsvals[i], slice.Index(i)); err != nil {
+					return err
+				}
 			}
 			goval.Set(slice)
 		}
@@ -134,7 +146,9 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 			if i == n {
 				return false
 			}
-			assign(value, goval.Index(i))
+			if err = assign(value, goval.Index(i)); err != nil {
+				return false
+			}
 			i++
 			return true
 		})
@@ -147,10 +161,19 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 					goval.Set(reflect.MakeMap(t))
 				}
 				valType := t.Elem()
+				keyType := goval.Type().Key()
+				switch keyType.Kind() {
+				case reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+					reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				default:
+					return fmt.Errorf("gjson: unsupported type: %s", keyType)
+				}
 				jsval.ForEach(func(key, value gjson.Result) bool {
 					val := reflect.New(valType)
-					assign(value, val)
-					goval.SetMapIndex(reflect.ValueOf(key.String()), val.Elem())
+					if err = assign(value, val); err != nil {
+						return false
+					}
+					goval.SetMapIndex(reflect.ValueOf(key.String()).Convert(keyType), val.Elem())
 					return true
 				})
 			}
@@ -172,10 +195,13 @@ func assign(jsval gjson.Result, goval reflect.Value) {
 		v := goval.Addr()
 		if v.Type().NumMethod() > 0 {
 			if u, ok := v.Interface().(json.Unmarshaler); ok {
-				u.UnmarshalJSON([]byte(jsval.Raw))
+				if err = u.UnmarshalJSON([]byte(jsval.Raw)); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return err
 }
 
 func getJsonTag(tag reflect.StructTag) string {
