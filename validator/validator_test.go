@@ -15,7 +15,7 @@ func TestNil(t *testing.T) {
 			g int `vd:"$%3==1"`
 		}
 	}
-	assert.EqualError(t, vd.Validate((*F)(nil)), "unsupport data: can not addr")
+	assert.EqualError(t, vd.Validate((*F)(nil)), "unsupport data: nil")
 }
 
 func TestAll(t *testing.T) {
@@ -267,11 +267,15 @@ func TestStructSliceMap(t *testing.T) {
 		A map[string]*F
 		B []map[string]*F
 		C map[string][]map[string]F
+		// _ int
 	}
-	err := vd.Validate(&S{
+	s := S{
 		A: map[string]*F{"x": f},
 		B: []map[string]*F{{"y": f}},
 		C: map[string][]map[string]F{"z": {{"zz": *f}}},
-	}, true)
+	}
+	err := vd.Validate(s, true)
 	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g\tinvalid parameter: B[0]{v for k=y}.f.g\tinvalid parameter: C{v for k=z}[0]{v for k=zz}.f.g")
 }
+
+

@@ -116,10 +116,10 @@ func Example() {
 	// {"succ":false, "error":"validation failed: {v for k=a}.f.g"}
 	// {"succ":false, "error":"validation failed: {v for k=a}{v for k=b}.f.g"}
 	// {"succ":false, "error":"validation failed: [0]{v for k=a}.f.g"}
-	// unsupport data: can not addr
+	// {"succ":false, "error":"validation failed: A[0]{v for k=x}.f.g"}
 	// {"succ":false, "error":"validation failed: {k}.f.g"}
 	// {"succ":false, "error":"validation failed: [0][0].f.g"}
-	// unsupport data: can not addr
+	// unsupport data: nil
 	// <nil>
 	// <nil>
 	// <nil>

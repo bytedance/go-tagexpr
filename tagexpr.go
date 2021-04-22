@@ -107,21 +107,23 @@ var (
 // Disable new -d=checkptr behaviour for Go 1.14
 //go:nocheckptr
 func (vm *VM) Run(structPtrOrReflectValue interface{}) (*TagExpr, error) {
-	var u ameda.Value
-	v, isReflectValue := structPtrOrReflectValue.(reflect.Value)
-	if isReflectValue {
-		u = ameda.ValueFrom(v)
-	} else {
-		u = ameda.ValueOf(structPtrOrReflectValue)
+	var v reflect.Value
+	switch t := structPtrOrReflectValue.(type) {
+	case reflect.Value:
+		v = ameda.DereferenceValue(t)
+	default:
+		v = ameda.DereferenceValue(reflect.ValueOf(t))
 	}
+	if err := checkStructMapAddr(v); err != nil {
+		return nil, err
+	}
+
+	u := ameda.ValueFrom2(&v)
 	ptr := unsafe.Pointer(u.Pointer())
 	if ptr == nil {
 		return nil, unsupportNil
 	}
-	u = u.UnderlyingElem()
-	if !u.CanAddr() {
-		return nil, unsupportCannotAddr
-	}
+
 	tid := u.RuntimeTypeID()
 	var err error
 	vm.rw.RLock()
@@ -131,11 +133,7 @@ func (vm *VM) Run(structPtrOrReflectValue interface{}) (*TagExpr, error) {
 		vm.rw.Lock()
 		s, ok = vm.structJar[tid]
 		if !ok {
-			if isReflectValue {
-				s, err = vm.registerStructLocked(v.Type())
-			} else {
-				s, err = vm.registerStructLocked(reflect.TypeOf(structPtrOrReflectValue))
-			}
+			s, err = vm.registerStructLocked(v.Type())
 			if err != nil {
 				vm.rw.Unlock()
 				return nil, err
@@ -159,6 +157,14 @@ func (vm *VM) RunAny(v interface{}, fn func(*TagExpr, error) error) error {
 	return vm.subRunAll(false, "", vv, fn)
 }
 
+// check type: struct{F map[T1]T2}
+func checkStructMapAddr(v reflect.Value) error {
+	if !v.IsValid() || v.CanAddr() || v.NumField() != 1 || v.Field(0).Kind() != reflect.Map {
+		return nil
+	}
+	return unsupportCannotAddr
+}
+
 func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn func(*TagExpr, error) error) error {
 	rv := ameda.DereferenceInterfaceValue(value)
 	if !rv.IsValid() {
@@ -168,17 +174,20 @@ func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn fun
 	rv = ameda.DereferenceValue(rv)
 	switch rt.Kind() {
 	case reflect.Struct:
-		if len(tePath) == 0 && !rv.CanAddr() {
-			return unsupportCannotAddr
+		if len(tePath) == 0 {
+			if err := checkStructMapAddr(rv); err != nil {
+				return err
+			}
 		}
-		ptr := unsafe.Pointer(ameda.ValueFrom(rv).Pointer())
+		u := ameda.ValueFrom2(&rv)
+		ptr := unsafe.Pointer(u.Pointer())
 		if ptr == nil {
 			if omitNil {
 				return nil
 			}
 			return fn(nil, unsupportNil)
 		}
-		return fn(vm.subRun(tePath, rt, ameda.RuntimeTypeID(rt), ptr))
+		return fn(vm.subRun(tePath, rt, u.RuntimeTypeID(), ptr))
 
 	case reflect.Slice, reflect.Array:
 		count := rv.Len()
