@@ -48,6 +48,11 @@ func (f *FieldHandler) EvalFuncs() map[ExprSelector]func() interface{} {
 	return evals
 }
 
+// GetKind returns the field Kind.
+func (f *FieldHandler) GetKind() reflect.Kind {
+	return f.field.elemKind
+}
+
 // StructField returns the field StructField object.
 func (f *FieldHandler) StructField() reflect.StructField {
 	return f.field.structField

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/bytedance/go-tagexpr/v2"
 )
@@ -137,6 +138,7 @@ func (r *receiver) getCookies(req Request) []*http.Cookie {
 
 func (r *receiver) initParams() {
 	names := make(map[string][maxIn]string, len(r.params))
+
 	for _, p := range r.params {
 		if p.structField.Anonymous {
 			continue
@@ -153,12 +155,25 @@ func (r *receiver) initParams() {
 		for _, info := range p.tagInfos {
 			var fs string
 			for _, s := range paths {
+
 				if fs == "" {
 					fs = s
 				} else {
 					fs = tagexpr.JoinFieldSelector(fs, s)
 				}
-				name := names[fs][info.paramIn]
+				var name string
+				SliceOrMapKind := false
+				// 判断parent是否为Slice/Array或Map类型
+				if strings.HasSuffix(s,"[]") ||  strings.HasSuffix(s,"{}") {
+					SliceOrMapKind = true
+					name = names[fs[ : len(fs)-2]][info.paramIn]
+				}else{
+					name = names[fs][info.paramIn]
+				}
+
+				if SliceOrMapKind {
+					name += ".#"
+				}
 				if name != "" {
 					info.namePath += name + "."
 				}
