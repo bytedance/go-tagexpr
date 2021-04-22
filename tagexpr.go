@@ -100,19 +100,19 @@ var (
 	unsupportCannotAddr = errors.New("unsupport data: can not addr")
 )
 
-// Run returns the tag expression handler of the @structOrStructPtrOrReflectValue.
+// Run returns the tag expression handler of the @structPtrOrReflectValue.
 // NOTE:
 //  If the structure type has not been warmed up,
 //  it will be slower when it is first called.
 // Disable new -d=checkptr behaviour for Go 1.14
 //go:nocheckptr
-func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error) {
+func (vm *VM) Run(structPtrOrReflectValue interface{}) (*TagExpr, error) {
 	var u ameda.Value
-	v, isReflectValue := structOrStructPtrOrReflectValue.(reflect.Value)
+	v, isReflectValue := structPtrOrReflectValue.(reflect.Value)
 	if isReflectValue {
 		u = ameda.ValueFrom(v)
 	} else {
-		u = ameda.ValueOf(structOrStructPtrOrReflectValue)
+		u = ameda.ValueOf(structPtrOrReflectValue)
 	}
 	ptr := unsafe.Pointer(u.Pointer())
 	if ptr == nil {
@@ -134,7 +134,7 @@ func (vm *VM) Run(structOrStructPtrOrReflectValue interface{}) (*TagExpr, error)
 			if isReflectValue {
 				s, err = vm.registerStructLocked(v.Type())
 			} else {
-				s, err = vm.registerStructLocked(reflect.TypeOf(structOrStructPtrOrReflectValue))
+				s, err = vm.registerStructLocked(reflect.TypeOf(structPtrOrReflectValue))
 			}
 			if err != nil {
 				vm.rw.Unlock()
@@ -168,7 +168,7 @@ func (vm *VM) subRunAll(omitNil bool, tePath string, value reflect.Value, fn fun
 	rv = ameda.DereferenceValue(rv)
 	switch rt.Kind() {
 	case reflect.Struct:
-		if !rv.CanAddr() {
+		if len(tePath) == 0 && !rv.CanAddr() {
 			return unsupportCannotAddr
 		}
 		ptr := unsafe.Pointer(ameda.ValueFrom(rv).Pointer())

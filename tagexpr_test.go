@@ -743,7 +743,7 @@ func TestNilField(t *testing.T) {
 		cnt++
 		return nil
 	})
-	assert.Equal(t, 2, cnt)
+	assert.Equal(t, 3, cnt)
 }
 
 func TestDeepNested(t *testing.T) {
