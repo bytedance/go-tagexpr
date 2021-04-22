@@ -72,13 +72,6 @@ type fieldVM struct {
 	tagOp                  string
 }
 
-func (f *fieldVM) GetKind() reflect.Kind {
-	return f.elemKind
-}
-func (f *fieldVM) GetMapOrSliceElemStructVM() *structVM {
-	return f.mapOrSliceElemStructVM
-}
-
 // New creates a tag expression interpreter that uses tagName as the tag name.
 // NOTE:
 //  If no tagName is specified, no tag expression will be interpreted,
@@ -480,7 +473,7 @@ func (s *structVM) mergeSubStructVM(field *fieldVM, sub *structVM) {
 		v := sub.fields[k]
 		f := s.newChildField(field, v, true)
 		if _, ok := fieldsWithIndirectStructVM[v]; ok {
-				s.fieldsWithIndirectStructVM = append(s.fieldsWithIndirectStructVM, f)
+			s.fieldsWithIndirectStructVM = append(s.fieldsWithIndirectStructVM, f)
 			// TODO: maybe needed?
 			// delete(fieldsWithIndirectStructVM, v)
 		}
@@ -582,20 +575,18 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM, toBind bool) *
 
 	if toBind {
 		s.fields[f.fieldSelector] = f
-		//if !strings.Contains(f.fieldSelector,"{}") && strings.Contains(f.fieldSelector,"[]") {
-			s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
-			if parent.tagOp != tagOmit {
-				for k, v := range child.exprs {
-					if parent.elemKind == reflect.Slice || parent.elemKind == reflect.Array || parent.elemKind == reflect.Map {
-						continue
-					}
-					selector := parent.fieldSelector + FieldSeparator + k
-					f.exprs[selector] = v
-					s.exprs[selector] = v
-					s.exprSelectorList = append(s.exprSelectorList, selector)
+		s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
+		if parent.tagOp != tagOmit {
+			for k, v := range child.exprs {
+				if parent.elemKind == reflect.Slice || parent.elemKind == reflect.Array || parent.elemKind == reflect.Map {
+					continue
 				}
+				selector := parent.fieldSelector + FieldSeparator + k
+				f.exprs[selector] = v
+				s.exprs[selector] = v
+				s.exprSelectorList = append(s.exprSelectorList, selector)
 			}
-		//}
+		}
 	}
 	return f
 }
@@ -864,8 +855,8 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 
 	if list := t.s.fieldsWithIndirectStructVM; len(list) > 0 {
 		for _, f := range list {
-			// 跳过map和slice的越级vd
-			if strings.Contains(f.fieldSelector,"{}"+FieldSeparator) || strings.Contains(f.fieldSelector,"[]"+FieldSeparator){
+			// ignore map and slice/array when range indirectStructVM
+			if strings.Contains(f.fieldSelector, "{}"+FieldSeparator) || strings.Contains(f.fieldSelector, "[]"+FieldSeparator) {
 				continue
 			}
 			v := f.packElemFrom(ptr)

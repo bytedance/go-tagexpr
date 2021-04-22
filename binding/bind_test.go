@@ -3,7 +3,6 @@ package binding_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,7 +15,6 @@ import (
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil/httpbody"
 	"github.com/stretchr/testify/assert"
-	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
 )
@@ -1031,11 +1029,11 @@ func TestRequiredBUG(t *testing.T) {
 		B *string `json:"b,required"`
 	}
 	type AAA struct {
-		A *AAA	`json:"a,required"`
+		A *AAA `json:"a,required"`
 	}
 	type CurrencyData struct {
-		Amount *string               `vd:"$=='?'" form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
-		Slice  []*Currency2          `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
+		Amount *string                  `vd:"$=='?'" form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
+		Slice  []*Currency2             `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
 		Map    map[string]*CurrencyData `form:"map,required" json:"map,required" protobuf:"bytes,2,req,name=map" query:"map,required"`
 	}
 
@@ -1082,145 +1080,3 @@ func TestRequiredBUG(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, z, recv)
 }
-
-func BenchmarkGjson(t *testing.B) {
-	type Currency2 struct {
-		currencyName   *string `vd:"$=='x'" form:"currency_name,required" json:"currency_name,required" protobuf:"bytes,1,req,name=currency_name,json=currencyName" query:"currency_name,required"`
-		CurrencySymbol *string `vd:"$=='x'" form:"currency_symbol,required" json:"currency_symbol,required" protobuf:"bytes,2,req,name=currency_symbol,json=currencySymbol" query:"currency_symbol,required"`
-	}
-
-	type CurrencyData struct {
-		Amount *string               `form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
-		Slice  []*Currency2          `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
-		Map    map[string]*Currency2 `form:"map,required" json:"map,required" protobuf:"bytes,2,req,name=map" query:"map,required"`
-		a      *Currency2            `json:"slice.#,required"`
-	}
-
-	type ExchangeCurrencyRequest struct {
-		PromotionRegion *string       `form:"promotion_region,required" json:"promotion_region,required" protobuf:"bytes,1,req,name=promotion_region,json=promotionRegion" query:"promotion_region,required"`
-		Currency        *CurrencyData `form:"currency,required" json:"currency,required" protobuf:"bytes,2,req,name=currency" query:"currency,required"`
-	}
-
-	// v := ameda.InitSampleValue(reflect.TypeOf(z), 10).Interface().(*ExchangeCurrencyRequest)
-	b := []byte(`{
-          "promotion_region": "?",
-          "currency": {
-            "amount": "?",
-            "slice": [
-              {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-			  {
-
-				"currency_symbol": "?"
-              },
-            ],
-            "map": {
-              "?": {
-                "currency_name": "?"
-              }
-            }
-          }
-        }`)
-	//fmt.Println(gjson.Get(string(b),"currency.slice.#"))
-	s := string(b)
-	ret := 0
-	for i := 0; i < t.N; i++ {
-		//result := gjson.Get(s,"currency.slice.#")
-		//ret = int(result.Num)
-
-		//result := gjson.Get(s,"currency.slice.#.currency_symbol------")
-		//ret = len(result.Array())
-
-		result := gjson.Get(s, "currency.slice")
-		c := 0
-		result.ForEach(func(_, value gjson.Result) bool {
-			exists := value.Get("currency_symbol").Exists()
-			//exists := true
-			if exists {
-				c++
-			}
-			return true
-		})
-		ret = c
-	}
-	fmt.Println(ret)
-}
-

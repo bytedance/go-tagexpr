@@ -163,11 +163,11 @@ func (r *receiver) initParams() {
 				}
 				var name string
 				SliceOrMapKind := false
-				// 判断parent是否为Slice/Array或Map类型
-				if strings.HasSuffix(s,"[]") ||  strings.HasSuffix(s,"{}") {
+				// parent elemKind is map or slice/array
+				if strings.HasSuffix(s, "[]") || strings.HasSuffix(s, "{}") {
 					SliceOrMapKind = true
-					name = names[fs[ : len(fs)-2]][info.paramIn]
-				}else{
+					name = names[fs[:len(fs)-2]][info.paramIn]
+				} else {
 					name = names[fs][info.paramIn]
 				}
 

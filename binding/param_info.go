@@ -150,7 +150,7 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 	if checkOpt || info.required { // only return error if it's a required field
 		requiredError = info.requiredError
 	}
-	// 上一级为类型为Slice或Array
+	// parent elemKind is map or slice/array
 	idx := strings.LastIndex(info.namePath, ".")
 	if idx > 0 && strings.HasSuffix(info.namePath[:idx], ".#") {
 		result := gjson.Get(bodyString, info.namePath[:idx-2])
@@ -167,7 +167,7 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 		}
 		return true, nil
 	}
-	// 上一级类型为struct
+	// parent elemKind is struct
 	if !gjson.Get(bodyString, info.namePath).Exists() {
 		idx := strings.LastIndex(info.namePath, ".")
 		// There should be a superior but it is empty, no error is reported
