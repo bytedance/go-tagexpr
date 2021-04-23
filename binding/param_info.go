@@ -144,15 +144,15 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 	}
 	return nil
 }
-func checkParamRequired(bodyString, path string, requiredError error) (bool, error) {
+func (p *paramInfo) checkParamRequired(expr *tagexpr.TagExpr, bodyString, path string, requiredError error) (bool, error) {
 	// recursion check inDirectStruct
-	idx := strings.Index(path, ".#")
-	if idx >= 0 {
+	idx := strings.IndexAny(path, "[{")
+	if idx > 0 {
 		tmpPath := path[:idx]
 		result := gjson.Get(bodyString, tmpPath)
 		var err error
 		result.ForEach(func(_, value gjson.Result) bool {
-			_, err = checkParamRequired(value.Raw, path[idx+3:len(path)], requiredError)
+			_, err = p.checkParamRequired(expr, value.Raw, path[idx+3:len(path)], requiredError)
 			if err != nil {
 				return false
 			}
@@ -165,6 +165,15 @@ func checkParamRequired(bodyString, path string, requiredError error) (bool, err
 	}
 	// check directStruct
 	if !gjson.Get(bodyString, path).Exists() {
+		idx := strings.LastIndex(path, ".")
+		// There should be a superior but it is empty, no error is reported
+		if idx > 0 && !gjson.Get(bodyString, path[:idx]).Exists() {
+			return true, nil
+		}
+		return false, requiredError
+	}
+	v, err := p.getField(expr, false)
+	if err != nil || !v.IsValid() {
 		return false, requiredError
 	}
 	return true, nil
@@ -174,22 +183,11 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 	if checkOpt || info.required { // only return error if it's a required field
 		requiredError = info.requiredError
 	}
-
-	found, err := checkParamRequired(bodyString, info.namePath, requiredError)
+	found, err := p.checkParamRequired(expr, bodyString, info.namePath, requiredError)
 	if err != nil {
-		// There should be a superior but it is empty, no error is reported
-		idx := strings.LastIndex(info.namePath, ".")
-		if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
-			return true, nil
-		} else {
-			return false, requiredError
-		}
-	}
-
-	v, err := p.getField(expr, false)
-	if err != nil || !v.IsValid() {
 		return false, requiredError
 	}
+
 	return found, nil
 }
 

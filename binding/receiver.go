@@ -162,18 +162,11 @@ func (r *receiver) initParams() {
 					fs = tagexpr.JoinFieldSelector(fs, s)
 				}
 				var name string
-				// inDirectKind: map or slice/array
-				inDirectKind := false
 				// parent elemKind is indirect
 				if strings.HasSuffix(s, "[]") || strings.HasSuffix(s, "{}") {
-					inDirectKind = true
-					name = names[fs[:len(fs)-2]][info.paramIn]
+					name = names[fs[:len(fs)-2]][info.paramIn] + s[len(s)-2:]
 				} else {
 					name = names[fs][info.paramIn]
-				}
-
-				if inDirectKind {
-					name += ".#"
 				}
 				if name != "" {
 					info.namePath += name + "."
