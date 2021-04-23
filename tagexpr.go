@@ -309,7 +309,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			if err != nil {
 				return nil, err
 			}
-			if sub != nil{
+			if sub != nil {
 				s.mergeSubStructVM(field, sub)
 			}
 		}
@@ -516,10 +516,7 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM, toBind bool) *
 		fieldSelector:          parent.fieldSelector + FieldSeparator + child.fieldSelector,
 	}
 	switch parent.elemKind {
-	case reflect.Slice:
-		f.fieldSelector = parent.fieldSelector + "[]" + FieldSeparator + child.fieldSelector
-		break
-	case reflect.Array:
+	case reflect.Slice, reflect.Array:
 		f.fieldSelector = parent.fieldSelector + "[]" + FieldSeparator + child.fieldSelector
 		break
 	case reflect.Map:

@@ -1044,6 +1044,7 @@ func TestRequiredBUG(t *testing.T) {
 
 	z := &ExchangeCurrencyRequest{}
 	// v := ameda.InitSampleValue(reflect.TypeOf(z), 10).Interface().(*ExchangeCurrencyRequest)
+
 	b := []byte(`{
          "promotion_region": "?",
 		 "a": {},
