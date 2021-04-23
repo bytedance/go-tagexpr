@@ -1,6 +1,7 @@
 package binding
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -136,7 +137,9 @@ func (r *receiver) getCookies(req Request) []*http.Cookie {
 	return nil
 }
 
-func (r *receiver) initParams() {
+var replacer = strings.NewReplacer("\x01", "[]", "\x02", "{}")
+
+func (r *receiver) initParams() error {
 	names := make(map[string][maxIn]string, len(r.params))
 
 	for _, p := range r.params {
@@ -145,7 +148,12 @@ func (r *receiver) initParams() {
 		}
 		a := [maxIn]string{}
 		for _, paramIn := range allIn {
-			a[paramIn] = p.name(paramIn)
+			paramName := p.name(paramIn)
+			// check paramName
+			if strings.ContainsAny(paramName, ".\x01\x02") {
+				return fmt.Errorf("field \"%s\" has illegal paramName \"%s\" which contains reserved characters", p.fieldSelector, paramName)
+			}
+			a[paramIn] = paramName
 		}
 		names[p.fieldSelector] = a
 	}
@@ -163,8 +171,8 @@ func (r *receiver) initParams() {
 				}
 				var name string
 				// parent elemKind is indirect
-				if strings.HasSuffix(s, "[]") || strings.HasSuffix(s, "{}") {
-					name = names[fs[:len(fs)-2]][info.paramIn] + s[len(s)-2:]
+				if strings.LastIndexAny(s, "\x01\x02") == len(s)-1 {
+					name = names[fs[:len(fs)-1]][info.paramIn] + s[len(s)-1:]
 				} else {
 					name = names[fs][info.paramIn]
 				}
@@ -173,11 +181,13 @@ func (r *receiver) initParams() {
 				}
 			}
 			info.namePath = info.namePath + p.name(info.paramIn)
-			info.requiredError = p.bindErrFactory(info.namePath, "missing required parameter")
-			info.typeError = p.bindErrFactory(info.namePath, "parameter type does not match binding data")
-			info.cannotError = p.bindErrFactory(info.namePath, "parameter cannot be bound")
-			info.contentTypeError = p.bindErrFactory(info.namePath, "does not support binding to the content type body")
+			infoShowPath := replacer.Replace(info.namePath)
+			info.requiredError = p.bindErrFactory(infoShowPath, "missing required parameter")
+			info.typeError = p.bindErrFactory(infoShowPath, "parameter type does not match binding data")
+			info.cannotError = p.bindErrFactory(infoShowPath, "parameter cannot be bound")
+			info.contentTypeError = p.bindErrFactory(infoShowPath, "does not support binding to the content type body")
 		}
 		p.setDefaultVal()
 	}
+	return nil
 }

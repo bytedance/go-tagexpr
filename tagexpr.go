@@ -517,10 +517,10 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM, toBind bool) *
 	}
 	switch parent.elemKind {
 	case reflect.Slice, reflect.Array:
-		f.fieldSelector = parent.fieldSelector + "[]" + FieldSeparator + child.fieldSelector
+		f.fieldSelector = parent.fieldSelector + "\x01" + FieldSeparator + child.fieldSelector
 		break
 	case reflect.Map:
-		f.fieldSelector = parent.fieldSelector + "{}" + FieldSeparator + child.fieldSelector
+		f.fieldSelector = parent.fieldSelector + "\x02" + FieldSeparator + child.fieldSelector
 		break
 	}
 	if parent.tagOp != tagOmit {
@@ -853,7 +853,7 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 	if list := t.s.fieldsWithIndirectStructVM; len(list) > 0 {
 		for _, f := range list {
 			// ignore map and slice/array when range indirectStructVM
-			if strings.Contains(f.fieldSelector, "{}"+FieldSeparator) || strings.Contains(f.fieldSelector, "[]"+FieldSeparator) {
+			if strings.ContainsAny(f.fieldSelector, "\x01\x02") {
 				continue
 			}
 			v := f.packElemFrom(ptr)

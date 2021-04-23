@@ -146,13 +146,13 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 }
 func (p *paramInfo) checkParamRequired(expr *tagexpr.TagExpr, bodyString, path string, requiredError error) (bool, error) {
 	// recursion check inDirectStruct
-	idx := strings.IndexAny(path, "[{")
+	idx := strings.IndexAny(path, "\x01\x02")
 	if idx > 0 {
 		tmpPath := path[:idx]
 		result := gjson.Get(bodyString, tmpPath)
 		var err error
 		result.ForEach(func(_, value gjson.Result) bool {
-			_, err = p.checkParamRequired(expr, value.Raw, path[idx+3:len(path)], requiredError)
+			_, err = p.checkParamRequired(expr, value.Raw, path[idx+2:len(path)], requiredError)
 			if err != nil {
 				return false
 			}

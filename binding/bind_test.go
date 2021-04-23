@@ -1031,6 +1031,7 @@ func TestRequiredBUG(t *testing.T) {
 	type AAA struct {
 		A *AAA `json:"a,required"`
 	}
+
 	type CurrencyData struct {
 		Amount *string                  `vd:"$=='?'" form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
 		Slice  []*Currency2             `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
@@ -1047,7 +1048,6 @@ func TestRequiredBUG(t *testing.T) {
 
 	b := []byte(`{
          "promotion_region": "?",
-		 "a": {},
          "currency": {
            "amount": "?",
            "slice": [
