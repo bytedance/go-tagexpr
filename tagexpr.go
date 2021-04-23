@@ -309,7 +309,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			if err != nil {
 				return nil, err
 			}
-			if sub != nil && (field.elemKind == reflect.Slice || field.elemKind == reflect.Array || field.elemKind == reflect.Map) {
+			if sub != nil{
 				s.mergeSubStructVM(field, sub)
 			}
 		}

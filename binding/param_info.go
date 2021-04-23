@@ -144,20 +144,16 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 	}
 	return nil
 }
-
-func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) (bool, error) {
-	var requiredError error
-	if checkOpt || info.required { // only return error if it's a required field
-		requiredError = info.requiredError
-	}
-	// parent elemKind is map or slice/array
-	idx := strings.LastIndex(info.namePath, ".")
-	if idx > 0 && strings.HasSuffix(info.namePath[:idx], ".#") {
-		result := gjson.Get(bodyString, info.namePath[:idx-2])
+func checkParamRequired(bodyString, path string, requiredError error) (bool, error) {
+	// recursion check inDirectStruct
+	idx := strings.Index(path, ".#")
+	if idx >= 0 {
+		tmpPath := path[:idx]
+		result := gjson.Get(bodyString, tmpPath)
 		var err error
 		result.ForEach(func(_, value gjson.Result) bool {
-			if !value.Get(info.paramName).Exists() {
-				err = requiredError
+			_, err = checkParamRequired(value.Raw, path[idx+3:len(path)], requiredError)
+			if err != nil {
 				return false
 			}
 			return true
@@ -167,20 +163,34 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 		}
 		return true, nil
 	}
-	// parent elemKind is struct
-	if !gjson.Get(bodyString, info.namePath).Exists() {
-		idx := strings.LastIndex(info.namePath, ".")
-		// There should be a superior but it is empty, no error is reported
-		if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
-			return true, nil
-		}
+	// check directStruct
+	if !gjson.Get(bodyString, path).Exists() {
 		return false, requiredError
 	}
+	return true, nil
+}
+func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) (bool, error) {
+	var requiredError error
+	if checkOpt || info.required { // only return error if it's a required field
+		requiredError = info.requiredError
+	}
+
+	found, err := checkParamRequired(bodyString, info.namePath, requiredError)
+	if err != nil {
+		// There should be a superior but it is empty, no error is reported
+		idx := strings.LastIndex(info.namePath, ".")
+		if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
+			return true, nil
+		} else {
+			return false, requiredError
+		}
+	}
+
 	v, err := p.getField(expr, false)
 	if err != nil || !v.IsValid() {
 		return false, requiredError
 	}
-	return true, nil
+	return found, nil
 }
 
 func (p *paramInfo) bindMapStrings(info *tagInfo, expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {
