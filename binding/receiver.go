@@ -14,6 +14,7 @@ type in uint8
 
 const (
 	undefined in = iota
+	raw_body
 	path
 	form
 	query
@@ -21,7 +22,6 @@ const (
 	header
 	protobuf
 	json
-	raw_body
 	default_val
 	maxIn
 )
@@ -36,7 +36,7 @@ var (
 	}()
 	sortedDefaultIn = func() []in {
 		var a []in
-		for i := undefined + 1; i < raw_body; i++ {
+		for i := path; i <= json; i++ {
 			a = append(a, i)
 		}
 		return a
@@ -53,7 +53,7 @@ const (
 )
 
 type receiver struct {
-	hasPath, hasQuery, hasBody, hasCookie, hasVd bool
+	hasPath, hasQuery, hasBody, hasCookie, hasDefaultVal, hasVd bool
 
 	params []*paramInfo
 
@@ -70,6 +70,8 @@ func (r *receiver) assginIn(i in, v bool) {
 		r.hasBody = r.hasBody || v
 	case cookie:
 		r.hasCookie = r.hasCookie || v
+	case default_val:
+		r.hasDefaultVal = r.hasDefaultVal || v
 	}
 }
 

@@ -1033,7 +1033,7 @@ func TestRequiredBUG(t *testing.T) {
 	}
 
 	type CurrencyData struct {
-		Amount *string                  `vd:"$=='?'" form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
+		Amount *string                  `vd:"len((Slice)$)>0&&$=='?'" form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
 		Slice  []*Currency2             `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
 		Map    map[string]*CurrencyData `form:"map,required" json:"map,required" protobuf:"bytes,2,req,name=map" query:"map,required"`
 	}

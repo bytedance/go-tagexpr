@@ -119,16 +119,16 @@ func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*
 	return p.bindStringSlice(info, expr, r)
 }
 
-func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string) (bool, error) {
+func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string, hasDefaultVal bool) (bool, error) {
 	switch bodyCodec {
 	case bodyForm:
 		return p.bindMapStrings(info, expr, postForm)
 	case bodyJSON:
-		return p.checkRequireJSON(info, expr, bodyString, false)
+		return p.checkRequireJSON(info, expr, bodyString, hasDefaultVal)
 	case bodyProtobuf:
 		// It has been checked when binding, no need to check now
 		return true, nil
-		// err := p.checkRequireProtobuf(info, expr, false)
+		//err := p.checkRequireProtobuf(info, expr, false)
 		// return err == nil, err
 	default:
 		return false, info.contentTypeError
@@ -178,10 +178,12 @@ func (p *paramInfo) checkParamRequired(expr *tagexpr.TagExpr, bodyString, path s
 	}
 	return true, nil
 }
-func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) (bool, error) {
+func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, hasDefaultVal bool) (bool, error) {
 	var requiredError error
-	if checkOpt || info.required { // only return error if it's a required field
+	if info.required { // only return error if it's a required field
 		requiredError = info.requiredError
+	} else if !hasDefaultVal {
+		return true, nil
 	}
 	found, err := p.checkParamRequired(expr, bodyString, info.namePath, requiredError)
 	if err != nil {
