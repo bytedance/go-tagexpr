@@ -1051,33 +1051,6 @@ func (t *TagExpr) getValue(fieldSelector string, subFields []interface{}) (v int
 	return anyValueGetter(raw, vv)
 }
 
-// FieldHandler field handler
-type TypeHandler struct {
-	Selector string
-	Field    *fieldVM
-	Expr     *TagExpr
-}
-
-func newTypeHandler(expr *TagExpr, fieldSelector string, field *fieldVM) *TypeHandler {
-	return &TypeHandler{
-		Selector: fieldSelector,
-		Field:    field,
-		Expr:     expr,
-	}
-}
-
-func (t *TagExpr) RangeTypes(fn func(*TypeHandler) bool) bool {
-	if list := t.s.fieldSelectorList; len(list) > 0 {
-		fields := t.s.fields
-		for _, fieldSelector := range list {
-			if !fn(newTypeHandler(t, fieldSelector, fields[fieldSelector])) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 func safeConvert(v reflect.Value, t reflect.Type) reflect.Value {
 	defer func() { recover() }()
 	return v.Convert(t)
