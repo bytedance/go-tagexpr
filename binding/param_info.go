@@ -119,16 +119,16 @@ func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*
 	return p.bindStringSlice(info, expr, r)
 }
 
-func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string) (bool, error) {
+func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string, hasDefaultVal bool) (bool, error) {
 	switch bodyCodec {
 	case bodyForm:
 		return p.bindMapStrings(info, expr, postForm)
 	case bodyJSON:
-		return p.checkRequireJSON(info, expr, bodyString, false)
+		return p.checkRequireJSON(info, expr, bodyString, hasDefaultVal)
 	case bodyProtobuf:
 		// It has been checked when binding, no need to check now
 		return true, nil
-		// err := p.checkRequireProtobuf(info, expr, false)
+		//err := p.checkRequireProtobuf(info, expr, false)
 		// return err == nil, err
 	default:
 		return false, info.contentTypeError
@@ -144,16 +144,30 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 	}
 	return nil
 }
-
-func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, checkOpt bool) (bool, error) {
-	var requiredError error
-	if checkOpt || info.required { // only return error if it's a required field
-		requiredError = info.requiredError
+func (p *paramInfo) checkParamRequired(expr *tagexpr.TagExpr, bodyString, path string, requiredError error) (bool, error) {
+	// recursion check inDirectStruct
+	idx := strings.IndexAny(path, "\x01\x02")
+	if idx > 0 {
+		tmpPath := path[:idx]
+		result := gjson.Get(bodyString, tmpPath)
+		var err error
+		result.ForEach(func(_, value gjson.Result) bool {
+			_, err = p.checkParamRequired(expr, value.Raw, path[idx+2:len(path)], requiredError)
+			if err != nil {
+				return false
+			}
+			return true
+		})
+		if err != nil {
+			return false, err
+		}
+		return true, nil
 	}
-	if !gjson.Get(bodyString, info.namePath).Exists() {
-		idx := strings.LastIndex(info.namePath, ".")
+	// check directStruct
+	if !gjson.Get(bodyString, path).Exists() {
+		idx := strings.LastIndex(path, ".")
 		// There should be a superior but it is empty, no error is reported
-		if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
+		if idx > 0 && !gjson.Get(bodyString, path[:idx]).Exists() {
 			return true, nil
 		}
 		return false, requiredError
@@ -163,6 +177,20 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 		return false, requiredError
 	}
 	return true, nil
+}
+func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, hasDefaultVal bool) (bool, error) {
+	var requiredError error
+	if info.required { // only return error if it's a required field
+		requiredError = info.requiredError
+	} else if !hasDefaultVal {
+		return true, nil
+	}
+	found, err := p.checkParamRequired(expr, bodyString, info.namePath, requiredError)
+	if err != nil {
+		return false, requiredError
+	}
+
+	return found, nil
 }
 
 func (p *paramInfo) bindMapStrings(info *tagInfo, expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {

@@ -1021,15 +1021,21 @@ func TestPathnameBUG2(t *testing.T) {
 }
 
 func TestRequiredBUG(t *testing.T) {
-	type Currency struct {
-		currencyName   *string `vd:"$=='x'" form:"currency_name,required" json:"currency_name,required" protobuf:"bytes,1,req,name=currency_name,json=currencyName" query:"currency_name,required"`
-		CurrencySymbol *string `vd:"$=='x'" form:"currency_symbol,required" json:"currency_symbol,required" protobuf:"bytes,2,req,name=currency_symbol,json=currencySymbol" query:"currency_symbol,required"`
+	type Currency2 struct {
+		CurrencyName   *string `vd:"$!='x'" form:"currency_name,required" json:"currency_name,required" protobuf:"bytes,1,req,name=currency_name,json=currencyName" query:"currency_name,required"`
+		CurrencySymbol *string `vd:"$!='x'" form:"currency_symbol,required" json:"currency_symbol,required" protobuf:"bytes,2,req,name=currency_symbol,json=currencySymbol" query:"currency_symbol,required"`
+	}
+	type BBB struct {
+		B *string `json:"b,required"`
+	}
+	type AAA struct {
+		A *AAA `json:"a,required"`
 	}
 
 	type CurrencyData struct {
-		Amount *string              `form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
-		Slice  []*Currency          `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
-		Map    map[string]*Currency `form:"map,required" json:"map,required" protobuf:"bytes,2,req,name=map" query:"map,required"`
+		Amount *string                  `vd:"len((Slice)$)>0&&$=='?'" form:"amount,required" json:"amount,required" protobuf:"bytes,1,req,name=amount" query:"amount,required"`
+		Slice  []*Currency2             `form:"slice,required" json:"slice,required" protobuf:"bytes,2,req,name=slice" query:"slice,required"`
+		Map    map[string]*CurrencyData `form:"map,required" json:"map,required" protobuf:"bytes,2,req,name=map" query:"map,required"`
 	}
 
 	type ExchangeCurrencyRequest struct {
@@ -1039,22 +1045,31 @@ func TestRequiredBUG(t *testing.T) {
 
 	z := &ExchangeCurrencyRequest{}
 	// v := ameda.InitSampleValue(reflect.TypeOf(z), 10).Interface().(*ExchangeCurrencyRequest)
+
 	b := []byte(`{
-          "promotion_region": "?",
-          "currency": {
-            "amount": "?",
-            "slice": [
-              {
-                "currency_symbol": "?"
-              }
-            ],
-            "map": {
-              "?": {
-                "currency_name": "?"
-              }
-            }
-          }
-        }`)
+         "promotion_region": "?",
+         "currency": {
+           "amount": "?",
+           "slice": [
+             {
+				"currency_name": "111333?",
+				"currency_symbol": "111333?"
+             }
+           ],
+           "map": {
+             "?": {
+				"amount": "?",
+				"slice": [
+				 {
+					"currency_name": "111333?",
+					"currency_symbol": "213"
+             	 }
+				],
+				"map": {}
+             }
+           }
+         }
+       }`)
 	t.Log(string(b))
 	json.Unmarshal(b, z)
 	header := make(http.Header)
@@ -1063,6 +1078,6 @@ func TestRequiredBUG(t *testing.T) {
 	recv := new(ExchangeCurrencyRequest)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
-	assert.EqualError(t, err, "validating: expr_path=Currency.Slice[0].currencyName, cause=invalid")
+	assert.NoError(t, err)
 	assert.Equal(t, z, recv)
 }

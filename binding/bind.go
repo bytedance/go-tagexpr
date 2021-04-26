@@ -182,6 +182,9 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 		for i, info := range param.tagInfos {
 			var found bool
 			switch info.paramIn {
+			case raw_body:
+				err = param.bindRawBody(info, expr, bodyBytes)
+				found = err == nil
 			case path:
 				found, err = param.bindPath(info, expr, pathParams)
 			case query:
@@ -193,14 +196,11 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 				found, err = param.bindHeader(info, expr, req.GetHeader())
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
-					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm)
+					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, recv.hasDefaultVal)
 				} else if info.required {
 					found = false
 					err = info.requiredError
 				}
-			case raw_body:
-				err = param.bindRawBody(info, expr, bodyBytes)
-				found = err == nil
 			case default_val:
 				found, err = param.bindDefaultVal(expr, param.defaultVal)
 			}
@@ -347,7 +347,10 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 	if !recv.hasVd {
 		recv.hasVd, _ = b.findVdTag(ameda.DereferenceType(t), false, 20)
 	}
-	recv.initParams()
+	err = recv.initParams()
+	if err != nil {
+		return nil, err
+	}
 
 	b.lock.Lock()
 	b.recvs[runtimeTypeID] = recv
