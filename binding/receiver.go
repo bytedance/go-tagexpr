@@ -153,7 +153,7 @@ func (r *receiver) initParams() error {
 			paramName := p.name(paramIn)
 			// check paramName
 			if strings.ContainsAny(paramName, ".\x01\x02") {
-				return fmt.Errorf("field \"%s\" has illegal paramName \"%s\" which contains reserved characters", p.fieldSelector, paramName)
+				return fmt.Errorf("field %q has illegal paramName %q which contains reserved characters", p.fieldSelector, paramName)
 			}
 			a[paramIn] = paramName
 		}
