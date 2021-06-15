@@ -1081,3 +1081,29 @@ func TestRequiredBUG(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, z, recv)
 }
+
+func TestIssue25(t *testing.T) {
+	type Recv struct {
+		A string
+	}
+	header := make(http.Header)
+	header.Set("A", "from header")
+	cookies := []*http.Cookie{
+		{Name: "A", Value: "from cookie"},
+	}
+	req := newRequest("/1", header, cookies, nil)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "from cookie", recv.A)
+
+	header2 := make(http.Header)
+	header2.Set("A", "from header")
+	cookies2 := []*http.Cookie{}
+	req2 := newRequest("/2", header2, cookies2, nil)
+	recv2 := new(Recv)
+	err2 := binder.BindAndValidate(recv2, req2, nil)
+	assert.NoError(t, err2)
+	assert.Equal(t, "from header", recv2.A)
+}

@@ -190,8 +190,7 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 			case query:
 				found, err = param.bindQuery(info, expr, queryValues)
 			case cookie:
-				err = param.bindCookie(info, expr, cookies)
-				found = err == nil
+				found, err = param.bindCookie(info, expr, cookies)
 			case header:
 				found, err = param.bindHeader(info, expr, req.GetHeader())
 			case form, json, protobuf:

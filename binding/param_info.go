@@ -103,7 +103,7 @@ func (p *paramInfo) bindHeader(info *tagInfo, expr *tagexpr.TagExpr, header http
 	return p.bindMapStrings(info, expr, header)
 }
 
-func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*http.Cookie) error {
+func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*http.Cookie) (bool, error) {
 	var r []string
 	for _, c := range cookies {
 		if c.Name == info.paramName {
@@ -112,11 +112,11 @@ func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*
 	}
 	if len(r) == 0 {
 		if info.required {
-			return info.requiredError
+			return false, info.requiredError
 		}
-		return nil
+		return false, nil
 	}
-	return p.bindStringSlice(info, expr, r)
+	return true, p.bindStringSlice(info, expr, r)
 }
 
 func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string, hasDefaultVal bool) (bool, error) {
