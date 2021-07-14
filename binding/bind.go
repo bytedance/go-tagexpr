@@ -175,6 +175,10 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 	if err != nil {
 		return
 	}
+	fileHeaders, err := req.GetFileHeaders()
+	if err != nil {
+		return
+	}
 	queryValues := recv.getQuery(req)
 	cookies := recv.getCookies(req)
 
@@ -195,7 +199,8 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 				found, err = param.bindHeader(info, expr, req.GetHeader())
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
-					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, recv.hasDefaultVal)
+					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, fileHeaders,
+						recv.hasDefaultVal)
 				} else if info.required {
 					found = false
 					err = info.requiredError

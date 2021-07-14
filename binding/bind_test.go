@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -253,8 +254,12 @@ func TestFormString(t *testing.T) {
 			C *[]string `form:"c,required"`
 			D *string   `form:"d"`
 		}
-		Y string  `form:"y,required"`
-		Z *string `form:"z"`
+		Y   string                `form:"y,required"`
+		Z   *string               `form:"z"`
+		F   *multipart.FileHeader `form:"F1"`
+		F1  multipart.FileHeader
+		Fs  []multipart.FileHeader  `form:"F1"`
+		Fs1 []*multipart.FileHeader `form:"F1"`
 	}
 	values := make(url.Values)
 	values.Add("a", "a1")
@@ -265,9 +270,9 @@ func TestFormString(t *testing.T) {
 	values.Add("d", "d1")
 	values.Add("d", "d2")
 	values.Add("y", "y1")
-	for _, f := range []httpbody.Files{nil, {
-		"f1": []httpbody.File{
-			httpbody.NewFile("txt", strings.NewReader("f11 text.")),
+	for i, f := range []httpbody.Files{nil, {
+		"F1": []httpbody.File{
+			httpbody.NewFile("txt", strings.NewReader("0123")),
 		},
 	}} {
 		contentType, bodyReader := httpbody.NewFormBody2(values, f)
@@ -284,6 +289,13 @@ func TestFormString(t *testing.T) {
 		assert.Equal(t, "d1", *(**recv.X).D)
 		assert.Equal(t, "y1", recv.Y)
 		assert.Equal(t, (*string)(nil), recv.Z)
+		t.Logf("[%d] F: %#v", i, recv.F)
+		t.Logf("[%d] F1: %#v", i, recv.F1)
+		t.Logf("[%d] Fs: %#v", i, recv.Fs)
+		t.Logf("[%d] Fs1: %#v", i, recv.Fs1)
+		if len(recv.Fs1) > 0 {
+			t.Logf("[%d] Fs1[0]: %#v", i, recv.Fs1[0])
+		}
 	}
 }
 

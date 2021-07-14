@@ -3,6 +3,7 @@ package binding
 import (
 	jsonpkg "encoding/json"
 	"errors"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -119,16 +120,22 @@ func (p *paramInfo) bindCookie(info *tagInfo, expr *tagexpr.TagExpr, cookies []*
 	return true, p.bindStringSlice(info, expr, r)
 }
 
-func (p *paramInfo) bindOrRequireBody(info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string, postForm map[string][]string, hasDefaultVal bool) (bool, error) {
+func (p *paramInfo) bindOrRequireBody(
+	info *tagInfo, expr *tagexpr.TagExpr, bodyCodec codec, bodyString string,
+	postForm map[string][]string, fileHeaders map[string][]*multipart.FileHeader, hasDefaultVal bool) (bool, error) {
 	switch bodyCodec {
 	case bodyForm:
-		return p.bindMapStrings(info, expr, postForm)
+		found, err := p.bindMapStrings(info, expr, postForm)
+		if !found {
+			return p.bindFileHeaders(info, expr, fileHeaders)
+		}
+		return found, err
 	case bodyJSON:
 		return p.checkRequireJSON(info, expr, bodyString, hasDefaultVal)
 	case bodyProtobuf:
 		// It has been checked when binding, no need to check now
 		return true, nil
-		//err := p.checkRequireProtobuf(info, expr, false)
+		// err := p.checkRequireProtobuf(info, expr, false)
 		// return err == nil, err
 	default:
 		return false, info.contentTypeError
@@ -191,6 +198,49 @@ func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyS
 	}
 
 	return found, nil
+}
+
+var fileHeaderType = reflect.TypeOf(multipart.FileHeader{})
+
+func (p *paramInfo) bindFileHeaders(info *tagInfo, expr *tagexpr.TagExpr, fileHeaders map[string][]*multipart.FileHeader) (bool, error) {
+	r, ok := fileHeaders[info.paramName]
+	if !ok || len(r) == 0 {
+		if info.required {
+			return false, info.requiredError
+		}
+		return false, nil
+	}
+	v, err := p.getField(expr, true)
+	if err != nil || !v.IsValid() {
+		return true, err
+	}
+	v = ameda.DereferenceValue(v)
+	var elemType reflect.Type
+	isSlice := v.Kind() == reflect.Slice
+	if isSlice {
+		elemType = v.Type().Elem()
+	} else {
+		elemType = v.Type()
+	}
+	var ptrDepth int
+	for elemType.Kind() == reflect.Ptr {
+		elemType = elemType.Elem()
+		ptrDepth++
+	}
+	if elemType != fileHeaderType {
+		return true, errors.New("parameter type is not (*)multipart.FileHeader struct or slice")
+	}
+	if len(r) == 0 || r[0] == nil {
+		return true, nil
+	}
+	if !isSlice {
+		v.Set(reflect.ValueOf(*r[0]))
+		return true, nil
+	}
+	for _, fileHeader := range r {
+		v.Set(reflect.Append(v, ameda.ReferenceValue(reflect.ValueOf(fileHeader), ptrDepth-1)))
+	}
+	return true, nil
 }
 
 func (p *paramInfo) bindMapStrings(info *tagInfo, expr *tagexpr.TagExpr, values map[string][]string) (bool, error) {
