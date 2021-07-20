@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/henrylee2cn/ameda"
+	"google.golang.org/protobuf/proto"
 )
 
 // JSONUnmarshaler is the interface implemented by types
@@ -66,8 +66,8 @@ func unmarshal(b []byte, i interface{}) error {
 	switch x := i.(type) {
 	case jsonpkg.Unmarshaler:
 		return x.UnmarshalJSON(b)
-	case proto.Unmarshaler:
-		return x.Unmarshal(b)
+	case proto.Message:
+		return proto.Unmarshal(b, x)
 	default:
 		return jsonpkg.Unmarshal(b, i)
 	}

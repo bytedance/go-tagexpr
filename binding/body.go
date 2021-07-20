@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func getBodyCodec(req Request) codec {
