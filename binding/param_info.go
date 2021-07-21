@@ -151,30 +151,18 @@ func (p *paramInfo) checkRequireProtobuf(info *tagInfo, expr *tagexpr.TagExpr, c
 	}
 	return nil
 }
-func (p *paramInfo) checkParamRequired(expr *tagexpr.TagExpr, bodyString, path string, requiredError error) (bool, error) {
-	// recursion check inDirectStruct
-	idx := strings.IndexAny(path, "\x01\x02")
-	if idx > 0 {
-		tmpPath := path[:idx]
-		result := gjson.Get(bodyString, tmpPath)
-		var err error
-		result.ForEach(func(_, value gjson.Result) bool {
-			_, err = p.checkParamRequired(expr, value.Raw, path[idx+2:len(path)], requiredError)
-			if err != nil {
-				return false
-			}
-			return true
-		})
-		if err != nil {
-			return false, err
-		}
+
+func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, hasDefaultVal bool) (bool, error) {
+	var requiredError error
+	if info.required { // only return error if it's a required field
+		requiredError = info.requiredError
+	} else if !hasDefaultVal {
 		return true, nil
 	}
-	// check directStruct
-	if !gjson.Get(bodyString, path).Exists() {
-		idx := strings.LastIndex(path, ".")
+	if !gjson.Get(bodyString, info.namePath).Exists() {
+		idx := strings.LastIndex(info.namePath, ".")
 		// There should be a superior but it is empty, no error is reported
-		if idx > 0 && !gjson.Get(bodyString, path[:idx]).Exists() {
+		if idx > 0 && !gjson.Get(bodyString, info.namePath[:idx]).Exists() {
 			return true, nil
 		}
 		return false, requiredError
@@ -184,20 +172,6 @@ func (p *paramInfo) checkParamRequired(expr *tagexpr.TagExpr, bodyString, path s
 		return false, requiredError
 	}
 	return true, nil
-}
-func (p *paramInfo) checkRequireJSON(info *tagInfo, expr *tagexpr.TagExpr, bodyString string, hasDefaultVal bool) (bool, error) {
-	var requiredError error
-	if info.required { // only return error if it's a required field
-		requiredError = info.requiredError
-	} else if !hasDefaultVal {
-		return true, nil
-	}
-	found, err := p.checkParamRequired(expr, bodyString, info.namePath, requiredError)
-	if err != nil {
-		return false, requiredError
-	}
-
-	return found, nil
 }
 
 var fileHeaderType = reflect.TypeOf(multipart.FileHeader{})

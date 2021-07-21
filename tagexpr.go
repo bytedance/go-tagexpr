@@ -305,22 +305,19 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 		case reflect.Bool:
 			field.setBoolGetter()
 		case reflect.Array, reflect.Slice, reflect.Map:
-			sub, err = vm.registerIndirectStructLocked(field)
+			err = vm.registerIndirectStructLocked(field)
 			if err != nil {
 				return nil, err
-			}
-			if sub != nil {
-				s.mergeSubStructVM(field, sub)
 			}
 		}
 	}
 	return s, nil
 }
 
-func (vm *VM) registerIndirectStructLocked(field *fieldVM) (*structVM, error) {
+func (vm *VM) registerIndirectStructLocked(field *fieldVM) error {
 	field.setLengthGetter()
 	if field.tagOp == tagOmit {
-		return nil, nil
+		return nil
 	}
 	a := make([]reflect.Type, 1, 2)
 	a[0] = derefType(field.elemType.Elem())
@@ -344,7 +341,7 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) (*structVM, error) {
 				case reflect.Struct:
 					_, err := vm.registerStructLocked(tt)
 					if err != nil {
-						return nil, err
+						return err
 					}
 					field.mapOrSliceIfaceKinds[i] = true
 					field.origin.fieldsWithIndirectStructVM = appendDistinct(field.origin.fieldsWithIndirectStructVM, field)
@@ -361,7 +358,7 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) (*structVM, error) {
 		case reflect.Struct:
 			s, err := vm.registerStructLocked(t)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			if len(s.exprSelectorList) > 0 ||
 				len(s.ifaceTagExprGetters) > 0 ||
@@ -373,10 +370,9 @@ func (vm *VM) registerIndirectStructLocked(field *fieldVM) (*structVM, error) {
 				}
 				field.origin.fieldsWithIndirectStructVM = appendDistinct(field.origin.fieldsWithIndirectStructVM, field)
 			}
-			return s, err
 		}
 	}
-	return nil, nil
+	return nil
 }
 
 func appendDistinct(a []*fieldVM, i *fieldVM) []*fieldVM {
@@ -515,14 +511,6 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM, toBind bool) *
 		mapOrSliceIfaceKinds:   child.mapOrSliceIfaceKinds,
 		fieldSelector:          parent.fieldSelector + FieldSeparator + child.fieldSelector,
 	}
-	switch parent.elemKind {
-	case reflect.Slice, reflect.Array:
-		f.fieldSelector = parent.fieldSelector + "\x01" + FieldSeparator + child.fieldSelector
-		break
-	case reflect.Map:
-		f.fieldSelector = parent.fieldSelector + "\x02" + FieldSeparator + child.fieldSelector
-		break
-	}
 	if parent.tagOp != tagOmit {
 		f.tagOp = child.tagOp
 	} else {
@@ -575,9 +563,6 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM, toBind bool) *
 		s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
 		if parent.tagOp != tagOmit {
 			for k, v := range child.exprs {
-				if parent.elemKind == reflect.Slice || parent.elemKind == reflect.Array || parent.elemKind == reflect.Map {
-					continue
-				}
 				selector := parent.fieldSelector + FieldSeparator + k
 				f.exprs[selector] = v
 				s.exprs[selector] = v
@@ -852,10 +837,6 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 
 	if list := t.s.fieldsWithIndirectStructVM; len(list) > 0 {
 		for _, f := range list {
-			// ignore map and slice/array when range indirectStructVM
-			if strings.ContainsAny(f.fieldSelector, "\x01\x02") {
-				continue
-			}
 			v := f.packElemFrom(ptr)
 			if !v.IsValid() {
 				continue

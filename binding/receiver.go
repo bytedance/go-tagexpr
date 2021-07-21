@@ -1,11 +1,9 @@
 package binding
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
-	"strings"
 
 	"github.com/bytedance/go-tagexpr/v2"
 )
@@ -14,7 +12,6 @@ type in uint8
 
 const (
 	undefined in = iota
-	raw_body
 	path
 	form
 	query
@@ -22,6 +19,7 @@ const (
 	header
 	protobuf
 	json
+	raw_body
 	default_val
 	maxIn
 )
@@ -36,7 +34,7 @@ var (
 	}()
 	sortedDefaultIn = func() []in {
 		var a []in
-		for i := path; i <= json; i++ {
+		for i := undefined + 1; i < raw_body; i++ {
 			a = append(a, i)
 		}
 		return a
@@ -139,23 +137,15 @@ func (r *receiver) getCookies(req Request) []*http.Cookie {
 	return nil
 }
 
-var replacer = strings.NewReplacer("\x01", "[]", "\x02", "{}")
-
-func (r *receiver) initParams() error {
+func (r *receiver) initParams() {
 	names := make(map[string][maxIn]string, len(r.params))
-
 	for _, p := range r.params {
 		if p.structField.Anonymous {
 			continue
 		}
 		a := [maxIn]string{}
 		for _, paramIn := range allIn {
-			paramName := p.name(paramIn)
-			// check paramName
-			if strings.ContainsAny(paramName, ".\x01\x02") {
-				return fmt.Errorf("field %q has illegal paramName %q which contains reserved characters", p.fieldSelector, paramName)
-			}
-			a[paramIn] = paramName
+			a[paramIn] = p.name(paramIn)
 		}
 		names[p.fieldSelector] = a
 	}
@@ -165,31 +155,22 @@ func (r *receiver) initParams() error {
 		for _, info := range p.tagInfos {
 			var fs string
 			for _, s := range paths {
-
 				if fs == "" {
 					fs = s
 				} else {
 					fs = tagexpr.JoinFieldSelector(fs, s)
 				}
-				var name string
-				// parent elemKind is indirect
-				if strings.LastIndexAny(s, "\x01\x02") == len(s)-1 {
-					name = names[fs[:len(fs)-1]][info.paramIn] + s[len(s)-1:]
-				} else {
-					name = names[fs][info.paramIn]
-				}
+				name := names[fs][info.paramIn]
 				if name != "" {
 					info.namePath += name + "."
 				}
 			}
 			info.namePath = info.namePath + p.name(info.paramIn)
-			infoShowPath := replacer.Replace(info.namePath)
-			info.requiredError = p.bindErrFactory(infoShowPath, "missing required parameter")
-			info.typeError = p.bindErrFactory(infoShowPath, "parameter type does not match binding data")
-			info.cannotError = p.bindErrFactory(infoShowPath, "parameter cannot be bound")
-			info.contentTypeError = p.bindErrFactory(infoShowPath, "does not support binding to the content type body")
+			info.requiredError = p.bindErrFactory(info.namePath, "missing required parameter")
+			info.typeError = p.bindErrFactory(info.namePath, "parameter type does not match binding data")
+			info.cannotError = p.bindErrFactory(info.namePath, "parameter cannot be bound")
+			info.contentTypeError = p.bindErrFactory(info.namePath, "does not support binding to the content type body")
 		}
 		p.setDefaultVal()
 	}
-	return nil
 }

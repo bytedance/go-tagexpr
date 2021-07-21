@@ -351,10 +351,7 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 	if !recv.hasVd {
 		recv.hasVd, _ = b.findVdTag(ameda.DereferenceType(t), false, 20)
 	}
-	err = recv.initParams()
-	if err != nil {
-		return nil, err
-	}
+	recv.initParams()
 
 	b.lock.Lock()
 	b.recvs[runtimeTypeID] = recv
