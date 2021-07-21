@@ -2,6 +2,7 @@ package binding
 
 import (
 	jsonpkg "encoding/json"
+	"mime/multipart"
 	"net/http"
 	"reflect"
 	"strings"
@@ -175,9 +176,12 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 	if err != nil {
 		return
 	}
-	fileHeaders, err := req.GetFileHeaders()
-	if err != nil {
-		return
+	var fileHeaders map[string][]*multipart.FileHeader
+	if _req, ok := req.(requestWithFileHeader); ok {
+		fileHeaders, err = _req.GetFileHeaders()
+		if err != nil {
+			return
+		}
 	}
 	queryValues := recv.getQuery(req)
 	cookies := recv.getCookies(req)

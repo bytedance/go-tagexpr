@@ -8,6 +8,11 @@ import (
 	"net/url"
 )
 
+type requestWithFileHeader interface {
+	Request
+	GetFileHeaders() (map[string][]*multipart.FileHeader, error)
+}
+
 type Request interface {
 	GetMethod() string
 	GetQuery() url.Values
@@ -17,7 +22,6 @@ type Request interface {
 	GetBody() ([]byte, error)
 	GetPostForm() (url.Values, error)
 	GetForm() (url.Values, error)
-	GetFileHeaders() (map[string][]*multipart.FileHeader, error)
 }
 
 func wrapRequest(req *http.Request) Request {
