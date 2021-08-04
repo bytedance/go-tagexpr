@@ -2,6 +2,7 @@ package validator_test
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -182,10 +183,10 @@ func TestIn(t *testing.T) {
 	v := vd.New("vd")
 	data := &T{}
 	err := v.Validate(data)
-	assert.EqualError(t, err, "[a b c] range exceeded")
+	assert.EqualError(t, err, "\"\" is not in the list [a b c]")
 	data.A = "b"
 	err = v.Validate(data)
-	assert.EqualError(t, err, "[1 2 3] range exceeded")
+	assert.EqualError(t, err, "0 is not in the list [1 2 3]")
 	data.B = 2
 	err = v.Validate(data)
 	assert.NoError(t, err)
@@ -202,7 +203,7 @@ func TestIn(t *testing.T) {
 	}
 	data3 := &T3{}
 	err = v.Validate(data3)
-	assert.EqualError(t, err, "[1] range exceeded")
+	assert.EqualError(t, err, "\"\" is not in the list [1]")
 }
 
 type (
@@ -278,4 +279,14 @@ func TestStructSliceMap(t *testing.T) {
 	assert.EqualError(t, err, "invalid parameter: A{v for k=x}.f.g\tinvalid parameter: B[0]{v for k=y}.f.g\tinvalid parameter: C{v for k=z}[0]{v for k=zz}.f.g")
 }
 
-
+func TestIssue30(t *testing.T) {
+	type TStruct struct {
+		TOk string `vd:"gt($,'0') && gt($, '1')" json:"t_ok"`
+		// TFail string `vd:"gt($,'0')" json:"t_fail"`
+	}
+	vd.RegFunc("gt", func(args ...interface{}) error {
+		return errors.New("force error")
+	})
+	assert.EqualError(t, vd.Validate(&TStruct{TOk: "1"}), "invalid parameter: TOk")
+	// assert.NoError(t, vd.Validate(&TStruct{TOk: "1", TFail: "1"}))
+}

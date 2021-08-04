@@ -116,7 +116,7 @@ func init() {
 					return nil
 				}
 			}
-			return fmt.Errorf("%+v range exceeded", set)
+			return fmt.Errorf("%#v is not in the list %+v", elem, set)
 		}
 	}, true)
 }
