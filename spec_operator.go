@@ -15,6 +15,7 @@
 package tagexpr
 
 import (
+	"context"
 	"math"
 )
 
@@ -24,33 +25,28 @@ type additionExprNode struct{ exprBackground }
 
 func newAdditionExprNode() ExprNode { return &additionExprNode{} }
 
-func (ae *additionExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+func (ae *additionExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	// positive number or Addition
-	v0 := ae.leftOperand.Run(currField, tagExpr)
-	v1 := ae.rightOperand.Run(currField, tagExpr)
-	switch r := v0.(type) {
-	case float64:
-		var v float64
-		v, _ = v1.(float64)
-		r += v
-		return r
-	case string:
-		var v string
-		v, _ = v1.(string)
-		r += v
-		return r
-	default:
-		return v1
+	v0 := ae.leftOperand.Run(ctx, currField, tagExpr)
+	v1 := ae.rightOperand.Run(ctx, currField, tagExpr)
+	if s0, ok := toFloat64(v0, false); ok {
+		s1, _ := toFloat64(v1, true)
+		return s0 + s1
 	}
+	if s0, ok := toString(v0, false); ok {
+		s1, _ := toString(v1, true)
+		return s0 + s1
+	}
+	return v0
 }
 
 type multiplicationExprNode struct{ exprBackground }
 
 func newMultiplicationExprNode() ExprNode { return &multiplicationExprNode{} }
 
-func (ae *multiplicationExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v0, _ := ae.leftOperand.Run(currField, tagExpr).(float64)
-	v1, _ := ae.rightOperand.Run(currField, tagExpr).(float64)
+func (ae *multiplicationExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v0, _ := toFloat64(ae.leftOperand.Run(ctx, currField, tagExpr), true)
+	v1, _ := toFloat64(ae.rightOperand.Run(ctx, currField, tagExpr), true)
 	return v0 * v1
 }
 
@@ -58,12 +54,12 @@ type divisionExprNode struct{ exprBackground }
 
 func newDivisionExprNode() ExprNode { return &divisionExprNode{} }
 
-func (de *divisionExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v1, _ := de.rightOperand.Run(currField, tagExpr).(float64)
+func (de *divisionExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v1, _ := toFloat64(de.rightOperand.Run(ctx, currField, tagExpr), true)
 	if v1 == 0 {
 		return math.NaN()
 	}
-	v0, _ := de.leftOperand.Run(currField, tagExpr).(float64)
+	v0, _ := toFloat64(de.leftOperand.Run(ctx, currField, tagExpr), true)
 	return v0 / v1
 }
 
@@ -71,9 +67,9 @@ type subtractionExprNode struct{ exprBackground }
 
 func newSubtractionExprNode() ExprNode { return &subtractionExprNode{} }
 
-func (de *subtractionExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v0, _ := de.leftOperand.Run(currField, tagExpr).(float64)
-	v1, _ := de.rightOperand.Run(currField, tagExpr).(float64)
+func (de *subtractionExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v0, _ := toFloat64(de.leftOperand.Run(ctx, currField, tagExpr), true)
+	v1, _ := toFloat64(de.rightOperand.Run(ctx, currField, tagExpr), true)
 	return v0 - v1
 }
 
@@ -81,12 +77,12 @@ type remainderExprNode struct{ exprBackground }
 
 func newRemainderExprNode() ExprNode { return &remainderExprNode{} }
 
-func (re *remainderExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v1, _ := re.rightOperand.Run(currField, tagExpr).(float64)
+func (re *remainderExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v1, _ := toFloat64(re.rightOperand.Run(ctx, currField, tagExpr), true)
 	if v1 == 0 {
 		return math.NaN()
 	}
-	v0, _ := re.leftOperand.Run(currField, tagExpr).(float64)
+	v0, _ := toFloat64(re.leftOperand.Run(ctx, currField, tagExpr), true)
 	return float64(int64(v0) % int64(v1))
 }
 
@@ -94,20 +90,24 @@ type equalExprNode struct{ exprBackground }
 
 func newEqualExprNode() ExprNode { return &equalExprNode{} }
 
-func (ee *equalExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v0 := ee.leftOperand.Run(currField, tagExpr)
-	v1 := ee.rightOperand.Run(currField, tagExpr)
+func (ee *equalExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v0 := ee.leftOperand.Run(ctx, currField, tagExpr)
+	v1 := ee.rightOperand.Run(ctx, currField, tagExpr)
+	if v0 == v1 {
+		return true
+	}
+	if s0, ok := toFloat64(v0, false); ok {
+		if s1, ok := toFloat64(v1, true); ok {
+			return s0 == s1
+		}
+	}
+	if s0, ok := toString(v0, false); ok {
+		if s1, ok := toString(v1, true); ok {
+			return s0 == s1
+		}
+		return false
+	}
 	switch r := v0.(type) {
-	case float64:
-		r1, ok := v1.(float64)
-		if ok {
-			return r == r1
-		}
-	case string:
-		r1, ok := v1.(string)
-		if ok {
-			return r == r1
-		}
 	case bool:
 		r1, ok := v1.(bool)
 		if ok {
@@ -123,28 +123,27 @@ type notEqualExprNode struct{ equalExprNode }
 
 func newNotEqualExprNode() ExprNode { return &notEqualExprNode{} }
 
-func (ne *notEqualExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	return !ne.equalExprNode.Run(currField, tagExpr).(bool)
+func (ne *notEqualExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	return !ne.equalExprNode.Run(ctx, currField, tagExpr).(bool)
 }
 
 type greaterExprNode struct{ exprBackground }
 
 func newGreaterExprNode() ExprNode { return &greaterExprNode{} }
 
-func (ge *greaterExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v0 := ge.leftOperand.Run(currField, tagExpr)
-	v1 := ge.rightOperand.Run(currField, tagExpr)
-	switch r := v0.(type) {
-	case float64:
-		r1, ok := v1.(float64)
-		if ok {
-			return r > r1
+func (ge *greaterExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v0 := ge.leftOperand.Run(ctx, currField, tagExpr)
+	v1 := ge.rightOperand.Run(ctx, currField, tagExpr)
+	if s0, ok := toFloat64(v0, false); ok {
+		if s1, ok := toFloat64(v1, true); ok {
+			return s0 > s1
 		}
-	case string:
-		r1, ok := v1.(string)
-		if ok {
-			return r > r1
+	}
+	if s0, ok := toString(v0, false); ok {
+		if s1, ok := toString(v1, true); ok {
+			return s0 > s1
 		}
+		return false
 	}
 	return false
 }
@@ -153,20 +152,19 @@ type greaterEqualExprNode struct{ exprBackground }
 
 func newGreaterEqualExprNode() ExprNode { return &greaterEqualExprNode{} }
 
-func (ge *greaterEqualExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v0 := ge.leftOperand.Run(currField, tagExpr)
-	v1 := ge.rightOperand.Run(currField, tagExpr)
-	switch r := v0.(type) {
-	case float64:
-		r1, ok := v1.(float64)
-		if ok {
-			return r >= r1
+func (ge *greaterEqualExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v0 := ge.leftOperand.Run(ctx, currField, tagExpr)
+	v1 := ge.rightOperand.Run(ctx, currField, tagExpr)
+	if s0, ok := toFloat64(v0, false); ok {
+		if s1, ok := toFloat64(v1, true); ok {
+			return s0 >= s1
 		}
-	case string:
-		r1, ok := v1.(string)
-		if ok {
-			return r >= r1
+	}
+	if s0, ok := toString(v0, false); ok {
+		if s1, ok := toString(v1, true); ok {
+			return s0 >= s1
 		}
+		return false
 	}
 	return false
 }
@@ -175,20 +173,19 @@ type lessExprNode struct{ exprBackground }
 
 func newLessExprNode() ExprNode { return &lessExprNode{} }
 
-func (le *lessExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v0 := le.leftOperand.Run(currField, tagExpr)
-	v1 := le.rightOperand.Run(currField, tagExpr)
-	switch r := v0.(type) {
-	case float64:
-		r1, ok := v1.(float64)
-		if ok {
-			return r < r1
+func (le *lessExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v0 := le.leftOperand.Run(ctx, currField, tagExpr)
+	v1 := le.rightOperand.Run(ctx, currField, tagExpr)
+	if s0, ok := toFloat64(v0, false); ok {
+		if s1, ok := toFloat64(v1, true); ok {
+			return s0 < s1
 		}
-	case string:
-		r1, ok := v1.(string)
-		if ok {
-			return r < r1
+	}
+	if s0, ok := toString(v0, false); ok {
+		if s1, ok := toString(v1, true); ok {
+			return s0 < s1
 		}
+		return false
 	}
 	return false
 }
@@ -197,20 +194,19 @@ type lessEqualExprNode struct{ exprBackground }
 
 func newLessEqualExprNode() ExprNode { return &lessEqualExprNode{} }
 
-func (le *lessEqualExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	v0 := le.leftOperand.Run(currField, tagExpr)
-	v1 := le.rightOperand.Run(currField, tagExpr)
-	switch r := v0.(type) {
-	case float64:
-		r1, ok := v1.(float64)
-		if ok {
-			return r <= r1
+func (le *lessEqualExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	v0 := le.leftOperand.Run(ctx, currField, tagExpr)
+	v1 := le.rightOperand.Run(ctx, currField, tagExpr)
+	if s0, ok := toFloat64(v0, false); ok {
+		if s1, ok := toFloat64(v1, true); ok {
+			return s0 <= s1
 		}
-	case string:
-		r1, ok := v1.(string)
-		if ok {
-			return r <= r1
+	}
+	if s0, ok := toString(v0, false); ok {
+		if s1, ok := toString(v1, true); ok {
+			return s0 <= s1
 		}
+		return false
 	}
 	return false
 }
@@ -219,9 +215,9 @@ type andExprNode struct{ exprBackground }
 
 func newAndExprNode() ExprNode { return &andExprNode{} }
 
-func (ae *andExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+func (ae *andExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	for _, e := range [2]ExprNode{ae.leftOperand, ae.rightOperand} {
-		if !FakeBool(e.Run(currField, tagExpr)) {
+		if !FakeBool(e.Run(ctx, currField, tagExpr)) {
 			return false
 		}
 	}
@@ -232,9 +228,9 @@ type orExprNode struct{ exprBackground }
 
 func newOrExprNode() ExprNode { return &orExprNode{} }
 
-func (oe *orExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+func (oe *orExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	for _, e := range [2]ExprNode{oe.leftOperand, oe.rightOperand} {
-		if FakeBool(e.Run(currField, tagExpr)) {
+		if FakeBool(e.Run(ctx, currField, tagExpr)) {
 			return true
 		}
 	}

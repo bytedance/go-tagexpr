@@ -15,6 +15,7 @@
 package tagexpr
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -60,7 +61,7 @@ func TestReadBoolExprNode(t *testing.T) {
 		t.Log(c.expr)
 		expr := c.expr
 		e := readBoolExprNode(&expr)
-		got := e.Run("", nil).(bool)
+		got := e.Run(context.TODO(), "", nil).(bool)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %v, %s, want: %v, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
@@ -85,11 +86,11 @@ func TestReadDigitalExprNode(t *testing.T) {
 		e := readDigitalExprNode(&expr)
 		if c.expr == "1a" {
 			if e != nil {
-				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Run("", nil), nil)
+				t.Fatalf("expr: %s, got:%v, want:%v", c.expr, e.Run(context.TODO(), "", nil), nil)
 			}
 			continue
 		}
-		got := e.Run("", nil).(float64)
+		got := e.Run(context.TODO(), "", nil).(float64)
 		if got != c.val || expr != c.lastExprNode {
 			t.Fatalf("expr: %s, got: %f, %s, want: %f, %s", c.expr, got, expr, c.val, c.lastExprNode)
 		}
@@ -98,29 +99,29 @@ func TestReadDigitalExprNode(t *testing.T) {
 
 func TestFindSelector(t *testing.T) {
 	var cases = []struct {
-		expr          string
-		field         string
-		name          string
-		subSelector   []string
-		boolOpposite  bool
-		floatOpposite bool
-		found         bool
-		last          string
+		expr         string
+		field        string
+		name         string
+		subSelector  []string
+		boolOpposite bool
+		signOpposite bool
+		found        bool
+		last         string
 	}{
 		{expr: "$", name: "$", found: true},
 		{expr: "!!$", name: "$", found: true},
 		{expr: "!$", name: "$", boolOpposite: true, found: true},
 		{expr: "+$", name: "$", found: true},
 		{expr: "--$", name: "$", found: true},
-		{expr: "-$", name: "$", floatOpposite: true, found: true},
-		{expr: "---$", name: "$", floatOpposite: true, found: true},
+		{expr: "-$", name: "$", signOpposite: true, found: true},
+		{expr: "---$", name: "$", signOpposite: true, found: true},
 		{expr: "()$", last: "()$"},
 		{expr: "(0)$", last: "(0)$"},
 		{expr: "(A)$", field: "A", name: "$", found: true},
 		{expr: "+(A)$", field: "A", name: "$", found: true},
 		{expr: "++(A)$", field: "A", name: "$", found: true},
 		{expr: "!(A)$", field: "A", name: "$", boolOpposite: true, found: true},
-		{expr: "-(A)$", field: "A", name: "$", floatOpposite: true, found: true},
+		{expr: "-(A)$", field: "A", name: "$", signOpposite: true, found: true},
 		{expr: "(A0)$", field: "A0", name: "$", found: true},
 		{expr: "!!(A0)$", field: "A0", name: "$", found: true},
 		{expr: "--(A0)$", field: "A0", name: "$", found: true},
@@ -136,15 +137,15 @@ func TestFindSelector(t *testing.T) {
 	}
 	for _, c := range cases {
 		last := c.expr
-		field, name, subSelector, boolOpposite, floatOpposite, found := findSelector(&last)
+		field, name, subSelector, boolOpposite, signOpposite, found := findSelector(&last)
 		if found != c.found {
 			t.Fatalf("%q found: got: %v, want: %v", c.expr, found, c.found)
 		}
 		if c.boolOpposite && (boolOpposite == nil || !*boolOpposite) {
 			t.Fatalf("%q boolOpposite: got: %v, want: %v", c.expr, boolOpposite, c.boolOpposite)
 		}
-		if floatOpposite != c.floatOpposite {
-			t.Fatalf("%q floatOpposite: got: %v, want: %v", c.expr, floatOpposite, c.floatOpposite)
+		if c.signOpposite && (signOpposite == nil || !*signOpposite) {
+			t.Fatalf("%q signOpposite: got: %v, want: %v", c.expr, signOpposite, c.signOpposite)
 		}
 		if field != c.field {
 			t.Fatalf("%q field: got: %q, want: %q", c.expr, field, c.field)

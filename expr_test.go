@@ -67,13 +67,13 @@ func TestExpr(t *testing.T) {
 		{expr: "20%(7%5)", val: 0.0},
 		// Relational operator
 		{expr: "50 == 5", val: false},
-		{expr: "'50'==50", val: false},
+		{expr: "'50'==50", val: true},
 		{expr: "'50'=='50'", val: true},
 		{expr: "'50' =='5' == true", val: false},
 		{expr: "50== 50 == false", val: false},
 		{expr: "50== 50 == true ==true==true", val: true},
 		{expr: "50 != 5", val: true},
-		{expr: "'50'!=50", val: true},
+		{expr: "'50'!=50", val: false},
 		{expr: "'50'!= '50'", val: false},
 		{expr: "'50' !='5' != true", val: false},
 		{expr: "50!= 50 == false", val: true},
@@ -166,7 +166,7 @@ func TestBuiltInFunc(t *testing.T) {
 	}{
 		{expr: "len('abc')", val: 3.0},
 		{expr: "len('abc')+2*2/len('cd')", val: 5.0},
-		{expr: "len(0)", val: 0},
+		{expr: "len(0)", val: 0.0},
 
 		{expr: "regexp('a\\d','a0')", val: true},
 		{expr: "regexp('^a\\d$','a0')", val: true},

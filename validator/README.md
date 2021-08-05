@@ -27,23 +27,23 @@ import (
 
 func Example() {
 	type InfoRequest struct {
-		Name         string `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
-		Age          int    `vd:"$>0"`
-		Email        string `vd:"email($)"`
-		Phone1       string `vd:"phone($)"`
-		Phone2       string `vd:"phone($,'CN')"`
+		Name         string   `vd:"($!='Alice'||(Age)$==18) && regexp('\\w')"`
+		Age          int      `vd:"$>0"`
+		Email        string   `vd:"email($)"`
+		Phone1       string   `vd:"phone($)"`
+		OtherPhones  []string `vd:"range($, phone(#v,'CN'))"`
 		*InfoRequest `vd:"?"`
 		Info1        *InfoRequest `vd:"?"`
 		Info2        *InfoRequest `vd:"-"`
 	}
 	info := &InfoRequest{
-		Name:   "Alice",
-		Age:    18,
-		Email:  "henrylee2cn@gmail.com",
-		Phone1: "+8618812345678",
-		Phone2: "18812345678",
+		Name:        "Alice",
+		Age:         18,
+		Email:       "henrylee2cn@gmail.com",
+		Phone1:      "+8618812345678",
+		OtherPhones: []string{"18812345679", "18812345680"},
 	}
-	fmt.Println(vd.Validate(info) == nil)
+	fmt.Println(vd.Validate(info))
 
 	type A struct {
 		A    int `vd:"$<0||$>=100"`
@@ -106,7 +106,7 @@ func Example() {
 	fmt.Println(vd.Validate([]*F{}))
 
 	// Output:
-	// true
+	// <nil>
 	// email format is incorrect
 	// true
 	// C must be false when S.A>0
@@ -177,6 +177,7 @@ type T struct {
 |`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|
 |`regexp('^\\w*$')`|Regular match the current struct field, return boolean|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
+|`range(KvExpr, forEachExpr)`|Iterate over an array, slice, or dictionary <br> - `#k` is the element key var <br> - `#v` is the element value var <br> - `##` is the number of elements <br> - e.g. [example](../spec_range_test.go)|
 |`email((X)$)`|Regular match the struct field X, return true if it is email|
 |`phone((X)$,<'defaultRegion'>)`|Regular match the struct field X, return true if it is phone|
 |`in((X)$, enum_1, ...enum_n)`|Check if the first parameter is one of the enumerated parameters|

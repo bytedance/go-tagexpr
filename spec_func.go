@@ -15,6 +15,7 @@
 package tagexpr
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -44,44 +45,54 @@ func RegFunc(funcName string, fn func(...interface{}) interface{}, force ...bool
 	return nil
 }
 
-func newFunc(funcName string, fn func(...interface{}) interface{}) func(*Expr, *string) ExprNode {
+func (p *Expr) parseFuncSign(funcName string, expr *string) (boolOpposite *bool, signOpposite *bool, args []ExprNode, found bool) {
 	prefix := funcName + "("
 	length := len(funcName)
+	last, boolOpposite, signOpposite := getBoolAndSignOpposite(expr)
+	if !strings.HasPrefix(last, prefix) {
+		return
+	}
+	*expr = last[length:]
+	lastStr := *expr
+	subExprNode := readPairedSymbol(expr, '(', ')')
+	if subExprNode == nil {
+		return
+	}
+	*subExprNode = "," + *subExprNode
+	for {
+		if strings.HasPrefix(*subExprNode, ",") {
+			*subExprNode = (*subExprNode)[1:]
+			operand := newGroupExprNode()
+			_, err := p.parseExprNode(trimLeftSpace(subExprNode), operand)
+			if err != nil {
+				*expr = lastStr
+				return
+			}
+			sortPriority(operand.RightOperand())
+			args = append(args, operand)
+		} else {
+			*expr = lastStr
+			return
+		}
+		trimLeftSpace(subExprNode)
+		if len(*subExprNode) == 0 {
+			found = true
+			return
+		}
+	}
+}
+
+func newFunc(funcName string, fn func(...interface{}) interface{}) func(*Expr, *string) ExprNode {
 	return func(p *Expr, expr *string) ExprNode {
-		last, boolOpposite := getBoolOpposite(expr)
-		if !strings.HasPrefix(last, prefix) {
+		boolOpposite, signOpposite, args, found := p.parseFuncSign(funcName, expr)
+		if !found {
 			return nil
 		}
-		*expr = last[length:]
-		lastStr := *expr
-		subExprNode := readPairedSymbol(expr, '(', ')')
-		if subExprNode == nil {
-			return nil
-		}
-		f := &funcExprNode{
+		return &funcExprNode{
 			fn:           fn,
 			boolOpposite: boolOpposite,
-		}
-		*subExprNode = "," + *subExprNode
-		for {
-			if strings.HasPrefix(*subExprNode, ",") {
-				*subExprNode = (*subExprNode)[1:]
-				operand := newGroupExprNode()
-				_, err := p.parseExprNode(trimLeftSpace(subExprNode), operand)
-				if err != nil {
-					*expr = lastStr
-					return nil
-				}
-				sortPriority(operand.RightOperand())
-				f.args = append(f.args, operand)
-			} else {
-				*expr = lastStr
-				return nil
-			}
-			trimLeftSpace(subExprNode)
-			if len(*subExprNode) == 0 {
-				return f
-			}
+			signOpposite: signOpposite,
+			args:         args,
 		}
 	}
 }
@@ -91,23 +102,25 @@ type funcExprNode struct {
 	args         []ExprNode
 	fn           func(...interface{}) interface{}
 	boolOpposite *bool
+	signOpposite *bool
 }
 
-func (f *funcExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+func (f *funcExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	var args []interface{}
 	if n := len(f.args); n > 0 {
 		args = make([]interface{}, n)
 		for k, v := range f.args {
-			args[k] = v.Run(currField, tagExpr)
+			args[k] = v.Run(ctx, currField, tagExpr)
 		}
 	}
-	return realValue(f.fn(args...), f.boolOpposite)
+	return realValue(f.fn(args...), f.boolOpposite, f.signOpposite)
 }
 
 // --------------------------- Built-in function ---------------------------
 func init() {
 	funcList["regexp"] = readRegexpFuncExprNode
 	funcList["sprintf"] = readSprintfFuncExprNode
+	funcList["range"] = readRangeFuncExprNode
 	err := RegFunc("len", func(args ...interface{}) (n interface{}) {
 		if len(args) != 1 {
 			return 0
@@ -159,7 +172,7 @@ type regexpFuncExprNode struct {
 }
 
 func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
-	last, boolOpposite := getBoolOpposite(expr)
+	last, boolOpposite, _ := getBoolAndSignOpposite(expr)
 	if !strings.HasPrefix(last, "regexp(") {
 		return nil
 	}
@@ -207,8 +220,8 @@ func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
 	return e
 }
 
-func (re *regexpFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
-	param := re.rightOperand.Run(currField, tagExpr)
+func (re *regexpFuncExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
+	param := re.rightOperand.Run(ctx, currField, tagExpr)
 	switch v := param.(type) {
 	case string:
 		bol := re.re.MatchString(v)
@@ -276,12 +289,12 @@ func readSprintfFuncExprNode(p *Expr, expr *string) ExprNode {
 	}
 }
 
-func (se *sprintfFuncExprNode) Run(currField string, tagExpr *TagExpr) interface{} {
+func (se *sprintfFuncExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	var args []interface{}
 	if n := len(se.args); n > 0 {
 		args = make([]interface{}, n)
 		for i, e := range se.args {
-			args[i] = e.Run(currField, tagExpr)
+			args[i] = e.Run(ctx, currField, tagExpr)
 		}
 	}
 	return fmt.Sprintf(se.format, args...)

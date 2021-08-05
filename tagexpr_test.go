@@ -696,19 +696,20 @@ func TestNilField(t *testing.T) {
 	})
 
 	type G struct {
-		Nil1 *int `tagexpr:"nil!=$"`
+		// Nil1 *int `tagexpr:"nil!=$"`
 		Nil2 *int `tagexpr:"$!=nil"`
 	}
 	g := &G{
-		Nil1: new(int),
+		// Nil1: new(int),
 		Nil2: new(int),
 	}
 	vm.MustRun(g).Range(func(eh *ExprHandler) error {
 		r, ok := eh.Eval().(bool)
-		assert.True(t, r, eh.Path())
 		assert.True(t, ok, eh.Path())
+		assert.True(t, r, eh.Path())
 		return nil
 	})
+	return
 
 	type (
 		N struct {

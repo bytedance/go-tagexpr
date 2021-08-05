@@ -752,13 +752,45 @@ func FakeBool(v interface{}) bool {
 	switch r := v.(type) {
 	case float64:
 		return r != 0
+	case float32:
+		return r != 0
+	case int:
+		return r != 0
+	case int8:
+		return r != 0
+	case int16:
+		return r != 0
+	case int32:
+		return r != 0
+	case int64:
+		return r != 0
+	case uint:
+		return r != 0
+	case uint8:
+		return r != 0
+	case uint16:
+		return r != 0
+	case uint32:
+		return r != 0
+	case uint64:
+		return r != 0
 	case string:
 		return r != ""
 	case bool:
 		return r
 	case nil, error:
 		return false
+	case []interface{}:
+		var bol = len(r) > 0
+		for _, v := range r {
+			bol = bol && FakeBool(v)
+		}
+		return bol
 	default:
+		vv := ameda.DereferenceValue(reflect.ValueOf(v))
+		if vv.IsValid() || vv.IsZero() {
+			return false
+		}
 		return true
 	}
 }
