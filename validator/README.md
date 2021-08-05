@@ -153,7 +153,7 @@ type T struct {
 |`\\'`| Escape `'` delims in string|
 |`\"`| Escape `"` delims in string|
 |`nil`|nil, undefined|
-|`!`|not, suitable for `bool`, `string`, `float64`, `nil`, `$` and `()`|
+|`!`|not|
 |`+`|Digital addition or string splicing|
 |`-`|Digital subtraction or negative|
 |`*`|Digital multiplication|

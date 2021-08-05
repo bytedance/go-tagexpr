@@ -781,7 +781,7 @@ func FakeBool(v interface{}) bool {
 	case nil, error:
 		return false
 	case []interface{}:
-		var bol = len(r) > 0
+		var bol = true
 		for _, v := range r {
 			bol = bol && FakeBool(v)
 		}
