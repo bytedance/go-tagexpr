@@ -3,6 +3,7 @@ package binding
 import (
 	jsonpkg "encoding/json"
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -319,13 +320,26 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 			return nil
 		}
 	case reflect.Slice:
-		vv, retry, err := stringsToValue(v.Type().Elem(), a, p.looseZeroMode)
-		if err == nil {
-			v.Set(vv)
-			return nil
+		var ptrDepth int
+		t := v.Type().Elem()
+		elemKind := t.Kind()
+		for elemKind == reflect.Ptr {
+			t = t.Elem()
+			elemKind = t.Kind()
+			ptrDepth++
 		}
-		if !retry {
-			return info.typeError
+		val := reflect.New(v.Type()).Elem()
+		for _, s := range a {
+			var vv reflect.Value
+			vv, err = stringToValue(t, s, p.looseZeroMode)
+			if err != nil {
+				break
+			}
+			val = reflect.Append(val, ameda.ReferenceValue(vv, ptrDepth))
+		}
+		if err == nil {
+			v.Set(val)
+			return nil
 		}
 		fallthrough
 	default:
@@ -333,14 +347,6 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		if err == nil {
 			return nil
 		}
-		// fn := typeUnmarshalFuncs[v.Type()]
-		// if fn != nil {
-		// 	vv, err := fn(a[0], p.looseZeroMode)
-		// 	if err == nil {
-		// 		v.Set(vv)
-		// 		return nil
-		// 	}
-		// }
 	}
 	return info.typeError
 }
@@ -381,68 +387,40 @@ func (p *paramInfo) setDefaultVal() error {
 	return nil
 }
 
-var errMismatch = errors.New("type mismatch")
-
-func stringsToValue(t reflect.Type, a []string, emptyAsZero bool) (v reflect.Value, retry bool, err error) {
-	var i interface{}
-	var ptrDepth int
-	elemKind := t.Kind()
-	for elemKind == reflect.Ptr {
-		t = t.Elem()
-		elemKind = t.Kind()
-		ptrDepth++
-	}
-	switch elemKind {
+func stringToValue(elemType reflect.Type, s string, emptyAsZero bool) (v reflect.Value, err error) {
+	v = reflect.New(elemType).Elem()
+	switch elemType.Kind() {
 	case reflect.String:
-		i = a
+		v.SetString(s)
 	case reflect.Bool:
-		i, err = ameda.StringsToBools(a, emptyAsZero)
-	case reflect.Float32:
-		i, err = ameda.StringsToFloat32s(a, emptyAsZero)
-	case reflect.Float64:
-		i, err = ameda.StringsToFloat64s(a, emptyAsZero)
-	case reflect.Int:
-		i, err = ameda.StringsToInts(a, emptyAsZero)
-	case reflect.Int64:
-		i, err = ameda.StringsToInt64s(a, emptyAsZero)
-	case reflect.Int32:
-		i, err = ameda.StringsToInt32s(a, emptyAsZero)
-	case reflect.Int16:
-		i, err = ameda.StringsToInt16s(a, emptyAsZero)
-	case reflect.Int8:
-		i, err = ameda.StringsToInt8s(a, emptyAsZero)
-	case reflect.Uint:
-		i, err = ameda.StringsToUints(a, emptyAsZero)
-	case reflect.Uint64:
-		i, err = ameda.StringsToUint64s(a, emptyAsZero)
-	case reflect.Uint32:
-		i, err = ameda.StringsToUint32s(a, emptyAsZero)
-	case reflect.Uint16:
-		i, err = ameda.StringsToUint16s(a, emptyAsZero)
-	case reflect.Uint8:
-		i, err = ameda.StringsToUint8s(a, emptyAsZero)
-	default:
-		v, err := unsafeUnmarshalSlice(t, a, emptyAsZero)
+		var i bool
+		i, err = ameda.StringToBool(s, emptyAsZero)
 		if err == nil {
-			return ameda.ReferenceSlice(v, ptrDepth), false, nil
+			v.SetBool(i)
 		}
-		return reflect.Value{}, true, err
-		// fn := typeUnmarshalFuncs[t]
-		// if fn == nil {
-		// 	return reflect.Value{}, errMismatch
-		// }
-		// v := reflect.New(reflect.SliceOf(t)).Elem()
-		// for _, s := range a {
-		// 	vv, err := fn(s, emptyAsZero)
-		// 	if err != nil {
-		// 		return reflect.Value{}, errMismatch
-		// 	}
-		// 	v = reflect.Append(v, vv)
-		// }
-		// return ameda.ReferenceSlice(v, ptrDepth), nil
+	case reflect.Float32, reflect.Float64:
+		var i float64
+		i, err = ameda.StringToFloat64(s, emptyAsZero)
+		if err == nil {
+			v.SetFloat(i)
+		}
+	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
+		var i int64
+		i, err = ameda.StringToInt64(s, emptyAsZero)
+		if err == nil {
+			v.SetInt(i)
+		}
+	case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+		var i uint64
+		i, err = ameda.StringToUint64(s, emptyAsZero)
+		if err == nil {
+			v.SetUint(i)
+		}
+	default:
+		err = unsafeUnmarshalValue(v, s, emptyAsZero)
 	}
 	if err != nil {
-		return reflect.Value{}, false, errMismatch
+		return reflect.Value{}, fmt.Errorf("type mismatch, error=%v", err)
 	}
-	return ameda.ReferenceSlice(reflect.ValueOf(i), ptrDepth), false, nil
+	return v, nil
 }

@@ -50,12 +50,12 @@ func TestQueryString(t *testing.T) {
 			D *string   `query:"d"`
 			E *[]***int `query:"e"`
 			F metric    `query:"f"`
-			G count     `query:"g"`
+			G []count   `query:"g"`
 		}
 		Y string  `query:"y,required"`
 		Z *string `query:"z"`
 	}
-	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d&f=qps&g=1002&e=&e=2&y=y1", nil, nil, nil)
+	req := newRequest("http://localhost:8080/?a=a1&a=a2&b=b1&c=c1&c=c2&d=d1&d=d&f=qps&g=1002&g=1003&e=&e=2&y=y1", nil, nil, nil)
 	recv := new(Recv)
 	binder := binding.New(nil)
 	err := binder.BindAndValidate(recv, req, nil)
@@ -70,7 +70,7 @@ func TestQueryString(t *testing.T) {
 	assert.Equal(t, []string{"c1", "c2"}, *(**recv.X).C)
 	assert.Equal(t, "d1", *(**recv.X).D)
 	assert.Equal(t, metric("qps"), (**recv.X).F)
-	assert.Equal(t, count(1002), (**recv.X).G)
+	assert.Equal(t, []count{1002, 1003}, (**recv.X).G)
 	assert.Equal(t, "y1", recv.Y)
 	assert.Equal(t, (*string)(nil), recv.Z)
 }
@@ -1103,4 +1103,47 @@ func TestIssue25(t *testing.T) {
 	err2 := binder.BindAndValidate(recv2, req2, nil)
 	assert.NoError(t, err2)
 	assert.Equal(t, "from header", recv2.A)
+}
+
+func TestIssue26(t *testing.T) {
+	type Recv struct {
+		Type            string `json:"type,required" vd:"($=='update_target_threshold' && (target_threshold)$!='-1') || ($=='update_status' && (status)$!='-1')"`
+		RuleName        string `json:"rule_name,required" vd:"regexp('^rule[0-9]+$')"`
+		TargetThreshold string `json:"target_threshold" vd:"regexp('^-?[0-9]+(\\.[0-9]+)?$')"`
+		Status          string `json:"status" vd:"$=='0' || $=='1'"`
+		Operator        string `json:"operator,required" vd:"len($)>0"`
+	}
+
+	b := []byte(`{
+    "status": "1",
+    "adv": "11520",
+    "target_deep_external_action": "39",
+    "package": "test.bytedance.com",
+    "previous_target_threshold": "0.6",
+    "deep_external_action": "675",
+    "rule_name": "rule2",
+    "deep_bid_type": "54",
+    "modify_time": "2021-08-24:14:35:20",
+    "aid": "111",
+    "operator": "yanghaoze",
+    "external_action": "76",
+    "target_threshold": "0.1",
+    "type": "update_status"
+}`)
+
+	recv := new(Recv)
+	err := json.Unmarshal(b, recv)
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	header.Set("A", "from header")
+	cookies := []*http.Cookie{
+		{Name: "A", Value: "from cookie"},
+	}
+	// gjson.UseJSONUnmarshaler()
+	req := newRequest("/1", header, cookies, bytes.NewReader(b))
+	binder := binding.New(nil)
+	recv2 := new(Recv)
+	err = binder.BindAndValidate(&recv2, req, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, recv, recv2)
 }
