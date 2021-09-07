@@ -343,11 +343,20 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			}
 		case 1:
 			if p.tagInfos[0].paramIn == default_val {
-				p.tagInfos = append(p.tagInfos, p.tagInfos[0])
-				p.tagInfos[0] = &tagInfo{
-					paramIn:   json,
-					paramName: p.structField.Name,
+				last := p.tagInfos[0]
+				p.tagInfos = make([]*tagInfo, 0, len(sortedDefaultIn)+1)
+				for _, i := range sortedDefaultIn {
+					if p.omitIns[i] {
+						recv.assginIn(i, false)
+						continue
+					}
+					p.tagInfos = append(p.tagInfos, &tagInfo{
+						paramIn:   i,
+						paramName: p.structField.Name,
+					})
+					recv.assginIn(i, true)
 				}
+				p.tagInfos = append(p.tagInfos, last)
 			}
 			fallthrough
 		default:
