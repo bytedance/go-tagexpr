@@ -313,7 +313,8 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 			}
 		}
 		fs := string(fh.FieldSelector())
-		if len(p.tagInfos) == 0 {
+		switch len(p.tagInfos) {
+		case 0:
 			var canDefault = true
 			for s := range fieldsWithValidTag {
 				if strings.HasPrefix(fs, s) {
@@ -340,7 +341,16 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 					recv.assginIn(i, true)
 				}
 			}
-		} else {
+		case 1:
+			if p.tagInfos[0].paramIn == default_val {
+				p.tagInfos = append(p.tagInfos, p.tagInfos[0])
+				p.tagInfos[0] = &tagInfo{
+					paramIn:   json,
+					paramName: p.structField.Name,
+				}
+			}
+			fallthrough
+		default:
 			fieldsWithValidTag[fs+tagexpr.FieldSeparator] = true
 		}
 		if !recv.hasVd {

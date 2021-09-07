@@ -1147,3 +1147,24 @@ func TestIssue26(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, recv, recv2)
 }
+
+func TestDefault2(t *testing.T) {
+	type Recv struct {
+		X **struct {
+			Dash string `default:"xxxx"`
+		}
+	}
+	bodyReader := strings.NewReader(`{
+		"X": {
+			"Dash": "hello Dash"
+		}
+	}`)
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	req := newRequest("", header, nil, bodyReader)
+	recv := new(Recv)
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, new(testPathParams2))
+	assert.NoError(t, err)
+	assert.Equal(t, "hello Dash", (**recv.X).Dash)
+}
