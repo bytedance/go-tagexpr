@@ -3,10 +3,12 @@ package validator_test
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	tagexpr "github.com/bytedance/go-tagexpr/v2"
 	vd "github.com/bytedance/go-tagexpr/v2/validator"
 )
 
@@ -289,4 +291,114 @@ func TestIssue30(t *testing.T) {
 	})
 	assert.EqualError(t, vd.Validate(&TStruct{TOk: "1"}), "invalid parameter: TOk")
 	// assert.NoError(t, vd.Validate(&TStruct{TOk: "1", TFail: "1"}))
+}
+
+func TestStop(t1 *testing.T) {
+	type Server struct {
+		Disable bool   `vd:"stop($)"`
+		Name    string `vd:"len($)>0"`
+		Type    string `vd:"in($, 'A', 'B', 'C')"`
+	}
+
+	type ServerArr []*Server
+
+	type Config struct {
+		Enable        bool      `vd:"stop(!$)"`
+		Servers       []*Server `vd:"len($)>0"`
+		SubStreamMode int       `vd:"$>0 && $<4"`
+	}
+
+	if err := vd.RegFunc("stop", func(args ...interface{}) error {
+		if len(args) != 1 {
+			return errors.New("should be 1")
+		}
+		arg, ok := args[0].(bool)
+		if !ok {
+			return errors.New("should be bool")
+		}
+		if arg {
+			return tagexpr.ErrStop
+		}
+		return nil
+	}); err != nil {
+		log.Fatal(err)
+	}
+
+	tests := []struct {
+		name    string
+		config  *Config
+		wantErr bool
+	}{
+		{
+			name:    "case1",
+			config:  &Config{},
+			wantErr: false,
+		},
+		{
+			name:    "case2",
+			config:  &Config{Enable: true},
+			wantErr: true,
+		},
+		{
+			name: "case3",
+			config: &Config{
+				Enable:        true,
+				Servers:       ServerArr{{}},
+				SubStreamMode: 2,
+			},
+			wantErr: true,
+		},
+		{
+			name: "case4",
+			config: &Config{
+				Enable:        true,
+				Servers:       ServerArr{{Disable: true}},
+				SubStreamMode: 2,
+			},
+			wantErr: false,
+		},
+		{
+			name: "case5",
+			config: &Config{
+				Enable:        true,
+				Servers:       ServerArr{{Disable: true}},
+				SubStreamMode: 5,
+			},
+			wantErr: true,
+		},
+		{
+			name: "case6",
+			config: &Config{
+				Enable:        true,
+				Servers:       ServerArr{{Disable: false, Name: "server1", Type: "A"}, {Disable: true}},
+				SubStreamMode: 2,
+			},
+			wantErr: false,
+		},
+		{
+			name: "case7",
+			config: &Config{
+				Enable:        true,
+				Servers:       ServerArr{{Disable: false, Name: "", Type: "A"}, {Disable: true}},
+				SubStreamMode: 2,
+			},
+			wantErr: true,
+		},
+		{
+			name: "case8",
+			config: &Config{
+				Enable:        true,
+				Servers:       ServerArr{{Disable: false, Name: "server", Type: "D"}, {Disable: true}},
+				SubStreamMode: 2,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t1.Run(tt.name, func(t1 *testing.T) {
+			if err := vd.Validate(tt.config, true); (err != nil) != tt.wantErr {
+				t1.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

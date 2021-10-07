@@ -18,6 +18,7 @@ package tagexpr
 import (
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -98,6 +99,8 @@ func (vm *VM) MustRun(structOrStructPtrOrReflectValue interface{}) *TagExpr {
 var (
 	unsupportNil        = errors.New("unsupport data: nil")
 	unsupportCannotAddr = errors.New("unsupport data: can not addr")
+
+	ErrStop = errors.New("tagexpr stop")
 )
 
 // Run returns the tag expression handler of the @structPtrOrReflectValue.
@@ -859,6 +862,9 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 				continue
 			}
 			err = fn(newExprHandler(t, targetTagExpr, base, es))
+			if err == ErrStop {
+				return io.EOF
+			}
 			if err != nil {
 				return err
 			}
@@ -889,11 +895,17 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 							continue
 						}
 						err = mapKeyStructVM.newTagExpr(p, keyPath).Range(fn)
+						if err == io.EOF {
+							continue
+						}
 						if err != nil {
 							return err
 						}
 					} else if keyIface {
 						err = t.subRange(omitNil, keyPath, key, fn)
+						if err == io.EOF {
+							continue
+						}
 						if err != nil {
 							return err
 						}
@@ -904,11 +916,17 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 							continue
 						}
 						err = mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"{v for k="+key.String()+"}").Range(fn)
+						if err == io.EOF {
+							continue
+						}
 						if err != nil {
 							return err
 						}
 					} else if valueIface {
 						err = t.subRange(omitNil, f.fieldSelector+"{v for k="+key.String()+"}", v.MapIndex(key), fn)
+						if err == io.EOF {
+							continue
+						}
 						if err != nil {
 							return err
 						}
@@ -924,11 +942,17 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 							continue
 						}
 						err = mapOrSliceElemStructVM.newTagExpr(p, f.fieldSelector+"["+strconv.Itoa(i)+"]").Range(fn)
+						if err == io.EOF {
+							continue
+						}
 						if err != nil {
 							return err
 						}
 					} else if valueIface {
 						err = t.subRange(omitNil, f.fieldSelector+"["+strconv.Itoa(i)+"]", v.Index(i), fn)
+						if err == io.EOF {
+							continue
+						}
 						if err != nil {
 							return err
 						}
@@ -946,6 +970,9 @@ func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 				}
 				return te.Range(fn)
 			})
+			if err == io.EOF {
+				continue
+			}
 			if err != nil {
 				return err
 			}

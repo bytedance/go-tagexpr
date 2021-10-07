@@ -80,6 +80,9 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 				return nil
 			}
 			rerr, ok := r.(error)
+			if errors.Is(rerr, tagexpr.ErrStop) {
+				return rerr
+			}
 			if !ok && tagexpr.FakeBool(r) {
 				return nil
 			}
