@@ -68,7 +68,7 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			if all {
 				return nil
 			}
-			return io.EOF
+			return io.ErrUnexpectedEOF
 		}
 		nilParentFields := make(map[string]bool, 16)
 		err = te.Range(func(eh *tagexpr.ExprHandler) error {
@@ -107,14 +107,14 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			if all {
 				return nil
 			}
-			return io.EOF
+			return io.ErrUnexpectedEOF
 		})
 		if err != nil && !all {
 			return err
 		}
 		return nil
 	})
-	if err != io.EOF && err != nil {
+	if err != io.ErrUnexpectedEOF && err != nil {
 		return err
 	}
 	switch len(errs) {
