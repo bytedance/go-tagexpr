@@ -60,10 +60,10 @@ func TestMap(t *testing.T) {
           }
         }`)
 
-	x3 := X{}
+	var x3 *X
 	err = unmarshal(data, &x3)
 	assert.NoError(t, err)
-	assert.Equal(t, x, x3)
+	assert.Equal(t, x, *x3)
 }
 
 func TestStruct(t *testing.T) {

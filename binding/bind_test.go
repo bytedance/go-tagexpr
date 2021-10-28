@@ -13,12 +13,19 @@ import (
 	"testing"
 	"time"
 
+	// "github.com/bytedance/go-tagexpr/v2/binding/gjson"
+	vd "github.com/bytedance/go-tagexpr/v2/validator"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil/httpbody"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
 )
+
+func init() {
+	// gjson.UseJSONUnmarshaler()
+}
 
 func TestRawBody(t *testing.T) {
 	type Recv struct {
@@ -1107,7 +1114,7 @@ func TestIssue25(t *testing.T) {
 
 func TestIssue26(t *testing.T) {
 	type Recv struct {
-		Type            string `json:"type,required" vd:"($=='update_target_threshold' && (target_threshold)$!='-1') || ($=='update_status' && (status)$!='-1')"`
+		Type            string `json:"type,required" vd:"($=='update_target_threshold' && (TargetThreshold)$!='-1') || ($=='update_status' && (Status)$!='-1')"`
 		RuleName        string `json:"rule_name,required" vd:"regexp('^rule[0-9]+$')"`
 		TargetThreshold string `json:"target_threshold" vd:"regexp('^-?[0-9]+(\\.[0-9]+)?$')"`
 		Status          string `json:"status" vd:"$=='0' || $=='1'"`
@@ -1133,18 +1140,24 @@ func TestIssue26(t *testing.T) {
 
 	recv := new(Recv)
 	err := json.Unmarshal(b, recv)
+	assert.NoError(t, err)
+	err = vd.Validate(&recv, true)
+	assert.NoError(t, err)
+	t.Log(spew.Sdump(recv))
+
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 	header.Set("A", "from header")
 	cookies := []*http.Cookie{
 		{Name: "A", Value: "from cookie"},
 	}
-	// gjson.UseJSONUnmarshaler()
+
 	req := newRequest("/1", header, cookies, bytes.NewReader(b))
 	binder := binding.New(nil)
 	recv2 := new(Recv)
 	err = binder.BindAndValidate(&recv2, req, nil)
 	assert.NoError(t, err)
+	t.Log(spew.Sdump(recv2))
 	assert.Equal(t, recv, recv2)
 }
 
