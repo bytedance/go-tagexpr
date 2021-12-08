@@ -60,10 +60,10 @@ func parseTag(tag string) (map[string]string, error) {
 		}
 		key, val := splitExpr(one)
 		if val == "" {
-			return nil, fmt.Errorf("%q (syntax error): expression string can not be empty", tag)
+			return nil, fmt.Errorf("syntax error: %q expression string can not be empty", tag)
 		}
 		if _, ok := kvs[key]; ok {
-			return nil, fmt.Errorf("%q (syntax error): duplicate expression name %q", tag, key)
+			return nil, fmt.Errorf("syntax error: %q duplicate expression name %q", tag, key)
 		}
 		kvs[key] = val
 	}
@@ -121,7 +121,7 @@ func readOneExpr(tag *string) (string, error) {
 			patch++
 		}
 	}
-	return "", fmt.Errorf("%q (syntax error): unclosed single quote \"'\"", s)
+	return "", fmt.Errorf("syntax error: %q unclosed single quote \"'\"", s)
 }
 
 func trimLeftSpace(p *string) *string {

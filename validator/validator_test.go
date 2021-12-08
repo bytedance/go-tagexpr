@@ -290,3 +290,12 @@ func TestIssue30(t *testing.T) {
 	assert.EqualError(t, vd.Validate(&TStruct{TOk: "1"}), "invalid parameter: TOk")
 	// assert.NoError(t, vd.Validate(&TStruct{TOk: "1", TFail: "1"}))
 }
+
+func TestIssue31(t *testing.T) {
+	type TStruct struct {
+		A []int32 `vd:"$ == nil || ($ != nil && range($, in(#v, 1, 2, 3))"`
+	}
+	assert.EqualError(t, vd.Validate(&TStruct{A: []int32{1}}), "syntax error: \"($ != nil && range($, in(#v, 1, 2, 3))\"")
+	assert.EqualError(t, vd.Validate(&TStruct{A: []int32{1}}), "syntax error: \"($ != nil && range($, in(#v, 1, 2, 3))\"")
+	assert.EqualError(t, vd.Validate(&TStruct{A: []int32{1}}), "syntax error: \"($ != nil && range($, in(#v, 1, 2, 3))\"")
+}
