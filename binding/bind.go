@@ -372,7 +372,7 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 		return nil, b.bindErrFactory(errExprSelector.String(), errMsg)
 	}
 	if !recv.hasVd {
-		recv.hasVd, _ = b.findVdTag(ameda.DereferenceType(t), false, 20)
+		recv.hasVd, _ = b.findVdTag(ameda.DereferenceType(t), false, 20, map[reflect.Type]bool{})
 	}
 	recv.initParams()
 
@@ -383,13 +383,14 @@ func (b *Binding) getOrPrepareReceiver(value reflect.Value) (*receiver, error) {
 	return recv, nil
 }
 
-func (b *Binding) findVdTag(t reflect.Type, inMapOrSlice bool, depth int) (hasVd bool, err error) {
-	if depth <= 0 {
+func (b *Binding) findVdTag(t reflect.Type, inMapOrSlice bool, depth int, exist map[reflect.Type]bool) (hasVd bool, err error) {
+	if depth <= 0 || exist[t] {
 		return
 	}
 	depth--
 	switch t.Kind() {
 	case reflect.Struct:
+		exist[t] = true
 		for i := t.NumField() - 1; i >= 0; i-- {
 			field := t.Field(i)
 			if inMapOrSlice {
@@ -400,14 +401,14 @@ func (b *Binding) findVdTag(t reflect.Type, inMapOrSlice bool, depth int) (hasVd
 					}
 				}
 			}
-			hasVd, _ = b.findVdTag(ameda.DereferenceType(field.Type), inMapOrSlice, depth)
+			hasVd, _ = b.findVdTag(ameda.DereferenceType(field.Type), inMapOrSlice, depth, exist)
 			if hasVd {
 				return true, nil
 			}
 		}
 		return false, nil
 	case reflect.Slice, reflect.Array, reflect.Map:
-		return b.findVdTag(ameda.DereferenceType(t.Elem()), true, depth)
+		return b.findVdTag(ameda.DereferenceType(t.Elem()), true, depth, exist)
 	default:
 		return false, nil
 	}

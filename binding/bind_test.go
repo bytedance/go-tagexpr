@@ -1181,3 +1181,18 @@ func TestDefault2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "hello Dash", (**recv.X).Dash)
 }
+
+func TestVdTagRecursion(t *testing.T) {
+	type Node struct {
+		N1 *Node
+		N2 *Node
+		N3 *Node
+	}
+	recv := &Node{}
+	req, _ := http.NewRequest("get", "http://localhost/", bytes.NewReader([]byte{}))
+	start := time.Now()
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, new(testPathParams2))
+	assert.NoError(t, err)
+	assert.Less(t, int64(time.Since(start)), int64(time.Second))
+}
