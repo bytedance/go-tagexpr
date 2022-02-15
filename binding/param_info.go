@@ -353,7 +353,8 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		}
 		fallthrough
 	default:
-		err = unsafeUnmarshalValue(v, a[0], p.looseZeroMode)
+		// no customized unmarshal defined
+		err = unmarshal(ameda.UnsafeStringToBytes(a[0]), v.Addr().Interface())
 		if err == nil {
 			return nil
 		}
@@ -437,7 +438,8 @@ func stringToValue(elemType reflect.Type, s string, emptyAsZero bool) (v reflect
 			v.SetUint(i)
 		}
 	default:
-		err = unsafeUnmarshalValue(v, s, emptyAsZero)
+		// no customized unmarshal defined
+		err = unmarshal(ameda.UnsafeStringToBytes(s), v.Addr().Interface())
 	}
 	if err != nil {
 		return reflect.Value{}, fmt.Errorf("type mismatch, error=%v", err)
