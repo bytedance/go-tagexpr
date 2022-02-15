@@ -237,6 +237,16 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 	}
 
 	v = ameda.DereferenceValue(v)
+
+	// we have customized unmarshal defined, we should use it firstly
+	if fn, exist := typeUnmarshalFuncs[v.Type()]; exist {
+		vv, err := fn(a[0], p.looseZeroMode)
+		if err == nil {
+			v.Set(vv)
+		}
+		return err
+	}
+
 	switch v.Kind() {
 	case reflect.String:
 		v.SetString(a[0])
@@ -389,6 +399,16 @@ func (p *paramInfo) setDefaultVal() error {
 
 func stringToValue(elemType reflect.Type, s string, emptyAsZero bool) (v reflect.Value, err error) {
 	v = reflect.New(elemType).Elem()
+
+	// we have customized unmarshal defined, we should use it firstly
+	if fn, exist := typeUnmarshalFuncs[elemType]; exist {
+		vv, err := fn(s, emptyAsZero)
+		if err == nil {
+			v.Set(vv)
+		}
+		return v, err
+	}
+
 	switch elemType.Kind() {
 	case reflect.String:
 		v.SetString(s)
