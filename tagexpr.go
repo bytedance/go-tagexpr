@@ -52,6 +52,7 @@ type structVM struct {
 	exprs                      map[string]*Expr
 	exprSelectorList           []string
 	ifaceTagExprGetters        []func(unsafe.Pointer, string, func(*TagExpr, error) error) error
+	err                        error
 }
 
 // fieldVM tag expression set of struct field
@@ -140,6 +141,9 @@ func (vm *VM) Run(structPtrOrReflectValue interface{}) (*TagExpr, error) {
 			}
 		}
 		vm.rw.Unlock()
+	}
+	if s.err != nil {
+		return nil, s.err
 	}
 	return s.newTagExpr(ptr, ""), nil
 }
@@ -258,6 +262,9 @@ func (vm *VM) subRun(path string, t reflect.Type, tid uintptr, ptr unsafe.Pointe
 		}
 		vm.rw.Unlock()
 	}
+	if s.err != nil {
+		return nil, s.err
+	}
 	return s.newTagExpr(ptr, path), nil
 }
 
@@ -269,7 +276,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 	tid := ameda.RuntimeTypeID(structType)
 	s, had := vm.structJar[tid]
 	if had {
-		return s, nil
+		return s, s.err
 	}
 	s = vm.newStructVM()
 	s.name = structType.String()
@@ -281,6 +288,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 		structField = structType.Field(i)
 		field, err := s.newFieldVM(structField)
 		if err != nil {
+			s.err = err
 			return nil, err
 		}
 		switch field.elemKind {
@@ -290,6 +298,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			case reflect.Struct:
 				sub, err = vm.registerStructLocked(field.structField.Type)
 				if err != nil {
+					s.err = err
 					return nil, err
 				}
 				s.mergeSubStructVM(field, sub)
@@ -307,6 +316,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 		case reflect.Array, reflect.Slice, reflect.Map:
 			err = vm.registerIndirectStructLocked(field)
 			if err != nil {
+				s.err = err
 				return nil, err
 			}
 		}

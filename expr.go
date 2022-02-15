@@ -33,7 +33,7 @@ func parseExpr(expr string) (*Expr, error) {
 	s := expr
 	_, err := p.parseExprNode(&s, e)
 	if err != nil {
-		return nil, fmt.Errorf("%q (syntax error): %s", expr, err.Error())
+		return nil, err
 	}
 	sortPriority(e.RightOperand())
 	err = p.checkSyntax()
@@ -146,9 +146,8 @@ func (p *Expr) parseExprNode(expr *string, e ExprNode) (ExprNode, error) {
 		}
 	}
 	if operand == nil {
-		return nil, fmt.Errorf("parsing pos: %q", *expr)
+		return nil, fmt.Errorf("syntax error: %q", *expr)
 	}
-
 	trimLeftSpace(expr)
 	operator := p.parseOperator(expr)
 	if operator == nil {

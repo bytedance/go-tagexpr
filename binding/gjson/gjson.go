@@ -24,6 +24,7 @@ package gjson
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -66,18 +67,12 @@ func assign(jsval gjson.Result, goval reflect.Value) (err error) {
 	switch goval.Kind() {
 	default:
 	case reflect.Ptr:
-		if !goval.IsNil() {
-			newval := reflect.New(goval.Elem().Type())
-			if err = assign(jsval, newval.Elem()); err != nil {
-				return err
-			}
-			goval.Elem().Set(newval.Elem())
-		} else {
-			newval := reflect.New(t.Elem())
-			if err = assign(jsval, newval.Elem()); err != nil {
-				return err
-			}
-			goval.Set(newval)
+		if !ameda.InitPointer(goval) {
+			return errors.New("v cannot be set")
+		}
+		newval := ameda.DereferencePtrValue(goval)
+		if err = assign(jsval, newval); err != nil {
+			return err
 		}
 	case reflect.Struct:
 		runtimeTypeID := ameda.ValueFrom(goval).RuntimeTypeID()
