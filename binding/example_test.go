@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +19,7 @@ func Example() {
 	type InfoRequest struct {
 		Name          string   `path:"name"`
 		Year          []int    `query:"year"`
+		Pages         []uint64 `query:"pages"`
 		Email         *string  `json:"email" vd:"email($)"`
 		Friendly      bool     `json:"friendly"`
 		Pie           float32  `json:"pie,required"`
@@ -29,6 +32,25 @@ func Example() {
 		AutoNotFound  *string
 		TimeRFC3339   time.Time `query:"t"`
 	}
+
+	binding.MustRegTypeUnmarshal(reflect.TypeOf([]uint64{}), func(v string, emptyAsZero bool) (reflect.Value, error) {
+		if v == "" && emptyAsZero {
+			return reflect.ValueOf([]uint64{}), nil
+		}
+
+		ss := strings.Split(v, ",")
+		t := make([]uint64, 0, len(ss))
+
+		for _, s := range ss {
+			i, err := strconv.ParseUint(s, 10, 64)
+			if err != nil {
+				return reflect.ValueOf([]uint64{}), err
+			}
+			t = append(t, i)
+		}
+
+		return reflect.ValueOf(t), nil
+	})
 
 	args := new(InfoRequest)
 	binder := binding.New(nil)
@@ -43,7 +65,7 @@ func Example() {
 
 	// Output:
 	// request:
-	// POST /info/henrylee2cn?year=2018&year=2019&t=2019-09-04T18%3A04%3A08%2B08%3A00 HTTP/1.1
+	// POST /info/henrylee2cn?year=2018&year=2019&t=2019-09-04T18%3A04%3A08%2B08%3A00&pages=1,2,3 HTTP/1.1
 	// Host: localhost
 	// User-Agent: Go-http-client/1.1
 	// Transfer-Encoding: chunked
@@ -65,6 +87,11 @@ func Example() {
 	// 		2018,
 	// 		2019
 	// 	],
+	//	"Pages": [
+	//		1,
+	//		2,
+	//		3
+	//	],
 	// 	"email": "henrylee2cn@gmail.com",
 	// 	"friendly": true,
 	// 	"pie": 3.1415925,
@@ -96,7 +123,7 @@ func requestExample() *http.Request {
 	cookies := []*http.Cookie{
 		{Name: "sessionid", Value: "987654"},
 	}
-	req := newRequest("http://localhost/info/henrylee2cn?year=2018&year=2019&t=2019-09-04T18%3A04%3A08%2B08%3A00", header, cookies, bodyReader)
+	req := newRequest("http://localhost/info/henrylee2cn?year=2018&year=2019&t=2019-09-04T18%3A04%3A08%2B08%3A00&pages=1,2,3", header, cookies, bodyReader)
 	req.Method = "POST"
 	var w bytes.Buffer
 	req.Write(&w)
