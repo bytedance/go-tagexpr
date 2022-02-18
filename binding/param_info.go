@@ -243,8 +243,9 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 		vv, err := fn(a[0], p.looseZeroMode)
 		if err == nil {
 			v.Set(vv)
+			return nil
 		}
-		return err
+		return info.typeError
 	}
 
 	switch v.Kind() {
