@@ -137,3 +137,20 @@ func TestAliasBUG1(t *testing.T) {
 	// assert.NoError(t, err)
 	// t.Log(string(b))
 }
+
+func TestBingSliceWithObject(t *testing.T) {
+	type F struct {
+		UID int64
+	}
+	type foo struct {
+		F1 []F `json:"f1"`
+		F2 []F `json:"f2"`
+	}
+	str := `{"f1":{"UID":1},"f2":[{"UID":"2233"}]}`
+
+	obj := foo{}
+	err := unmarshal([]byte(str), &obj)
+
+	assert.NoError(t, err)
+	assert.Len(t, obj.F1, 0)
+}
