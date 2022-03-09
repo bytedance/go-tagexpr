@@ -126,6 +126,9 @@ func assign(jsval gjson.Result, goval reflect.Value) (err error) {
 			}
 			goval.Set(reflect.ValueOf(data))
 		} else {
+			if !jsval.IsArray() {
+				return nil
+			}
 			jsvals := jsval.Array()
 			slice := reflect.MakeSlice(t, len(jsvals), len(jsvals))
 			for i := 0; i < len(jsvals); i++ {
