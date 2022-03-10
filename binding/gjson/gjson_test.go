@@ -2,11 +2,16 @@ package gjson
 
 import (
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/henrylee2cn/ameda"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bytedance/go-tagexpr/v2/binding/gjson/internal/rt"
 )
 
 func TestMap(t *testing.T) {
@@ -153,4 +158,81 @@ func TestBingSliceWithObject(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, obj.F1, 0)
+}
+func BenchmarkGetFiledInfo(b *testing.B) {
+	var types []reflect.Type
+	const count = 2000
+	for i := 0; i < count; i++ {
+		xtype := genStruct(i)
+
+		getFiledInfo(xtype)
+
+		types = append(types, xtype)
+	}
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var i int64
+		for pb.Next() {
+			getFiledInfo(types[i%count])
+			i++
+		}
+	})
+}
+func BenchmarkGetFieldInfoByMap(b *testing.B) {
+	var types []reflect.Type
+	const count = 2000
+	for i := 0; i < count; i++ {
+		xtype := genStruct(i)
+
+		getFiledInfoWithMap(xtype)
+
+		types = append(types, xtype)
+	}
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var i int64
+		for pb.Next() {
+			getFiledInfoWithMap(types[i%count])
+			i++
+		}
+	})
+}
+
+func genStruct(n int) reflect.Type {
+	numOfFields := rand.Intn(50) + 1
+	field := make([]reflect.StructField, 0, numOfFields)
+	for i := 0; i < numOfFields; i++ {
+		field = append(field, reflect.StructField{
+			Name:    fmt.Sprintf("F%d_%d", n, i),
+			PkgPath: "",
+			Type: reflect.TypeOf(struct {
+				A int
+				B map[int]interface{}
+			}{}),
+		})
+	}
+	ot := reflect.StructOf(field)
+	return ot
+}
+
+var fieldsmu sync.RWMutex
+var fields = make(map[uintptr]map[string][]int)
+
+func getFiledInfoWithMap(t reflect.Type) map[string][]int {
+
+	runtimeTypeID := ameda.RuntimeTypeID(t)
+	fieldsmu.RLock()
+	sf := fields[runtimeTypeID]
+	fieldsmu.RUnlock()
+	if sf == nil {
+		fieldsmu.Lock()
+		defer fieldsmu.Unlock()
+
+		d := rt.UnpackType(t)
+		sf1, _ := computeTypeInfo(d)
+		sf = sf1.(map[string][]int)
+		fields[runtimeTypeID] = sf
+
+	}
+	return sf
 }
