@@ -28,17 +28,17 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/henrylee2cn/ameda"
 	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
+	"github.com/bytedance/go-tagexpr/v2/binding/gjson/internal/caching"
+	"github.com/bytedance/go-tagexpr/v2/binding/gjson/internal/rt"
 )
 
-var fieldsmu sync.RWMutex
-var fields = make(map[uintptr]map[string][]int)
+var programCache = caching.CreateProgramCache()
 
 func init() {
 	gjson.DisableModifiers = true
@@ -75,37 +75,7 @@ func assign(jsval gjson.Result, goval reflect.Value) (err error) {
 			return err
 		}
 	case reflect.Struct:
-		runtimeTypeID := ameda.ValueFrom(goval).RuntimeTypeID()
-		fieldsmu.RLock()
-		sf := fields[runtimeTypeID]
-		fieldsmu.RUnlock()
-		if sf == nil {
-			fieldsmu.Lock()
-			sf = make(map[string][]int)
-			numField := t.NumField()
-			for i := 0; i < numField; i++ {
-				f := t.Field(i)
-				if !f.Anonymous && !goutil.IsExportedName(f.Name) {
-					continue
-				}
-				tag := getJsonTag(f.Tag)
-				if tag == "-" {
-					continue
-				}
-				if tag != "" {
-					sf[tag] = []int{i}
-				} else if f.Anonymous {
-					if findAnonymous(ameda.DereferenceType(f.Type), []int{i}, sf, 20) {
-						continue
-					}
-				}
-				if tag != f.Name {
-					sf[f.Name] = []int{i}
-				}
-			}
-			fields[runtimeTypeID] = sf
-			fieldsmu.Unlock()
-		}
+		sf := getFiledInfo(t)
 		jsval.ForEach(func(key, value gjson.Result) bool {
 			if idx, ok := sf[key.Str]; ok {
 				f := fieldByIndex(goval, idx)
@@ -200,6 +170,46 @@ func assign(jsval gjson.Result, goval reflect.Value) (err error) {
 		}
 	}
 	return err
+}
+
+func getFiledInfo(t reflect.Type) map[string][]int {
+	vtr := rt.UnpackType(t)
+	filedInfo := programCache.Get(vtr)
+	if filedInfo == nil {
+		pp, err := programCache.Compute(vtr, computeTypeInfo)
+		if err == nil {
+			return pp.(map[string][]int)
+		}
+		filedInfo, _ = computeTypeInfo(vtr)
+	}
+	return filedInfo.(map[string][]int)
+}
+
+func computeTypeInfo(vtr *rt.GoType) (interface{}, error) {
+	t := vtr.Pack()
+	sf := make(map[string][]int)
+	numField := t.NumField()
+	for i := 0; i < numField; i++ {
+		f := t.Field(i)
+		if !f.Anonymous && !goutil.IsExportedName(f.Name) {
+			continue
+		}
+		tag := getJsonTag(f.Tag)
+		if tag == "-" {
+			continue
+		}
+		if tag != "" {
+			sf[tag] = []int{i}
+		} else if f.Anonymous {
+			if findAnonymous(ameda.DereferenceType(f.Type), []int{i}, sf, 20) {
+				continue
+			}
+		}
+		if tag != f.Name {
+			sf[f.Name] = []int{i}
+		}
+	}
+	return sf, nil
 }
 
 func getJsonTag(tag reflect.StructTag) string {
