@@ -17,11 +17,12 @@ import (
 
 // Binding binding and verification tool for http request
 type Binding struct {
-	vd             *validator.Validator
-	recvs          map[uintptr]*receiver
-	lock           sync.RWMutex
-	bindErrFactory func(failField, msg string) error
-	config         Config
+	vd                *validator.Validator
+	recvs             map[uintptr]*receiver
+	lock              sync.RWMutex
+	bindErrFactory    func(failField, msg string) error
+	config            Config
+	jsonUnmarshalFunc func(data []byte, v interface{}) error
 }
 
 // New creates a binding tool.
@@ -126,7 +127,7 @@ func (b *Binding) bindNonstruct(pointer interface{}, _ reflect.Value, req Reques
 		if err != nil {
 			return hasVd, err
 		}
-		err = bindJSON(pointer, bodyBytes)
+		err = b.bindJSON(pointer, bodyBytes)
 	case bodyProtobuf:
 		hasVd = true
 		bodyBytes, err := req.GetBody()
@@ -166,7 +167,7 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 
 	bodyCodec, bodyBytes, err := recv.getBodyInfo(req)
 	if len(bodyBytes) > 0 {
-		err = recv.prebindBody(structPointer, structValue, bodyCodec, bodyBytes)
+		err = b.prebindBody(structPointer, structValue, bodyCodec, bodyBytes)
 	}
 	if err != nil {
 		return
@@ -412,4 +413,16 @@ func (b *Binding) findVdTag(t reflect.Type, inMapOrSlice bool, depth int, exist 
 	default:
 		return false, nil
 	}
+}
+
+func (b *Binding) bindJSON(pointer interface{}, bodyBytes []byte) error {
+	if b.jsonUnmarshalFunc != nil {
+		return b.jsonUnmarshalFunc(bodyBytes, pointer)
+	} else {
+		return jsonpkg.Unmarshal(bodyBytes, pointer)
+	}
+}
+
+func (b *Binding) ResetJSONUnmarshaler(fn JSONUnmarshaler) {
+	b.jsonUnmarshalFunc = fn
 }
