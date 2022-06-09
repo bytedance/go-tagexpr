@@ -46,11 +46,11 @@ func init() {
 
 // UseJSONUnmarshaler reset the JSON Unmarshaler of binding.
 func UseJSONUnmarshaler() {
-	binding.Default().ResetJSONUnmarshaler(unmarshal)
+	binding.Default().ResetJSONUnmarshaler(Unmarshal)
 }
 
-// unmarshal unmarshal JSON, old version compatible.
-func unmarshal(data []byte, v interface{}) error {
+// Unmarshal Unmarshal JSON, old version compatible.
+func Unmarshal(data []byte, v interface{}) error {
 	val, ok := v.(reflect.Value)
 	if !ok {
 		val = reflect.ValueOf(v)
@@ -58,7 +58,7 @@ func unmarshal(data []byte, v interface{}) error {
 	return assign(gjson.Parse(ameda.UnsafeBytesToString(data)), val)
 }
 
-// assign unmarshal
+// assign Unmarshal
 func assign(jsval gjson.Result, goval reflect.Value) (err error) {
 	if jsval.Type == gjson.Null {
 		return nil
