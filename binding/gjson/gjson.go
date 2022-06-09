@@ -46,7 +46,7 @@ func init() {
 
 // UseJSONUnmarshaler reset the JSON Unmarshaler of binding.
 func UseJSONUnmarshaler() {
-	binding.ResetJSONUnmarshaler(unmarshal)
+	binding.Default().ResetJSONUnmarshaler(unmarshal)
 }
 
 // unmarshal unmarshal JSON, old version compatible.

@@ -108,10 +108,10 @@ func (r *receiver) getBodyInfo(req Request) (codec, []byte, error) {
 	return bodyUnsupport, nil, nil
 }
 
-func (r *receiver) prebindBody(pointer interface{}, val reflect.Value, bodyCodec codec, bodyBytes []byte) error {
+func (b *Binding) prebindBody(pointer interface{}, val reflect.Value, bodyCodec codec, bodyBytes []byte) error {
 	switch bodyCodec {
 	case bodyJSON:
-		return bindJSON(pointer, bodyBytes)
+		return b.bindJSON(pointer, bodyBytes)
 	case bodyProtobuf:
 		return bindProtobuf(pointer, bodyBytes)
 	default:

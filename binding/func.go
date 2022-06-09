@@ -15,14 +15,12 @@ import (
 // that can unmarshal a JSON description of themselves.
 type JSONUnmarshaler func(data []byte, v interface{}) error
 
-var (
-	jsonUnmarshalFunc func(data []byte, v interface{}) error
-)
-
 // ResetJSONUnmarshaler reset the JSON Unmarshal function.
 // NOTE: verifyingRequired is true if the required tag is supported.
+//
+// Deprecated: please use: Default().ResetJSONUnmarshaler
 func ResetJSONUnmarshaler(fn JSONUnmarshaler) {
-	jsonUnmarshalFunc = fn
+	defaultBinding.ResetJSONUnmarshaler(fn)
 }
 
 var typeUnmarshalFuncs = make(map[reflect.Type]func(string, bool) (reflect.Value, error))

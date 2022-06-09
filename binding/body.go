@@ -5,7 +5,6 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"compress/zlib"
-	jsonpkg "encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -94,13 +93,6 @@ func GetBody(r *http.Request) (*Body, error) {
 		r.Body = _body
 		return _body, nil
 	}
-}
-
-func bindJSON(pointer interface{}, bodyBytes []byte) error {
-	if jsonUnmarshalFunc != nil {
-		return jsonUnmarshalFunc(bodyBytes, pointer)
-	}
-	return jsonpkg.Unmarshal(bodyBytes, pointer)
 }
 
 func bindProtobuf(pointer interface{}, bodyBytes []byte) error {
