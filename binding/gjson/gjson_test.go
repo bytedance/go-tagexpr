@@ -42,7 +42,7 @@ func TestMap(t *testing.T) {
 
 	var x2 X
 
-	err := unmarshal(data, &x2)
+	err := Unmarshal(data, &x2)
 	assert.NoError(t, err)
 	assert.Equal(t, x, x2)
 
@@ -66,7 +66,7 @@ func TestMap(t *testing.T) {
         }`)
 
 	var x3 *X
-	err = unmarshal(data, &x3)
+	err = Unmarshal(data, &x3)
 	assert.NoError(t, err)
 	assert.Equal(t, x, *x3)
 }
@@ -104,7 +104,7 @@ func TestStruct(t *testing.T) {
 		assert.Equal(t, 3, (*std.A2).V)
 	}
 	g := &E{}
-	err = unmarshal(data, g)
+	err = Unmarshal(data, g)
 	assert.NoError(t, err)
 	assert.Equal(t, std, g)
 
@@ -119,7 +119,7 @@ func TestStruct(t *testing.T) {
 		t.Logf("%#v", std2)
 	}
 	g2 := &X{}
-	err = unmarshal(data2, g2)
+	err = Unmarshal(data2, g2)
 	assert.NoError(t, err)
 	assert.Equal(t, std2, g2)
 }
@@ -134,7 +134,7 @@ func TestAliasBUG1(t *testing.T) {
 	b, err := json.MarshalIndent(ameda.InitSampleValue(reflect.TypeOf(AttachedMobiles{}), 10).Interface(), "", "  ")
 	assert.NoError(t, err)
 	var r AttachedMobiles
-	err = unmarshal(b, &r)
+	err = Unmarshal(b, &r)
 	assert.NoError(t, err)
 	// b, err = json.Marshal(map[float32]int{
 	// 	1.0: 4,
@@ -154,7 +154,7 @@ func TestBingSliceWithObject(t *testing.T) {
 	str := `{"f1":{"UID":1},"f2":[{"UID":"2233"}]}`
 
 	obj := foo{}
-	err := unmarshal([]byte(str), &obj)
+	err := Unmarshal([]byte(str), &obj)
 
 	assert.NoError(t, err)
 	assert.Len(t, obj.F1, 0)
