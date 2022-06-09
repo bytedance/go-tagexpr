@@ -20,7 +20,6 @@ import (
 	"sync"
 	"testing"
 
-
 	"github.com/bytedance/go-tagexpr/v2/binding/gjson/internal/rt"
 )
 
