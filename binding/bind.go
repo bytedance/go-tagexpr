@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/andeya/goutil"
 	"github.com/henrylee2cn/ameda"
-	"github.com/henrylee2cn/goutil"
 
 	"github.com/bytedance/go-tagexpr/v2"
 	"github.com/bytedance/go-tagexpr/v2/validator"

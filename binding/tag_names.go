@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/henrylee2cn/goutil"
+	"github.com/andeya/goutil"
 )
 
 const (

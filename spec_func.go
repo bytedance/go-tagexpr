@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/henrylee2cn/goutil/errors"
+	"github.com/andeya/goutil/errors"
 )
 
 // --------------------------- Custom function ---------------------------

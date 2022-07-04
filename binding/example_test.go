@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/henrylee2cn/goutil/httpbody"
+	"github.com/andeya/goutil/httpbody"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
 )

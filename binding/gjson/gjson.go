@@ -29,8 +29,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/andeya/goutil"
 	"github.com/henrylee2cn/ameda"
-	"github.com/henrylee2cn/goutil"
 	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
