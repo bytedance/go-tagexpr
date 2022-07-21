@@ -291,7 +291,7 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 			s.err = err
 			return nil, err
 		}
-		// skip omited tag
+		// skip omitted tag
 		if !ok {
 			continue
 		}
