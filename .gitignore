@@ -30,3 +30,5 @@ _testmain.go
 
 # idea ignore
 .idea/
+
+.vscode/

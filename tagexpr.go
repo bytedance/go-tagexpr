@@ -286,10 +286,14 @@ func (vm *VM) registerStructLocked(structType reflect.Type) (*structVM, error) {
 	var sub *structVM
 	for i := 0; i < numField; i++ {
 		structField = structType.Field(i)
-		field, err := s.newFieldVM(structField)
+		field, ok, err := s.newFieldVM(structField)
 		if err != nil {
 			s.err = err
 			return nil, err
+		}
+		// skip omited tag
+		if !ok {
+			continue
 		}
 		switch field.elemKind {
 		default:
@@ -410,16 +414,20 @@ func (vm *VM) newStructVM() *structVM {
 	}
 }
 
-func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error) {
+func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, bool, error) {
+	var tag = structField.Tag.Get(s.vm.tagName)
+	if tag == tagOmit {
+		return nil, false, nil
+	}
 	f := &fieldVM{
 		structField:   structField,
 		exprs:         make(map[string]*Expr, 8),
 		origin:        s,
 		fieldSelector: structField.Name,
 	}
-	err := f.parseExprs(structField.Tag.Get(s.vm.tagName))
+	err := f.parseExprs(tag)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	s.fields[f.fieldSelector] = f
 	s.fieldSelectorList = append(s.fieldSelectorList, f.fieldSelector)
@@ -450,7 +458,7 @@ func (s *structVM) newFieldVM(structField reflect.StructField) (*fieldVM, error)
 		return v
 	}
 
-	return f, nil
+	return f, true, nil
 }
 
 func (f *fieldVM) ensureInit(v reflect.Value) {
