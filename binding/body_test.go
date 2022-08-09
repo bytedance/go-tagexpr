@@ -40,4 +40,6 @@ func TestBody(t *testing.T) {
 	b, err = ioutil.ReadAll(body)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("abc"), b)
+	body.Close()
+	assert.Equal(t, []byte(nil), body.Bytes())
 }

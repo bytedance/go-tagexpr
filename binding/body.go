@@ -38,7 +38,11 @@ type Body struct {
 }
 
 // Close close.
-func (Body) Close() error { return nil }
+func (b *Body) Close() error {
+	b.Buffer = nil
+	b.bodyBytes = nil
+	return nil
+}
 
 // Reset zero offset.
 func (b *Body) Reset() {
