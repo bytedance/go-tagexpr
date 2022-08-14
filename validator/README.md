@@ -174,6 +174,7 @@ type T struct {
 |`(X)$['A']`|Map value with key A or struct A sub-field in the struct field X|
 |`(X)$[0]`|The 0th element or sub-field of the struct field X(type: map, slice, array, struct)|
 |`len((X)$)`|Built-in function `len`, the length of struct field X|
+|`mblen((X)$)`|the length of string field X (character number)|
 |`regexp('^\\w*$', (X)$)`|Regular match the struct field X, return boolean|
 |`regexp('^\\w*$')`|Regular match the current struct field, return boolean|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
