@@ -236,3 +236,43 @@ func getFiledInfoWithMap(t reflect.Type) map[string][]int {
 	}
 	return sf
 }
+
+
+// MarshalJSON to output non base64 encoded []byte
+func (j ByteSlice) MarshalJSON() ([]byte, error) {
+	if len(j) == 0 {
+		return []byte("null"), nil
+	}
+
+	return json.RawMessage(j).MarshalJSON()
+}
+
+// UnmarshalJSON to deserialize []byte
+func (j *ByteSlice) UnmarshalJSON(b []byte) error {
+	result := json.RawMessage{}
+	err := result.UnmarshalJSON(b)
+	*j = ByteSlice(result)
+	return err
+}
+
+type ByteSlice []byte
+
+func TestCustomizedGjsonUnmarshal(t *testing.T) {
+	str := `{"h1":{"h2":1}}`
+	type F struct {
+		H ByteSlice `json:"h1"`
+	}
+
+	obj := F{}
+	err := Unmarshal([]byte(str), &obj)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "{\"h2\":1}", string(obj.H))
+
+	obj2 := F{}
+	err = json.Unmarshal([]byte(str), &obj2)
+	assert.NoError(t, err)
+	assert.Equal(t, "{\"h2\":1}", string(obj2.H))
+
+	assert.Equal(t, obj.H, obj2.H)
+}
