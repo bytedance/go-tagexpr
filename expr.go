@@ -15,8 +15,12 @@
 package tagexpr
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
+
+	"github.com/andeya/goutil"
 )
 
 // Expr expression
@@ -31,21 +35,58 @@ func parseExpr(expr string) (*Expr, error) {
 		expr: e,
 	}
 	s := expr
-	_, err := p.parseExprNode(&s, e)
+	err := p.parseExprNode(&s, e)
 	if err != nil {
 		return nil, err
 	}
-	sortPriority(e.RightOperand())
-	err = p.checkSyntax()
-	if err != nil {
-		return nil, err
-	}
+	sortPriority(e)
 	return p, nil
 }
-
-// run calculates the value of expression.
-func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
-	return p.expr.Run(context.Background(), field, tagExpr)
+func (p *Expr) parseExprNode(expr *string, e ExprNode) error {
+	trimLeftSpace(expr)
+	if *expr == "" {
+		return nil
+	}
+	operand := p.readSelectorExprNode(expr)
+	if operand == nil {
+		operand = p.readRangeKvExprNode(expr)
+		if operand == nil {
+			var subExprNode *string
+			operand, subExprNode = readGroupExprNode(expr)
+			if operand != nil {
+				err := p.parseExprNode(subExprNode, operand)
+				if err != nil {
+					return err
+				}
+			} else {
+				operand = p.parseOperand(expr)
+			}
+		}
+	}
+	if operand == nil {
+		return fmt.Errorf("syntax error: %q", *expr)
+	}
+	trimLeftSpace(expr)
+	operator := p.parseOperator(expr)
+	if operator == nil {
+		e.SetRightOperand(operand)
+		operand.SetParent(e)
+		return nil
+	}
+	if _, ok := e.(*groupExprNode); ok {
+		operator.SetLeftOperand(operand)
+		operand.SetParent(operator)
+		e.SetRightOperand(operator)
+		operator.SetParent(e)
+	} else {
+		operator.SetParent(e.Parent())
+		operator.Parent().SetRightOperand(operator)
+		operator.SetLeftOperand(e)
+		e.SetParent(operator)
+		e.SetRightOperand(operand)
+		operand.SetParent(e)
+	}
+	return p.parseExprNode(expr, operator)
 }
 
 func (p *Expr) parseOperand(expr *string) (e ExprNode) {
@@ -124,56 +165,9 @@ func (*Expr) parseOperator(expr *string) (e ExprNode) {
 	return nil
 }
 
-func (p *Expr) parseExprNode(expr *string, e ExprNode) (ExprNode, error) {
-	trimLeftSpace(expr)
-	if *expr == "" {
-		return nil, nil
-	}
-	operand := p.readSelectorExprNode(expr)
-	if operand == nil {
-		operand = p.readRangeKvExprNode(expr)
-		if operand == nil {
-			var subExprNode *string
-			operand, subExprNode = readGroupExprNode(expr)
-			if operand != nil {
-				_, err := p.parseExprNode(subExprNode, operand)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				operand = p.parseOperand(expr)
-			}
-		}
-	}
-	if operand == nil {
-		return nil, fmt.Errorf("syntax error: %q", *expr)
-	}
-	trimLeftSpace(expr)
-	operator := p.parseOperator(expr)
-	if operator == nil {
-		e.SetRightOperand(operand)
-		operand.SetParent(e)
-		return operand, nil
-	}
-	if _, ok := e.(*groupExprNode); ok {
-		operator.SetLeftOperand(operand)
-		operand.SetParent(operator)
-		e.SetRightOperand(operator)
-		operator.SetParent(e)
-	} else {
-		e.SetRightOperand(operand)
-		operand.SetParent(e)
-		operator.SetLeftOperand(e)
-		operator.SetParent(e.Parent())
-		operator.Parent().SetRightOperand(operator)
-		e.SetParent(operator)
-	}
-	return p.parseExprNode(expr, operator)
-}
-
-func (p *Expr) checkSyntax() error {
-
-	return nil
+// run calculates the value of expression.
+func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
+	return p.expr.Run(context.Background(), field, tagExpr)
 }
 
 /**
@@ -188,26 +182,52 @@ func (p *Expr) checkSyntax() error {
 **/
 
 func sortPriority(e ExprNode) {
-	for subSortPriority(e) {
+	printExprNode(e)
+	for subSortPriority(e.RightOperand(), false) {
+		printExprNode(e)
 	}
 }
 
-func subSortPriority(e ExprNode) bool {
+func subSortPriority(e ExprNode, isLeft bool) bool {
 	if e == nil {
 		return false
 	}
-	leftChanged := subSortPriority(e.LeftOperand())
-	rightChanged := subSortPriority(e.RightOperand())
+	leftChanged := subSortPriority(e.LeftOperand(), true)
+	rightChanged := subSortPriority(e.RightOperand(), false)
 	if getPriority(e) > getPriority(e.LeftOperand()) {
-		leftOperandToParent(e)
+		printf("before:\n")
+		printExprNode(e)
+		leftOperandToParent(e, isLeft)
+		printf("after:\n")
+		printExprNode(e.Parent())
 		return true
 	}
 	return leftChanged || rightChanged
 }
 
+func leftOperandToParent(e ExprNode, isLeft bool) {
+	le := e.LeftOperand()
+	if le == nil {
+		return
+	}
+	p := e.Parent()
+	le.SetParent(p)
+	if p != nil {
+		if isLeft {
+			p.SetLeftOperand(le)
+		} else {
+			p.SetRightOperand(le)
+		}
+	}
+	e.SetParent(le)
+	e.SetLeftOperand(le.RightOperand())
+	le.RightOperand().SetParent(e)
+	le.SetRightOperand(e)
+}
+
 func getPriority(e ExprNode) (i int) {
 	// defer func() {
-	// 	fmt.Printf("expr:%T %d\n", e, i)
+	// 	printf("expr:%T %d\n", e, i)
 	// }()
 	switch e.(type) {
 	default: // () ! bool float64 string nil
@@ -227,26 +247,6 @@ func getPriority(e ExprNode) (i int) {
 	}
 }
 
-func leftOperandToParent(e ExprNode) {
-	le := e.LeftOperand()
-	if le == nil {
-		return
-	}
-	e.SetLeftOperand(le.RightOperand())
-	le.SetRightOperand(e)
-	p := e.Parent()
-	// if p == nil {
-	// 	return
-	// }
-	if p.LeftOperand() == e {
-		p.SetLeftOperand(le)
-	} else {
-		p.SetRightOperand(le)
-	}
-	le.SetParent(p)
-	e.SetParent(le)
-}
-
 // ExprNode expression interface
 type ExprNode interface {
 	SetParent(ExprNode)
@@ -255,10 +255,11 @@ type ExprNode interface {
 	RightOperand() ExprNode
 	SetLeftOperand(ExprNode)
 	SetRightOperand(ExprNode)
+	String() string
 	Run(context.Context, string, *TagExpr) interface{}
 }
 
-var _ ExprNode = new(exprBackground)
+// var _ ExprNode = new(exprBackground)
 
 type exprBackground struct {
 	parent       ExprNode
@@ -291,3 +292,43 @@ func (eb *exprBackground) SetRightOperand(right ExprNode) {
 }
 
 func (*exprBackground) Run(context.Context, string, *TagExpr) interface{} { return nil }
+
+var debugSwitch = goutil.IsGoTest()
+
+func printf(format string, a ...interface{}) {
+	if debugSwitch {
+		fmt.Fprintf(os.Stderr, format, a...)
+	}
+}
+
+func printExprNode(node ExprNode) {
+	if node == nil {
+		return
+	}
+	tail := true
+	if node.Parent() != nil {
+		tail = node == node.Parent().RightOperand()
+	}
+	printf("%s\n\n", formatExprNode(node, 0, tail))
+}
+
+func formatExprNode(node ExprNode, level int, tail bool) []byte {
+	var b bytes.Buffer
+	if node == nil {
+	} else {
+		b.Write(formatExprNode(node.LeftOperand(), level+1, false))
+
+		b.Write(bytes.Repeat([]byte("    "), level))
+		if tail {
+			b.Write([]byte("└── "))
+		} else {
+			b.Write([]byte("┌── "))
+		}
+
+		b.Write([]byte(node.String()))
+		b.Write([]byte("\n"))
+
+		b.Write(formatExprNode(node.RightOperand(), level+1, true))
+	}
+	return b.Bytes()
+}

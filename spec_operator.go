@@ -23,6 +23,10 @@ import (
 
 type additionExprNode struct{ exprBackground }
 
+func (ae *additionExprNode) String() string {
+	return "+"
+}
+
 func newAdditionExprNode() ExprNode { return &additionExprNode{} }
 
 func (ae *additionExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -42,6 +46,10 @@ func (ae *additionExprNode) Run(ctx context.Context, currField string, tagExpr *
 
 type multiplicationExprNode struct{ exprBackground }
 
+func (ae *multiplicationExprNode) String() string {
+	return "*"
+}
+
 func newMultiplicationExprNode() ExprNode { return &multiplicationExprNode{} }
 
 func (ae *multiplicationExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -51,6 +59,10 @@ func (ae *multiplicationExprNode) Run(ctx context.Context, currField string, tag
 }
 
 type divisionExprNode struct{ exprBackground }
+
+func (de *divisionExprNode) String() string {
+	return "/"
+}
 
 func newDivisionExprNode() ExprNode { return &divisionExprNode{} }
 
@@ -65,6 +77,10 @@ func (de *divisionExprNode) Run(ctx context.Context, currField string, tagExpr *
 
 type subtractionExprNode struct{ exprBackground }
 
+func (de *subtractionExprNode) String() string {
+	return "-"
+}
+
 func newSubtractionExprNode() ExprNode { return &subtractionExprNode{} }
 
 func (de *subtractionExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -74,6 +90,10 @@ func (de *subtractionExprNode) Run(ctx context.Context, currField string, tagExp
 }
 
 type remainderExprNode struct{ exprBackground }
+
+func (re *remainderExprNode) String() string {
+	return "%"
+}
 
 func newRemainderExprNode() ExprNode { return &remainderExprNode{} }
 
@@ -87,6 +107,10 @@ func (re *remainderExprNode) Run(ctx context.Context, currField string, tagExpr 
 }
 
 type equalExprNode struct{ exprBackground }
+
+func (ee *equalExprNode) String() string {
+	return "=="
+}
 
 func newEqualExprNode() ExprNode { return &equalExprNode{} }
 
@@ -121,6 +145,10 @@ func (ee *equalExprNode) Run(ctx context.Context, currField string, tagExpr *Tag
 
 type notEqualExprNode struct{ equalExprNode }
 
+func (ne *notEqualExprNode) String() string {
+	return "!="
+}
+
 func newNotEqualExprNode() ExprNode { return &notEqualExprNode{} }
 
 func (ne *notEqualExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -128,6 +156,10 @@ func (ne *notEqualExprNode) Run(ctx context.Context, currField string, tagExpr *
 }
 
 type greaterExprNode struct{ exprBackground }
+
+func (ge *greaterExprNode) String() string {
+	return ">"
+}
 
 func newGreaterExprNode() ExprNode { return &greaterExprNode{} }
 
@@ -150,6 +182,10 @@ func (ge *greaterExprNode) Run(ctx context.Context, currField string, tagExpr *T
 
 type greaterEqualExprNode struct{ exprBackground }
 
+func (ge *greaterEqualExprNode) String() string {
+	return ">="
+}
+
 func newGreaterEqualExprNode() ExprNode { return &greaterEqualExprNode{} }
 
 func (ge *greaterEqualExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -170,6 +206,10 @@ func (ge *greaterEqualExprNode) Run(ctx context.Context, currField string, tagEx
 }
 
 type lessExprNode struct{ exprBackground }
+
+func (le *lessExprNode) String() string {
+	return "<"
+}
 
 func newLessExprNode() ExprNode { return &lessExprNode{} }
 
@@ -192,6 +232,10 @@ func (le *lessExprNode) Run(ctx context.Context, currField string, tagExpr *TagE
 
 type lessEqualExprNode struct{ exprBackground }
 
+func (le *lessEqualExprNode) String() string {
+	return "<="
+}
+
 func newLessEqualExprNode() ExprNode { return &lessEqualExprNode{} }
 
 func (le *lessEqualExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -213,6 +257,10 @@ func (le *lessEqualExprNode) Run(ctx context.Context, currField string, tagExpr 
 
 type andExprNode struct{ exprBackground }
 
+func (ae *andExprNode) String() string {
+	return "&&"
+}
+
 func newAndExprNode() ExprNode { return &andExprNode{} }
 
 func (ae *andExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -225,6 +273,10 @@ func (ae *andExprNode) Run(ctx context.Context, currField string, tagExpr *TagEx
 }
 
 type orExprNode struct{ exprBackground }
+
+func (oe *orExprNode) String() string {
+	return "||"
+}
 
 func newOrExprNode() ExprNode { return &orExprNode{} }
 

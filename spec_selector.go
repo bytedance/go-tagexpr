@@ -16,6 +16,7 @@ package tagexpr
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -26,6 +27,10 @@ type selectorExprNode struct {
 	subExprs     []ExprNode
 	boolOpposite *bool
 	signOpposite *bool
+}
+
+func (se *selectorExprNode) String() string {
+	return fmt.Sprintf("(%s)%s", se.field, se.name)
 }
 
 func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
@@ -42,11 +47,11 @@ func (p *Expr) readSelectorExprNode(expr *string) ExprNode {
 	operand.subExprs = make([]ExprNode, 0, len(subSelector))
 	for _, s := range subSelector {
 		grp := newGroupExprNode()
-		_, err := p.parseExprNode(&s, grp)
+		err := p.parseExprNode(&s, grp)
 		if err != nil {
 			return nil
 		}
-		sortPriority(grp.RightOperand())
+		sortPriority(grp)
 		operand.subExprs = append(operand.subExprs, grp)
 	}
 	return operand

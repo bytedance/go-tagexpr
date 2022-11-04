@@ -21,6 +21,10 @@ type rangeKvExprNode struct {
 	signOpposite *bool
 }
 
+func (re *rangeKvExprNode) String() string {
+	return string(re.ctxKey)
+}
+
 func (p *Expr) readRangeKvExprNode(expr *string) ExprNode {
 	name, boolOpposite, signOpposite, found := findRangeKv(expr)
 	if !found {
@@ -76,6 +80,10 @@ type rangeFuncExprNode struct {
 	elemExprNode ExprNode
 	boolOpposite *bool
 	signOpposite *bool
+}
+
+func (e *rangeFuncExprNode) String() string {
+	return "range()"
 }
 
 // range($, gt($v,10))

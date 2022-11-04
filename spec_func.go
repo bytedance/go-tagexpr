@@ -63,12 +63,12 @@ func (p *Expr) parseFuncSign(funcName string, expr *string) (boolOpposite *bool,
 		if strings.HasPrefix(*subExprNode, ",") {
 			*subExprNode = (*subExprNode)[1:]
 			operand := newGroupExprNode()
-			_, err := p.parseExprNode(trimLeftSpace(subExprNode), operand)
+			err := p.parseExprNode(trimLeftSpace(subExprNode), operand)
 			if err != nil {
 				*expr = lastStr
 				return
 			}
-			sortPriority(operand.RightOperand())
+			sortPriority(operand)
 			args = append(args, operand)
 		} else {
 			*expr = lastStr
@@ -103,6 +103,10 @@ type funcExprNode struct {
 	fn           func(...interface{}) interface{}
 	boolOpposite *bool
 	signOpposite *bool
+}
+
+func (f *funcExprNode) String() string {
+	return "func()"
 }
 
 func (f *funcExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
@@ -171,6 +175,10 @@ type regexpFuncExprNode struct {
 	boolOpposite bool
 }
 
+func (re *regexpFuncExprNode) String() string {
+	return "regexp()"
+}
+
 func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
 	last, boolOpposite, _ := getBoolAndSignOpposite(expr)
 	if !strings.HasPrefix(last, "regexp(") {
@@ -196,7 +204,7 @@ func readRegexpFuncExprNode(p *Expr, expr *string) ExprNode {
 	trimLeftSpace(subExprNode)
 	if strings.HasPrefix(*subExprNode, ",") {
 		*subExprNode = (*subExprNode)[1:]
-		_, err = p.parseExprNode(trimLeftSpace(subExprNode), operand)
+		err = p.parseExprNode(trimLeftSpace(subExprNode), operand)
 		if err != nil {
 			*expr = lastStr
 			return nil
@@ -249,6 +257,10 @@ type sprintfFuncExprNode struct {
 	args   []ExprNode
 }
 
+func (se *sprintfFuncExprNode) String() string {
+	return "sprintf()"
+}
+
 func readSprintfFuncExprNode(p *Expr, expr *string) ExprNode {
 	if !strings.HasPrefix(*expr, "sprintf(") {
 		return nil
@@ -275,12 +287,12 @@ func readSprintfFuncExprNode(p *Expr, expr *string) ExprNode {
 		if strings.HasPrefix(*subExprNode, ",") {
 			*subExprNode = (*subExprNode)[1:]
 			operand := newGroupExprNode()
-			_, err := p.parseExprNode(trimLeftSpace(subExprNode), operand)
+			err := p.parseExprNode(trimLeftSpace(subExprNode), operand)
 			if err != nil {
 				*expr = lastStr
 				return nil
 			}
-			sortPriority(operand.RightOperand())
+			sortPriority(operand)
 			e.args = append(e.args, operand)
 		} else {
 			*expr = lastStr

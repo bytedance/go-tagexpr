@@ -46,6 +46,10 @@ func readGroupExprNode(expr *string) (grp ExprNode, subExprNode *string) {
 	return e, sptr
 }
 
+func (ge *groupExprNode) String() string {
+	return "()"
+}
+
 func (ge *groupExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	if ge.rightOperand == nil {
 		return nil
@@ -56,6 +60,10 @@ func (ge *groupExprNode) Run(ctx context.Context, currField string, tagExpr *Tag
 type boolExprNode struct {
 	exprBackground
 	val bool
+}
+
+func (be *boolExprNode) String() string {
+	return fmt.Sprintf("%v", be.val)
 }
 
 var boolRegexp = regexp.MustCompile(`^!*(true|false)([\)\],\|&!= \t]{1}|$)`)
@@ -88,6 +96,10 @@ type stringExprNode struct {
 	val interface{}
 }
 
+func (se *stringExprNode) String() string {
+	return fmt.Sprintf("%v", se.val)
+}
+
 func readStringExprNode(expr *string) ExprNode {
 	last, boolOpposite, _ := getBoolAndSignOpposite(expr)
 	sptr := readPairedSymbol(&last, '\'', '\'')
@@ -106,6 +118,10 @@ func (se *stringExprNode) Run(ctx context.Context, currField string, tagExpr *Ta
 type digitalExprNode struct {
 	exprBackground
 	val interface{}
+}
+
+func (de *digitalExprNode) String() string {
+	return fmt.Sprintf("%v", de.val)
 }
 
 var digitalRegexp = regexp.MustCompile(`^[\+\-]?\d+(\.\d+)?([\)\],\+\-\*\/%><\|&!=\^ \t\\]|$)`)
@@ -131,6 +147,10 @@ func (de *digitalExprNode) Run(ctx context.Context, currField string, tagExpr *T
 type nilExprNode struct {
 	exprBackground
 	val interface{}
+}
+
+func (ne *nilExprNode) String() string {
+	return "<nil>"
 }
 
 var nilRegexp = regexp.MustCompile(`^nil([\)\],\|&!= \t]{1}|$)`)

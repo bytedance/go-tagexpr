@@ -843,3 +843,29 @@ func TestIssue4(t *testing.T) {
 	})
 	assert.NoError(t, err)
 }
+
+func TestIssue5(t *testing.T) {
+	type A struct {
+		F1 int `vd:"true && $ <= 24*60*60"`        // 1500 ok
+		F2 int `vd:"$%60 == 0 && $ <= (24*60*60)"` // 1500 ok
+		F3 int `vd:"$ <= 24*60*60"`                // 1500 ok
+	}
+	a := &A{
+		F1: 1500,
+		F2: 1500,
+		F3: 1500,
+	}
+	vm := New("vd")
+	err := vm.MustRun(a).Range(func(eh *ExprHandler) error {
+		switch eh.Path() {
+		case "F1":
+			assert.Equal(t, true, eh.Eval(), eh.Path())
+		case "F2":
+			assert.Equal(t, true, eh.Eval(), eh.Path())
+		case "F3":
+			assert.Equal(t, true, eh.Eval(), eh.Path())
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+}
