@@ -38,7 +38,10 @@ import (
 	"github.com/bytedance/go-tagexpr/v2/binding/gjson/internal/rt"
 )
 
-var programCache = caching.CreateProgramCache()
+var (
+	programCache = caching.CreateProgramCache()
+	unmarshalerInterface = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
+)
 
 func init() {
 	gjson.DisableModifiers = true
@@ -97,7 +100,13 @@ func assign(jsval gjson.Result, goval reflect.Value) (err error) {
 			goval.Set(reflect.ValueOf(data))
 		} else {
 			if !jsval.IsArray() {
-				return nil
+				// canAddr: true, implement unmarshaler : true   -> continue
+				// canAddr: true, implement unmarshaler : false  -> return
+				// canAddr: false, implement unmarshaler : true  -> return
+				// canAddr: false, implement unmarshaler : false -> return
+				if !goval.CanAddr() || !goval.Addr().Type().Implements(unmarshalerInterface) {
+					return nil
+				}
 			}
 			jsvals := jsval.Array()
 			slice := reflect.MakeSlice(t, len(jsvals), len(jsvals))
