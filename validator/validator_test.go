@@ -299,3 +299,13 @@ func TestIssue31(t *testing.T) {
 	assert.EqualError(t, vd.Validate(&TStruct{A: []int32{1}}), "syntax error: \"($ != nil && range($, in(#v, 1, 2, 3))\"")
 	assert.EqualError(t, vd.Validate(&TStruct{A: []int32{1}}), "syntax error: \"($ != nil && range($, in(#v, 1, 2, 3))\"")
 }
+
+func TestRegexp(t *testing.T) {
+	type TStruct struct {
+		A string `vd:"regexp('(\\d+\\.){3}\\d+')"`
+	}
+	assert.NoError(t, vd.Validate(&TStruct{A: "0.0.0.0"}))
+	assert.EqualError(t, vd.Validate(&TStruct{A: "0...0"}), "invalid parameter: A")
+	assert.EqualError(t, vd.Validate(&TStruct{A: "abc1"}), "invalid parameter: A")
+	assert.EqualError(t, vd.Validate(&TStruct{A: "0?0?0?0"}), "invalid parameter: A")
+}

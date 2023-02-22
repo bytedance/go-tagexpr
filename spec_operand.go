@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/henrylee2cn/ameda"
+	"github.com/andeya/ameda"
 )
 
 // --------------------------- Operand ---------------------------

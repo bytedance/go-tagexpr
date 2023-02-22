@@ -1,5 +1,7 @@
-github.com/andeya/goutil v0.0.0-20220704075712-42f2ec55fe8d h1:qZjX5KRJDCA0DaORmzyXuySdlT+MOhx0OOTbUbdPxp0=
-github.com/andeya/goutil v0.0.0-20220704075712-42f2ec55fe8d/go.mod h1:jEG5/QnnhG7yGxwFUX6Q+JGMif7sjdHmmNVjn7nhJDo=
+github.com/andeya/ameda v1.5.3 h1:SvqnhQPZwwabS8HQTRGfJwWPl2w9ZIPInHAw9aE1Wlk=
+github.com/andeya/ameda v1.5.3/go.mod h1:FQDHRe1I995v6GG+8aJ7UIUToEmbdTJn/U26NCPIgXQ=
+github.com/andeya/goutil v1.0.1 h1:eiYwVyAnnK0dXU5FJsNjExkJW4exUGn/xefPt3k4eXg=
+github.com/andeya/goutil v1.0.1/go.mod h1:jEG5/QnnhG7yGxwFUX6Q+JGMif7sjdHmmNVjn7nhJDo=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -8,8 +10,6 @@ github.com/golang/protobuf v1.5.0 h1:LUVKkCeviFUMKqHa4tXIIij/lbhnMbP7Fn5wKdKkRh4
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
-github.com/henrylee2cn/ameda v1.5.1 h1:4n25dZyVSAgRCJ4DLLYF65ynwr9RYO92oFbdyUJWAFk=
-github.com/henrylee2cn/ameda v1.5.1/go.mod h1:wnTERseg26LtcSrHOPlV3pBGnNwQiz3TNIeMEgNoNlg=
 github.com/nyaruka/phonenumbers v1.0.55 h1:bj0nTO88Y68KeUQ/n3Lo2KgK7lM1hF7L9NFuwcCl3yg=
 github.com/nyaruka/phonenumbers v1.0.55/go.mod h1:sDaTZ/KPX5f8qyV9qN+hIm+4ZBARJrupC6LuhshJq1U=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

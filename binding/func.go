@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/henrylee2cn/ameda"
+	"github.com/andeya/ameda"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -73,7 +73,8 @@ func unmarshal(b []byte, i interface{}) error {
 
 // MustRegTypeUnmarshal registers unmarshalor function of type.
 // NOTE:
-//  panic if exist error.
+//
+//	panic if exist error.
 func MustRegTypeUnmarshal(t reflect.Type, fn func(v string, emptyAsZero bool) (reflect.Value, error)) {
 	err := RegTypeUnmarshal(t, fn)
 	if err != nil {

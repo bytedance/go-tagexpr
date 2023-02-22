@@ -29,8 +29,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/andeya/ameda"
 	"github.com/andeya/goutil"
-	"github.com/henrylee2cn/ameda"
 	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2/binding"
@@ -39,7 +39,7 @@ import (
 )
 
 var (
-	programCache = caching.CreateProgramCache()
+	programCache         = caching.CreateProgramCache()
 	unmarshalerInterface = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
 )
 

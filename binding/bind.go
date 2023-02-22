@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/andeya/ameda"
 	"github.com/andeya/goutil"
-	"github.com/henrylee2cn/ameda"
 
 	"github.com/bytedance/go-tagexpr/v2"
 	"github.com/bytedance/go-tagexpr/v2/validator"
@@ -27,7 +27,8 @@ type Binding struct {
 
 // New creates a binding tool.
 // NOTE:
-//  Use default tag name for config fields that are empty
+//
+//	Use default tag name for config fields that are empty
 func New(config *Config) *Binding {
 	if config == nil {
 		config = new(Config)
@@ -44,8 +45,9 @@ func New(config *Config) *Binding {
 // SetLooseZeroMode if set to true,
 // the empty string request parameter is bound to the zero value of parameter.
 // NOTE:
-//  The default is false;
-//  Suitable for these parameter types: query/header/cookie/form .
+//
+//	The default is false;
+//	Suitable for these parameter types: query/header/cookie/form .
 func (b *Binding) SetLooseZeroMode(enable bool) *Binding {
 	b.config.LooseZeroMode = enable
 	for k := range b.recvs {
@@ -59,7 +61,8 @@ var defaultBindErrFactory = newDefaultErrorFactory("binding")
 
 // SetErrorFactory customizes the factory of validation error.
 // NOTE:
-//  If errFactory==nil, the default is used
+//
+//	If errFactory==nil, the default is used
 func (b *Binding) SetErrorFactory(bindErrFactory, validatingErrFactory func(failField, msg string) error) *Binding {
 	if bindErrFactory == nil {
 		bindErrFactory = defaultBindErrFactory

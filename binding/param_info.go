@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/henrylee2cn/ameda"
+	"github.com/andeya/ameda"
 	"github.com/tidwall/gjson"
 
 	"github.com/bytedance/go-tagexpr/v2"

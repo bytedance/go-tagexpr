@@ -6,7 +6,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/henrylee2cn/ameda"
+	"github.com/andeya/ameda"
 )
 
 // Internally unified data types
@@ -75,8 +75,9 @@ type fieldVM struct {
 
 // New creates a tag expression interpreter that uses tagName as the tag name.
 // NOTE:
-//  If no tagName is specified, no tag expression will be interpreted,
-//  but still can operate the various fields.
+//
+//	If no tagName is specified, no tag expression will be interpreted,
+//	but still can operate the various fields.
 func New(tagName ...string) *VM {
 	if len(tagName) == 0 {
 		tagName = append(tagName, "")
@@ -103,9 +104,12 @@ var (
 
 // Run returns the tag expression handler of the @structPtrOrReflectValue.
 // NOTE:
-//  If the structure type has not been warmed up,
-//  it will be slower when it is first called.
+//
+//	If the structure type has not been warmed up,
+//	it will be slower when it is first called.
+//
 // Disable new -d=checkptr behaviour for Go 1.14
+//
 //go:nocheckptr
 func (vm *VM) Run(structPtrOrReflectValue interface{}) (*TagExpr, error) {
 	var v reflect.Value
@@ -150,9 +154,10 @@ func (vm *VM) Run(structPtrOrReflectValue interface{}) (*TagExpr, error) {
 
 // RunAny returns the tag expression handler for the @v.
 // NOTE:
-//  The @v can be structured data such as struct, map, slice, array, interface, reflcet.Value, etc.
-//  If the structure type has not been warmed up,
-//  it will be slower when it is first called.
+//
+//	The @v can be structured data such as struct, map, slice, array, interface, reflcet.Value, etc.
+//	If the structure type has not been warmed up,
+//	it will be slower when it is first called.
 func (vm *VM) RunAny(v interface{}, fn func(*TagExpr, error) error) error {
 	vv, isReflectValue := v.(reflect.Value)
 	if !isReflectValue {
@@ -744,7 +749,8 @@ type TagExpr struct {
 
 // EvalFloat evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
-//  If the expression value type is not float64, return 0.
+//
+//	If the expression value type is not float64, return 0.
 func (t *TagExpr) EvalFloat(exprSelector string) float64 {
 	r, _ := t.Eval(exprSelector).(float64)
 	return r
@@ -752,7 +758,8 @@ func (t *TagExpr) EvalFloat(exprSelector string) float64 {
 
 // EvalString evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
-//  If the expression value type is not string, return "".
+//
+//	If the expression value type is not string, return "".
 func (t *TagExpr) EvalString(exprSelector string) string {
 	r, _ := t.Eval(exprSelector).(string)
 	return r
@@ -760,7 +767,8 @@ func (t *TagExpr) EvalString(exprSelector string) string {
 
 // EvalBool evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
-//  If the expression value is not 0, '' or nil, return true.
+//
+//	If the expression value is not 0, '' or nil, return true.
 func (t *TagExpr) EvalBool(exprSelector string) bool {
 	return FakeBool(t.Eval(exprSelector))
 }
@@ -838,8 +846,9 @@ func (t *TagExpr) RangeFields(fn func(*FieldHandler) bool) bool {
 
 // Eval evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
-//  format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
-//  result types: float64, string, bool, nil
+//
+//	format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
+//	result types: float64, string, bool, nil
 func (t *TagExpr) Eval(exprSelector string) interface{} {
 	expr, ok := t.s.exprs[exprSelector]
 	if !ok {
@@ -866,7 +875,8 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 // Range loop through each tag expression.
 // When fn returns false, interrupt traversal and return false.
 // NOTE:
-//  eval result types: float64, string, bool, nil
+//
+//	eval result types: float64, string, bool, nil
 func (t *TagExpr) Range(fn func(*ExprHandler) error) error {
 	var err error
 	if list := t.s.exprSelectorList; len(list) > 0 {
