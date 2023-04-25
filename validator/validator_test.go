@@ -183,10 +183,10 @@ func TestIn(t *testing.T) {
 	v := vd.New("vd")
 	data := &T{}
 	err := v.Validate(data)
-	assert.EqualError(t, err, "\"\" is not in the list [a b c]")
+	assert.EqualError(t, err, "invalid parameter: A")
 	data.A = "b"
 	err = v.Validate(data)
-	assert.EqualError(t, err, "0 is not in the list [1 2 3]")
+	assert.EqualError(t, err, "invalid parameter: B")
 	data.B = 2
 	err = v.Validate(data)
 	assert.NoError(t, err)
@@ -196,14 +196,14 @@ func TestIn(t *testing.T) {
 	}
 	data2 := &T2{}
 	err = v.Validate(data2)
-	assert.EqualError(t, err, "input parameters of the in function are at least two")
+	assert.EqualError(t, err, "invalid parameter: C")
 
 	type T3 struct {
 		C string `vd:"in($,1)"`
 	}
 	data3 := &T3{}
 	err = v.Validate(data3)
-	assert.EqualError(t, err, "\"\" is not in the list [1]")
+	assert.EqualError(t, err, "invalid parameter: C")
 }
 
 type (
@@ -308,4 +308,18 @@ func TestRegexp(t *testing.T) {
 	assert.EqualError(t, vd.Validate(&TStruct{A: "0...0"}), "invalid parameter: A")
 	assert.EqualError(t, vd.Validate(&TStruct{A: "abc1"}), "invalid parameter: A")
 	assert.EqualError(t, vd.Validate(&TStruct{A: "0?0?0?0"}), "invalid parameter: A")
+}
+
+func TestRangeIn(t *testing.T) {
+	type S struct {
+		F []string `vd:"range($, in(#v, '', 'ttp', 'euttp'))"`
+	}
+	err := vd.Validate(S{
+		F: []string{"ttp", "", "euttp"},
+	})
+	assert.NoError(t, err)
+	err = vd.Validate(S{
+		F: []string{"ttp", "?", "euttp"},
+	})
+	assert.EqualError(t, err, "invalid parameter: F")
 }

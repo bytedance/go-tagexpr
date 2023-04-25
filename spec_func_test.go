@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/bytedance/go-tagexpr/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFunc(t *testing.T) {
@@ -83,5 +84,17 @@ func TestFunc(t *testing.T) {
 			t.Fatalf("string: %v, expect: %v, but got: %v", lenCase.str, lenCase.expect, got)
 		}
 	}
+}
 
+func TestRangeIn(t *testing.T) {
+	var vm = tagexpr.New("te")
+	type S struct {
+		F []string `te:"range($, in(#v, '', 'ttp', 'euttp'))"`
+	}
+	a := []string{"ttp", "", "euttp"}
+	r := vm.MustRun(S{
+		F: a,
+		// F: b,
+	})
+	assert.Equal(t, []interface{}{true, true, true}, r.Eval("F"))
 }

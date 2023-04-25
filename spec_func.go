@@ -28,12 +28,28 @@ import (
 
 var funcList = map[string]func(p *Expr, expr *string) ExprNode{}
 
+// MustRegFunc registers function expression.
+// NOTE:
+//
+//	example: len($), regexp("\\d") or regexp("\\d",$);
+//	If @force=true, allow to cover the existed same @funcName;
+//	The go number types always are float64;
+//	The go string types always are string;
+//	Panic if there is an error.
+func MustRegFunc(funcName string, fn func(...interface{}) interface{}, force ...bool) {
+	err := RegFunc(funcName, fn, force...)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // RegFunc registers function expression.
 // NOTE:
-//  example: len($), regexp("\\d") or regexp("\\d",$);
-//  If @force=true, allow to cover the existed same @funcName;
-//  The go number types always are float64;
-//  The go string types always are string.
+//
+//	example: len($), regexp("\\d") or regexp("\\d",$);
+//	If @force=true, allow to cover the existed same @funcName;
+//	The go number types always are float64;
+//	The go string types always are string.
 func RegFunc(funcName string, fn func(...interface{}) interface{}, force ...bool) error {
 	if len(force) == 0 || !force[0] {
 		_, ok := funcList[funcName]
@@ -125,7 +141,8 @@ func init() {
 	funcList["regexp"] = readRegexpFuncExprNode
 	funcList["sprintf"] = readSprintfFuncExprNode
 	funcList["range"] = readRangeFuncExprNode
-	err := RegFunc("len", func(args ...interface{}) (n interface{}) {
+	// len: Built-in function len, the length of struct field X
+	MustRegFunc("len", func(args ...interface{}) (n interface{}) {
 		if len(args) != 1 {
 			return 0
 		}
@@ -143,10 +160,8 @@ func init() {
 		}()
 		return float64(reflect.ValueOf(v).Len())
 	}, true)
-	if err != nil {
-		panic(err)
-	}
-	err = RegFunc("mblen", func(args ...interface{}) (n interface{}) {
+	// mblen: get the length of string field X (character number)
+	MustRegFunc("mblen", func(args ...interface{}) (n interface{}) {
 		if len(args) != 1 {
 			return 0
 		}
@@ -164,9 +179,25 @@ func init() {
 		}()
 		return float64(reflect.ValueOf(v).Len())
 	}, true)
-	if err != nil {
-		panic(err)
-	}
+
+	// in: Check if the first parameter is one of the enumerated parameters
+	MustRegFunc("in", func(args ...interface{}) interface{} {
+		switch len(args) {
+		case 0:
+			return true
+		case 1:
+			return false
+		default:
+			elem := args[0]
+			set := args[1:]
+			for _, e := range set {
+				if elem == e {
+					return true
+				}
+			}
+			return false
+		}
+	}, true)
 }
 
 type regexpFuncExprNode struct {

@@ -2,12 +2,11 @@ package validator
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 
 	"github.com/nyaruka/phonenumbers"
 
-	tagexpr "github.com/bytedance/go-tagexpr/v2"
+	"github.com/bytedance/go-tagexpr/v2"
 )
 
 // ErrInvalidWithoutMsg verification error without error message.
@@ -15,11 +14,12 @@ var ErrInvalidWithoutMsg = errors.New("")
 
 // MustRegFunc registers validator function expression.
 // NOTE:
-//  panic if exist error;
-//  example: phone($) or phone($,'CN');
-//  If @force=true, allow to cover the existed same @funcName;
-//  The go number types always are float64;
-//  The go string types always are string.
+//
+//	panic if exist error;
+//	example: phone($) or phone($,'CN');
+//	If @force=true, allow to cover the existed same @funcName;
+//	The go number types always are float64;
+//	The go string types always are string.
 func MustRegFunc(funcName string, fn func(args ...interface{}) error, force ...bool) {
 	err := RegFunc(funcName, fn, force...)
 	if err != nil {
@@ -29,10 +29,11 @@ func MustRegFunc(funcName string, fn func(args ...interface{}) error, force ...b
 
 // RegFunc registers validator function expression.
 // NOTE:
-//  example: phone($) or phone($,'CN');
-//  If @force=true, allow to cover the existed same @funcName;
-//  The go number types always are float64;
-//  The go string types always are string.
+//
+//	example: phone($) or phone($,'CN');
+//	If @force=true, allow to cover the existed same @funcName;
+//	The go number types always are float64;
+//	The go string types always are string.
 func RegFunc(funcName string, fn func(args ...interface{}) error, force ...bool) error {
 	return tagexpr.RegFunc(funcName, func(args ...interface{}) interface{} {
 		err := fn(args...)
@@ -97,26 +98,5 @@ func init() {
 			return errors.New("phone format is incorrect")
 		}
 		return nil
-	}, true)
-}
-
-func init() {
-	// in: Check if the first parameter is one of the enumerated parameters
-	MustRegFunc("in", func(args ...interface{}) error {
-		switch len(args) {
-		case 0:
-			return nil
-		case 1:
-			return errors.New("input parameters of the in function are at least two")
-		default:
-			elem := args[0]
-			set := args[1:]
-			for _, e := range set {
-				if elem == e {
-					return nil
-				}
-			}
-			return fmt.Errorf("%#v is not in the list %+v", elem, set)
-		}
 	}, true)
 }

@@ -179,9 +179,9 @@ type T struct {
 |`regexp('^\\w*$')`|Regular match the current struct field, return boolean|
 |`sprintf('X value: %v', (X)$)`|`fmt.Sprintf`, format the value of struct field X|
 |`range(KvExpr, forEachExpr)`|Iterate over an array, slice, or dictionary <br> - `#k` is the element key var <br> - `#v` is the element value var <br> - `##` is the number of elements <br> - e.g. [example](../spec_range_test.go)|
+|`in((X)$, enum_1, ...enum_n)`|Check if the first parameter is one of the enumerated parameters|
 |`email((X)$)`|Regular match the struct field X, return true if it is email|
 |`phone((X)$,<'defaultRegion'>)`|Regular match the struct field X, return true if it is phone|
-|`in((X)$, enum_1, ...enum_n)`|Check if the first parameter is one of the enumerated parameters|
 
 <!-- |`(X)$k`|Traverse each element key of the struct field X(type: map, slice, array)|
 |`(X)$v`|Traverse each element value of the struct field X(type: map, slice, array)| -->
