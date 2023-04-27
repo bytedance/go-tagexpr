@@ -12,9 +12,8 @@ import (
 	"strings"
 
 	"github.com/andeya/ameda"
-	"github.com/tidwall/gjson"
-
 	"github.com/bytedance/go-tagexpr/v2"
+	gjson "github.com/bytedance/go-tagexpr/v2/binding/tidwall_gjson"
 )
 
 const (

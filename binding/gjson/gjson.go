@@ -31,11 +31,10 @@ import (
 
 	"github.com/andeya/ameda"
 	"github.com/andeya/goutil"
-	"github.com/tidwall/gjson"
-
 	"github.com/bytedance/go-tagexpr/v2/binding"
 	"github.com/bytedance/go-tagexpr/v2/binding/gjson/internal/caching"
 	"github.com/bytedance/go-tagexpr/v2/binding/gjson/internal/rt"
+	gjson "github.com/bytedance/go-tagexpr/v2/binding/tidwall_gjson"
 )
 
 var (
