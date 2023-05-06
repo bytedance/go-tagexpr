@@ -93,14 +93,17 @@ Struct tag syntax spec:
 ```
 type T struct {
 	// Single model
-    Field1 T1 `tagName:"expression"`
+	Field1 T1 `tagName:"expression"`
+
 	// Multiple model
-    Field2 T2 `tagName:"exprName:expression; [exprName2:expression2;]..."`
+	Field2 T2 `tagName:"exprName:expression; [exprName2:expression2;]..."`
+
 	// Omit it
-    Field3 T3 `tagName:"-"`
-    // Omit it when it is nil
-    Field4 T4 `tagName:"?"`
-    ...
+	Field3 T3 `tagName:"-"`
+
+	// Omit it when it is nil
+	Field4 T4 `tagName:"?"`
+	...
 }
 ```
 
@@ -172,15 +175,15 @@ field_lv1.field_lv2...field_lvn
 
 - If expression is **single model** or exprName is `@`:
 
-```
-field_lv1.field_lv2...field_lvn
-```
+  ```
+  field_lv1.field_lv2...field_lvn
+  ```
 
 - If expression is **multiple model** and exprName is not `@`:
 
-```
-field_lv1.field_lv2...field_lvn@exprName
-```
+  ```
+  field_lv1.field_lv2...field_lvn@exprName
+  ```
 
 ## Benchmark
 
