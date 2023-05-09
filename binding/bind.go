@@ -189,7 +189,7 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 	}
 	queryValues := recv.getQuery(req)
 	cookies := recv.getCookies(req)
-
+	var h http.Header
 	for _, param := range recv.params {
 		for i, info := range param.tagInfos {
 			var found bool
@@ -204,7 +204,10 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 			case cookie:
 				found, err = param.bindCookie(info, expr, cookies)
 			case header:
-				found, err = param.bindHeader(info, expr, req.GetHeader())
+				if h == nil {
+					h = req.GetHeader()
+				}
+				found, err = param.bindHeader(info, expr, h)
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {
 					found, err = param.bindOrRequireBody(info, expr, bodyCodec, bodyString, postForm, fileHeaders,
