@@ -2,7 +2,6 @@ package binding
 
 import (
 	jsonpkg "encoding/json"
-	"mime/multipart"
 	"net/http"
 	"reflect"
 	"strings"
@@ -168,28 +167,18 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 		return
 	}
 
-	bodyCodec, bodyBytes, err := recv.getBodyInfo(req)
+	var bodyString string
+	bodyCodec, bodyBytes, postForm, fileHeaders, err := recv.getBodyInfo(req)
 	if len(bodyBytes) > 0 {
 		err = b.prebindBody(structPointer, structValue, bodyCodec, bodyBytes)
-	}
-	if err != nil {
-		return
-	}
-	bodyString := ameda.UnsafeBytesToString(bodyBytes)
-	postForm, err := req.GetPostForm()
-	if err != nil {
-		return
-	}
-	var fileHeaders map[string][]*multipart.FileHeader
-	if _req, ok := req.(requestWithFileHeader); ok {
-		fileHeaders, err = _req.GetFileHeaders()
 		if err != nil {
 			return
 		}
+		bodyString = ameda.UnsafeBytesToString(bodyBytes)
 	}
 	queryValues := recv.getQuery(req)
 	cookies := recv.getCookies(req)
-	var h http.Header
+	h := recv.getHeader(req)
 	for _, param := range recv.params {
 		for i, info := range param.tagInfos {
 			var found bool
@@ -204,9 +193,6 @@ func (b *Binding) bindStruct(structPointer interface{}, structValue reflect.Valu
 			case cookie:
 				found, err = param.bindCookie(info, expr, cookies)
 			case header:
-				if h == nil {
-					h = req.GetHeader()
-				}
 				found, err = param.bindHeader(info, expr, h)
 			case form, json, protobuf:
 				if info.paramIn == in(bodyCodec) {

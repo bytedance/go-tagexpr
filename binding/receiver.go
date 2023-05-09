@@ -1,6 +1,7 @@
 package binding
 
 import (
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -51,7 +52,7 @@ const (
 )
 
 type receiver struct {
-	hasPath, hasQuery, hasBody, hasCookie, hasDefaultVal, hasVd bool
+	hasPath, hasQuery, hasForm, hasJson, hasProtobuf, hasRawBody, hasHeader, hasCookie, hasDefaultVal, hasVd bool
 
 	params []*paramInfo
 
@@ -64,10 +65,18 @@ func (r *receiver) assginIn(i in, v bool) {
 		r.hasPath = r.hasPath || v
 	case query:
 		r.hasQuery = r.hasQuery || v
-	case form, json, protobuf, raw_body:
-		r.hasBody = r.hasBody || v
+	case form:
+		r.hasForm = r.hasForm || v
+	case json:
+		r.hasJson = r.hasJson || v
+	case protobuf:
+		r.hasProtobuf = r.hasProtobuf || v
+	case raw_body:
+		r.hasRawBody = r.hasRawBody || v
 	case cookie:
 		r.hasCookie = r.hasCookie || v
+	case header:
+		r.hasHeader = r.hasHeader || v
 	case default_val:
 		r.hasDefaultVal = r.hasDefaultVal || v
 	}
@@ -99,13 +108,29 @@ func (r *receiver) getOrAddParam(fh *tagexpr.FieldHandler, bindErrFactory func(f
 	return p
 }
 
-func (r *receiver) getBodyInfo(req Request) (codec, []byte, error) {
-	if r.hasBody {
-		c := getBodyCodec(req)
-		b, err := req.GetBody()
-		return c, b, err
+func (r *receiver) hasBody() bool {
+	return r.hasForm || r.hasProtobuf || r.hasJson || r.hasRawBody
+}
+
+func (r *receiver) getBodyInfo(req Request) (
+	bodyCodec codec, bodyBytes []byte, postForm url.Values,
+	fileHeaders map[string][]*multipart.FileHeader, err error,
+) {
+	bodyCodec = bodyUnsupport
+	if !r.hasBody() {
+		return
 	}
-	return bodyUnsupport, nil, nil
+	bodyCodec = getBodyCodec(req)
+	bodyBytes, err = req.GetBody()
+	if err == nil && r.hasForm {
+		postForm, err = req.GetPostForm()
+		if err == nil {
+			if _req, ok := req.(requestWithFileHeader); ok {
+				fileHeaders, err = _req.GetFileHeaders()
+			}
+		}
+	}
+	return
 }
 
 func (b *Binding) prebindBody(pointer interface{}, val reflect.Value, bodyCodec codec, bodyBytes []byte) error {
@@ -133,6 +158,13 @@ func (r *receiver) getQuery(req Request) url.Values {
 func (r *receiver) getCookies(req Request) []*http.Cookie {
 	if r.hasCookie {
 		return req.GetCookies()
+	}
+	return nil
+}
+
+func (r *receiver) getHeader(req Request) http.Header {
+	if r.hasHeader {
+		return req.GetHeader()
 	}
 	return nil
 }
