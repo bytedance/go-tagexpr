@@ -236,7 +236,9 @@ func (p *paramInfo) bindStringSlice(info *tagInfo, expr *tagexpr.TagExpr, a []st
 	}
 
 	v = ameda.DereferenceValue(v)
-
+	if !v.IsValid() {
+		return nil
+	}
 	// we have customized unmarshal defined, we should use it firstly
 	if fn, exist := typeUnmarshalFuncs[v.Type()]; exist {
 		vv, err := fn(a[0], p.looseZeroMode)

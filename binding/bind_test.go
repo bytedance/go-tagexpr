@@ -1196,3 +1196,14 @@ func TestVdTagRecursion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Less(t, int64(time.Since(start)), int64(time.Second))
 }
+
+func TestInterface(t *testing.T) {
+	type foo struct {
+		F1 interface{} `query:"f1"`
+	}
+	recv := &foo{}
+	req, _ := http.NewRequest("get", "http://localhost/?f1=f1", bytes.NewReader([]byte{}))
+	binder := binding.New(nil)
+	err := binder.BindAndValidate(recv, req, nil)
+	assert.NoError(t, err)
+}
