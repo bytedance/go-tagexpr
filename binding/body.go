@@ -14,6 +14,12 @@ import (
 )
 
 func getBodyCodec(req Request) codec {
+	// according to rfc7231 https://datatracker.ietf.org/doc/html/rfc7231#section-3.1.1.5
+	// content type just for payload and payload for Http GET Method are meanless; this 
+	// will cause bad case for http GET method with a muanual added Content-Type Header
+	if req.GetMethod() == http.MethodGet {
+		return bodyUnsupport
+	} 
 	ct := req.GetContentType()
 	idx := strings.Index(ct, ";")
 	if idx != -1 {
