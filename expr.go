@@ -182,9 +182,7 @@ func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
 **/
 
 func sortPriority(e ExprNode) {
-	printExprNode(e)
 	for subSortPriority(e.RightOperand(), false) {
-		printExprNode(e)
 	}
 }
 
@@ -195,11 +193,7 @@ func subSortPriority(e ExprNode, isLeft bool) bool {
 	leftChanged := subSortPriority(e.LeftOperand(), true)
 	rightChanged := subSortPriority(e.RightOperand(), false)
 	if getPriority(e) > getPriority(e.LeftOperand()) {
-		printf("before:\n")
-		printExprNode(e)
 		leftOperandToParent(e, isLeft)
-		printf("after:\n")
-		printExprNode(e.Parent())
 		return true
 	}
 	return leftChanged || rightChanged
