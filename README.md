@@ -14,6 +14,7 @@ An interesting go struct tag expression syntax for field validation, etc.
 - Support for accessing arrays, slices, members of the dictionary
 - Support access to any field in the current structure
 - Support access to nested fields, non-exported fields, etc.
+- Support variable
 - Support registers function expression
 - Built-in len, sprintf, regexp functions
 - Support single mode and multiple mode to define expression
@@ -43,6 +44,7 @@ func Example() {
 		f  struct {
 			g int `tagexpr:"$"`
 		}
+		h  int 				`tagexpr:"$>minVal"`
 	}
 
 	vm := tagexpr.New("tagexpr")
@@ -56,6 +58,7 @@ func Example() {
 		f: struct {
 			g int `tagexpr:"$"`
 		}{1},
+		h: 10,
 	}
 
 	tagExpr, err := vm.Run(t)
@@ -73,6 +76,8 @@ func Example() {
 	fmt.Println(tagExpr.Eval("e"))
 	fmt.Println(tagExpr.Eval("e2"))
 	fmt.Println(tagExpr.Eval("f.g"))
+	fmt.Println(tagExpr.EvalWithEnv("h", map[string]interface{}{"minVal": 9}))
+	fmt.Println(tagExpr.EvalWithEnv("h", map[string]interface{}{"minVal": 11}))
 
 	// Output:
 	// true
@@ -83,6 +88,8 @@ func Example() {
 	// true
 	// false
 	// 1
+	// true
+	// false
 }
 ```
 
