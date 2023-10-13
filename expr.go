@@ -23,6 +23,8 @@ import (
 	"github.com/andeya/goutil"
 )
 
+const EnvKey = "__ENV_KEY__"
+
 // Expr expression
 type Expr struct {
 	expr ExprNode
@@ -168,6 +170,11 @@ func (*Expr) parseOperator(expr *string) (e ExprNode) {
 // run calculates the value of expression.
 func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
 	return p.expr.Run(context.Background(), field, tagExpr)
+}
+
+func (p *Expr) runWithEnv(field string, tagExpr *TagExpr, env map[string]interface{}) interface{} {
+	ctx := context.WithValue(context.Background(), EnvKey, env)
+	return p.expr.Run(ctx, field, tagExpr)
 }
 
 /**

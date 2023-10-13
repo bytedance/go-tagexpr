@@ -872,6 +872,29 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 	return expr.run(base, targetTagExpr)
 }
 
+func (t *TagExpr) EvalWithEnv(exprSelector string, env map[string]interface{})interface{} {
+	expr, ok := t.s.exprs[exprSelector]
+	if !ok {
+		// Compatible with single mode or the expression with the name @
+		if strings.HasSuffix(exprSelector, ExprNameSeparator) {
+			exprSelector = exprSelector[:len(exprSelector)-1]
+			if strings.HasSuffix(exprSelector, ExprNameSeparator) {
+				exprSelector = exprSelector[:len(exprSelector)-1]
+			}
+			expr, ok = t.s.exprs[exprSelector]
+		}
+		if !ok {
+			return nil
+		}
+	}
+	dir, base := splitFieldSelector(exprSelector)
+	targetTagExpr, err := t.checkout(dir)
+	if err != nil {
+		return nil
+	}
+	return expr.runWithEnv(base, targetTagExpr, env)
+}
+
 // Range loop through each tag expression.
 // When fn returns false, interrupt traversal and return false.
 // NOTE:
