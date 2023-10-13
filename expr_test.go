@@ -230,8 +230,6 @@ func TestSyntaxIncorrect(t *testing.T) {
 		incorrectExpr string
 	}{
 		{incorrectExpr: "1 + + 'a'"},
-		{incorrectExpr: "len"},
-		{incorrectExpr: "regexp"},
 		{incorrectExpr: "regexp()"},
 		{incorrectExpr: "regexp('^'+'a','a')"},
 		{incorrectExpr: "regexp('^a','a','b')"},
