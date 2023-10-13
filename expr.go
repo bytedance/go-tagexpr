@@ -109,6 +109,9 @@ func (p *Expr) parseOperand(expr *string) (e ExprNode) {
 	if e = readNilExprNode(expr); e != nil {
 		return e
 	}
+	if e = readVariableExprNode(expr); e != nil {
+		return e
+	}
 	return nil
 }
 
