@@ -875,7 +875,7 @@ func (t *TagExpr) Eval(exprSelector string) interface{} {
 // EvalWithEnv evaluates the value with the given env
 // NOTE:
 //
-//	format: variable, fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
+//	format: fieldName, fieldName.exprName, fieldName1.fieldName2.exprName1
 //	result types: float64, string, bool, nil
 func (t *TagExpr) EvalWithEnv(exprSelector string, env map[string]interface{})interface{} {
 	expr, ok := t.s.exprs[exprSelector]
