@@ -131,6 +131,36 @@ func TestExpr(t *testing.T) {
 	}
 }
 
+func TestExprWithEnv(t *testing.T) {
+	var cases = []struct {
+		expr string
+		val  interface{}
+	}{
+		// env: a = 10, b = "string value",
+		{expr: "a", val: 10.0},
+		{expr: "b", val: "string value"},
+		{expr: "a>10", val: false},
+		{expr: "a<11", val: true},
+		{expr: "a+1", val: 11.0},
+		{expr: "a==10", val: true},
+	}
+
+	for _, c := range cases {
+		t.Log(c.expr)
+		vm, err := parseExpr(c.expr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		val := vm.runWithEnv("", nil, map[string]interface{}{"a": 10, "b": "string value"})
+		if !reflect.DeepEqual(val, c.val) {
+			if f, ok := c.val.(float64); ok && math.IsNaN(f) && math.IsNaN(val.(float64)) {
+				continue
+			}
+			t.Fatalf("expr: %q, got: %v, expect: %v", c.expr, val, c.val)
+		}
+	}
+}
+
 func TestPriority(t *testing.T) {
 	var cases = []struct {
 		expr string
@@ -200,8 +230,6 @@ func TestSyntaxIncorrect(t *testing.T) {
 		incorrectExpr string
 	}{
 		{incorrectExpr: "1 + + 'a'"},
-		{incorrectExpr: "len"},
-		{incorrectExpr: "regexp"},
 		{incorrectExpr: "regexp()"},
 		{incorrectExpr: "regexp('^'+'a','a')"},
 		{incorrectExpr: "regexp('^a','a','b')"},

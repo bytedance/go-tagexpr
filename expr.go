@@ -23,6 +23,9 @@ import (
 	"github.com/andeya/goutil"
 )
 
+type variableKeyType string
+const variableKey variableKeyType = "__ENV_KEY__"
+
 // Expr expression
 type Expr struct {
 	expr ExprNode
@@ -107,6 +110,9 @@ func (p *Expr) parseOperand(expr *string) (e ExprNode) {
 	if e = readNilExprNode(expr); e != nil {
 		return e
 	}
+	if e = readVariableExprNode(expr); e != nil {
+		return e
+	}
 	return nil
 }
 
@@ -168,6 +174,11 @@ func (*Expr) parseOperator(expr *string) (e ExprNode) {
 // run calculates the value of expression.
 func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
 	return p.expr.Run(context.Background(), field, tagExpr)
+}
+
+func (p *Expr) runWithEnv(field string, tagExpr *TagExpr, env map[string]interface{}) interface{} {
+	ctx := context.WithValue(context.Background(), variableKey, env)
+	return p.expr.Run(ctx, field, tagExpr)
 }
 
 /**

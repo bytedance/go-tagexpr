@@ -169,6 +169,52 @@ func (ne *nilExprNode) Run(ctx context.Context, currField string, tagExpr *TagEx
 	return ne.val
 }
 
+type variableExprNode struct {
+	exprBackground
+	boolOpposite *bool
+	val          string
+}
+
+func (ve *variableExprNode) String() string {
+	return fmt.Sprintf("%v", ve.val)
+}
+
+func (ve *variableExprNode) Run(ctx context.Context, variableName string, _ *TagExpr) interface{} {
+	envObj := ctx.Value(variableKey)
+	if envObj == nil {
+		return nil
+	}
+
+	env := envObj.(map[string]interface{})
+	if len(env) == 0 {
+		return nil
+	}
+
+	if value, ok := env[ve.val]; ok && value != nil {
+		return realValue(value, ve.boolOpposite, nil)
+	} else {
+		return nil
+	}
+}
+
+var variableRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*`)
+
+func readVariableExprNode(expr *string) ExprNode {
+	last, boolOpposite := getOpposite(expr, "!")
+	variable := variableRegex.FindString(last)
+	if variable == "" {
+		return nil
+	}
+
+	*expr = (*expr)[len(*expr)-len(last)+len(variable):]
+
+	return &variableExprNode{
+		val:          variable,
+		boolOpposite: boolOpposite,
+	}
+}
+
+
 func getBoolAndSignOpposite(expr *string) (last string, boolOpposite *bool, signOpposite *bool) {
 	last = strings.TrimLeft(last, "+")
 	last, boolOpposite = getOpposite(expr, "!")
