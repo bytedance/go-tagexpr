@@ -23,7 +23,8 @@ import (
 	"github.com/andeya/goutil"
 )
 
-const EnvKey = "__ENV_KEY__"
+type variableKeyType string
+const variableKey variableKeyType = "__ENV_KEY__"
 
 // Expr expression
 type Expr struct {
@@ -176,7 +177,7 @@ func (p *Expr) run(field string, tagExpr *TagExpr) interface{} {
 }
 
 func (p *Expr) runWithEnv(field string, tagExpr *TagExpr, env map[string]interface{}) interface{} {
-	ctx := context.WithValue(context.Background(), EnvKey, env)
+	ctx := context.WithValue(context.Background(), variableKey, env)
 	return p.expr.Run(ctx, field, tagExpr)
 }
 

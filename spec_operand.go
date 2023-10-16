@@ -180,7 +180,7 @@ func (ve *variableExprNode) String() string {
 }
 
 func (ve *variableExprNode) Run(ctx context.Context, variableName string, _ *TagExpr) interface{} {
-	envObj := ctx.Value(EnvKey)
+	envObj := ctx.Value(variableKey)
 	if envObj == nil {
 		return nil
 	}
