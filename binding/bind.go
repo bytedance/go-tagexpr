@@ -79,6 +79,11 @@ func (b *Binding) BindAndValidate(recvPointer interface{}, req *http.Request, pa
 	return b.IBindAndValidate(recvPointer, wrapRequest(req), pathParams)
 }
 
+// BindAndValidateWithEnv binds the request parameters and validates them if needed.
+func (b *Binding) BindAndValidateWithEnv(recvPointer interface{}, req *http.Request, pathParams PathParams, env map[string]interface{}) error {
+	return b.IBindAndValidateWithEnv(recvPointer, wrapRequest(req), pathParams, env)
+}
+
 // Bind binds the request parameters.
 func (b *Binding) Bind(recvPointer interface{}, req *http.Request, pathParams PathParams) error {
 	return b.IBind(recvPointer, wrapRequest(req), pathParams)
@@ -102,10 +107,29 @@ func (b *Binding) IBind(recvPointer interface{}, req Request, pathParams PathPar
 	return err
 }
 
+// IBindAndValidateWithEnv binds the request parameters and validates them if needed.
+func (b *Binding) IBindAndValidateWithEnv(recvPointer interface{}, req Request, pathParams PathParams, env map[string]interface{}) error {
+	v, hasVd, err := b.bind(recvPointer, req, pathParams)
+	if err != nil {
+		return err
+	}
+	if hasVd {
+		return b.vd.ValidateWithEnv(v, env)
+	}
+	return nil
+}
+
+
 // Validate validates whether the fields of value is valid.
 func (b *Binding) Validate(value interface{}) error {
 	return b.vd.Validate(value)
 }
+
+// ValidateWithEnv validates whether the fields of value is valid.
+func (b *Binding) ValidateWithEnv(value interface{}, env map[string]interface{}) error {
+	return b.vd.ValidateWithEnv(value, env)
+}
+
 
 func (b *Binding) bind(pointer interface{}, req Request, pathParams PathParams) (elemValue reflect.Value, hasVd bool, err error) {
 	elemValue, err = b.receiverValueOf(pointer)
