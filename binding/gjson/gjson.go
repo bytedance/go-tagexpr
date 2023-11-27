@@ -57,7 +57,7 @@ func Unmarshal(data []byte, v interface{}) error {
 	if !ok {
 		val = reflect.ValueOf(v)
 	}
-	return assign(gjson.Parse(ameda.UnsafeBytesToString(data)), val)
+	return assign(gjson.ParseBytes(data), val)
 }
 
 // assign Unmarshal
