@@ -43,6 +43,7 @@ func parseExpr(expr string) (*Expr, error) {
 		return nil, err
 	}
 	sortPriority(e)
+	_, p.expr = e.Optimize()
 	return p, nil
 }
 func (p *Expr) parseExprNode(expr *string, e ExprNode) error {
@@ -262,6 +263,7 @@ type ExprNode interface {
 	SetRightOperand(ExprNode)
 	String() string
 	Run(context.Context, string, *TagExpr) interface{}
+	Optimize() (bool, ExprNode)
 }
 
 // var _ ExprNode = new(exprBackground)

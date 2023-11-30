@@ -107,3 +107,7 @@ func (se *selectorExprNode) Run(ctx context.Context, currField string, tagExpr *
 	v := tagExpr.getValue(field, subFields)
 	return realValue(v, se.boolOpposite, se.signOpposite)
 }
+
+func (se *selectorExprNode) Optimize() (bool, ExprNode) {
+	return false, se
+}

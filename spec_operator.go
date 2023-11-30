@@ -44,6 +44,40 @@ func (ae *additionExprNode) Run(ctx context.Context, currField string, tagExpr *
 	return v0
 }
 
+
+func (ae *additionExprNode) Optimize() (bool, ExprNode) {
+	lsucc, newLeft := ae.leftOperand.Optimize()
+	if lsucc {
+		ae.leftOperand = newLeft
+	}
+
+	rSucc, newRight := ae.rightOperand.Optimize()
+	if rSucc {
+		ae.rightOperand = newRight
+	}
+
+	if lsucc && rSucc {
+		if _, ok := ae.leftOperand.(*selectorExprNode); !ok { // note
+			if _, iok := ae.rightOperand.(*selectorExprNode); !iok {
+				v0 := ae.leftOperand.Run(context.Background(), "", nil)
+				v1 := ae.rightOperand.Run(context.Background(), "", nil)
+
+				if s0, ok := toFloat64(v0, false); ok {
+					s1, _ := toFloat64(v1, true)
+					return true, &digitalExprNode{val: s0 + s1}
+				}
+				if s0, ok := toString(v0, false); ok {
+					s1, _ := toString(v1, true)
+					return true, &digitalExprNode{val: s0 + s1}
+				}
+				return true, &digitalExprNode{val: v0}
+			}
+		}
+	}
+
+	return false, ae
+}
+
 type multiplicationExprNode struct{ exprBackground }
 
 func (ae *multiplicationExprNode) String() string {
@@ -57,6 +91,31 @@ func (ae *multiplicationExprNode) Run(ctx context.Context, currField string, tag
 	v1, _ := toFloat64(ae.rightOperand.Run(ctx, currField, tagExpr), true)
 	return v0 * v1
 }
+
+
+func (ae *multiplicationExprNode) Optimize() (bool, ExprNode) {
+	lsucc, newLeft := ae.leftOperand.Optimize()
+	if lsucc {
+		ae.leftOperand = newLeft
+	}
+
+	rSucc, newRight := ae.rightOperand.Optimize()
+	if rSucc {
+		ae.rightOperand = newRight
+	}
+
+	if lsucc && rSucc {
+		v1, _ := toFloat64(ae.rightOperand.Run(context.Background(), "", nil), true)
+		if v1 == 0 {
+			return true, &digitalExprNode{val: math.NaN()}
+		}
+		v0, _ := toFloat64(ae.leftOperand.Run(context.Background(), "", nil), true)
+		return true, &digitalExprNode{val: v0 * v1}
+	}
+
+	return false, ae
+}
+
 
 type divisionExprNode struct{ exprBackground }
 
@@ -75,6 +134,30 @@ func (de *divisionExprNode) Run(ctx context.Context, currField string, tagExpr *
 	return v0 / v1
 }
 
+
+func (de *divisionExprNode) Optimize() (bool, ExprNode) {
+	lsucc, newLeft := de.leftOperand.Optimize()
+	if lsucc {
+		de.leftOperand = newLeft
+	}
+
+	rSucc, newRight := de.rightOperand.Optimize()
+	if rSucc {
+		de.rightOperand = newRight
+	}
+
+	if lsucc && rSucc {
+		v1, _ := toFloat64(de.rightOperand.Run(context.Background(), "", nil), true)
+		if v1 == 0 {
+			return true, &digitalExprNode{val: math.NaN()}
+		}
+		v0, _ := toFloat64(de.leftOperand.Run(context.Background(), "", nil), true)
+		return true, &digitalExprNode{val: v0 / v1}
+	}
+
+	return false, de
+}
+
 type subtractionExprNode struct{ exprBackground }
 
 func (de *subtractionExprNode) String() string {
@@ -87,6 +170,31 @@ func (de *subtractionExprNode) Run(ctx context.Context, currField string, tagExp
 	v0, _ := toFloat64(de.leftOperand.Run(ctx, currField, tagExpr), true)
 	v1, _ := toFloat64(de.rightOperand.Run(ctx, currField, tagExpr), true)
 	return v0 - v1
+}
+
+
+func (de *subtractionExprNode) Optimize() (bool, ExprNode) {
+	lsucc, newLeft := de.leftOperand.Optimize()
+	if lsucc {
+		de.leftOperand = newLeft
+	}
+
+	rSucc, newRight := de.rightOperand.Optimize()
+	if rSucc {
+		de.rightOperand = newRight
+	}
+
+	if lsucc && rSucc {
+		if _, ok := de.leftOperand.(*selectorExprNode); !ok {
+			if _, iok := de.rightOperand.(*selectorExprNode); !iok {
+				v0, _ := toFloat64(de.leftOperand.Run(context.Background(), "", nil), true)
+				v1, _ := toFloat64(de.rightOperand.Run(context.Background(), "", nil), true)
+				return true, &digitalExprNode{val: v0 - v1}
+			}
+		}
+	}
+
+	return false, de
 }
 
 type remainderExprNode struct{ exprBackground }
@@ -104,6 +212,10 @@ func (re *remainderExprNode) Run(ctx context.Context, currField string, tagExpr 
 	}
 	v0, _ := toFloat64(re.leftOperand.Run(ctx, currField, tagExpr), true)
 	return float64(int64(v0) % int64(v1))
+}
+
+func (re *remainderExprNode) Optimize() (bool, ExprNode) {
+	return false, re
 }
 
 type equalExprNode struct{ exprBackground }
@@ -143,6 +255,10 @@ func (ee *equalExprNode) Run(ctx context.Context, currField string, tagExpr *Tag
 	return false
 }
 
+func (ee *equalExprNode) Optimize() (bool, ExprNode) {
+	return false, ee
+}
+
 type notEqualExprNode struct{ equalExprNode }
 
 func (ne *notEqualExprNode) String() string {
@@ -153,6 +269,10 @@ func newNotEqualExprNode() ExprNode { return &notEqualExprNode{} }
 
 func (ne *notEqualExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	return !ne.equalExprNode.Run(ctx, currField, tagExpr).(bool)
+}
+
+func (ne *notEqualExprNode) Optimize() (bool, ExprNode) {
+	return false, ne
 }
 
 type greaterExprNode struct{ exprBackground }
@@ -180,6 +300,10 @@ func (ge *greaterExprNode) Run(ctx context.Context, currField string, tagExpr *T
 	return false
 }
 
+func (ge *greaterExprNode) Optimize() (bool, ExprNode) {
+	return false, ge
+}
+
 type greaterEqualExprNode struct{ exprBackground }
 
 func (ge *greaterEqualExprNode) String() string {
@@ -203,6 +327,10 @@ func (ge *greaterEqualExprNode) Run(ctx context.Context, currField string, tagEx
 		return false
 	}
 	return false
+}
+
+func (ge *greaterEqualExprNode) Optimize() (bool, ExprNode) {
+	return false, ge
 }
 
 type lessExprNode struct{ exprBackground }
@@ -230,6 +358,10 @@ func (le *lessExprNode) Run(ctx context.Context, currField string, tagExpr *TagE
 	return false
 }
 
+func (le *lessExprNode) Optimize() (bool, ExprNode) {
+	return false, le
+}
+
 type lessEqualExprNode struct{ exprBackground }
 
 func (le *lessEqualExprNode) String() string {
@@ -255,6 +387,10 @@ func (le *lessEqualExprNode) Run(ctx context.Context, currField string, tagExpr 
 	return false
 }
 
+func (le *lessEqualExprNode) Optimize() (bool, ExprNode) {
+	return false, le
+}
+
 type andExprNode struct{ exprBackground }
 
 func (ae *andExprNode) String() string {
@@ -272,6 +408,10 @@ func (ae *andExprNode) Run(ctx context.Context, currField string, tagExpr *TagEx
 	return true
 }
 
+func (ae *andExprNode) Optimize() (bool, ExprNode) {
+	return false, ae
+}
+
 type orExprNode struct{ exprBackground }
 
 func (oe *orExprNode) String() string {
@@ -287,4 +427,8 @@ func (oe *orExprNode) Run(ctx context.Context, currField string, tagExpr *TagExp
 		}
 	}
 	return false
+}
+
+func (oe *orExprNode) Optimize() (bool, ExprNode) {
+	return false, oe
 }
