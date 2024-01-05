@@ -709,7 +709,6 @@ func TestNilField(t *testing.T) {
 		assert.True(t, r, eh.Path())
 		return nil
 	})
-	return
 
 	type (
 		N struct {
