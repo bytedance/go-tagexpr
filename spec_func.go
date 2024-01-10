@@ -136,6 +136,10 @@ func (f *funcExprNode) Run(ctx context.Context, currField string, tagExpr *TagEx
 	return realValue(f.fn(args...), f.boolOpposite, f.signOpposite)
 }
 
+func (f *funcExprNode) Optimize() (bool, ExprNode) {
+	return false, f
+}
+
 // --------------------------- Built-in function ---------------------------
 func init() {
 	funcList["regexp"] = readRegexpFuncExprNode
@@ -282,6 +286,10 @@ func (re *regexpFuncExprNode) Run(ctx context.Context, currField string, tagExpr
 	return false
 }
 
+func (re *regexpFuncExprNode) Optimize() (bool, ExprNode) {
+	return false, re
+}
+
 type sprintfFuncExprNode struct {
 	exprBackground
 	format string
@@ -341,4 +349,8 @@ func (se *sprintfFuncExprNode) Run(ctx context.Context, currField string, tagExp
 		}
 	}
 	return fmt.Sprintf(se.format, args...)
+}
+
+func (se *sprintfFuncExprNode) Optimize() (bool, ExprNode) {
+	return false, se
 }

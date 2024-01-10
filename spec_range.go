@@ -74,6 +74,10 @@ func (re *rangeKvExprNode) Run(ctx context.Context, _ string, _ *TagExpr) interf
 	return realValue(v, re.boolOpposite, re.signOpposite)
 }
 
+func (re *rangeKvExprNode) Optimize() (bool, ExprNode) {
+	return false, re
+}
+
 type rangeFuncExprNode struct {
 	exprBackground
 	object       ExprNode
@@ -147,4 +151,8 @@ func (e *rangeFuncExprNode) Run(ctx context.Context, currField string, tagExpr *
 	default:
 	}
 	return r
+}
+
+func (re *rangeFuncExprNode) Optimize() (bool, ExprNode) {
+	return false, re
 }

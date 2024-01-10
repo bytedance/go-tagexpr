@@ -57,6 +57,19 @@ func (ge *groupExprNode) Run(ctx context.Context, currField string, tagExpr *Tag
 	return realValue(ge.rightOperand.Run(ctx, currField, tagExpr), ge.boolOpposite, ge.signOpposite)
 }
 
+func (ge *groupExprNode) Optimize() (bool, ExprNode) {
+	if ge.rightOperand == nil {
+		return true, &nilExprNode{val: nil}
+	}
+
+	optimize, node := ge.rightOperand.Optimize()
+	if optimize {
+		ge.rightOperand = node
+	}
+
+	return false, ge
+}
+
 type boolExprNode struct {
 	exprBackground
 	val bool
@@ -91,6 +104,10 @@ func (be *boolExprNode) Run(ctx context.Context, currField string, tagExpr *TagE
 	return be.val
 }
 
+func (be *boolExprNode) Optimize() (bool, ExprNode) {
+	return false, be
+}
+
 type stringExprNode struct {
 	exprBackground
 	val interface{}
@@ -113,6 +130,10 @@ func readStringExprNode(expr *string) ExprNode {
 
 func (se *stringExprNode) Run(ctx context.Context, currField string, tagExpr *TagExpr) interface{} {
 	return se.val
+}
+
+func (se *stringExprNode) Optimize() (bool, ExprNode) {
+	return false, se
 }
 
 type digitalExprNode struct {
@@ -144,6 +165,10 @@ func (de *digitalExprNode) Run(ctx context.Context, currField string, tagExpr *T
 	return de.val
 }
 
+func (de *digitalExprNode) Optimize() (bool, ExprNode) {
+	return true, de
+}
+
 type nilExprNode struct {
 	exprBackground
 	val interface{}
@@ -151,6 +176,10 @@ type nilExprNode struct {
 
 func (ne *nilExprNode) String() string {
 	return "<nil>"
+}
+
+func (ne *nilExprNode) Optimize() (bool, ExprNode) {
+	return false, ne
 }
 
 var nilRegexp = regexp.MustCompile(`^nil([\)\],\|&!= \t]{1}|$)`)
@@ -195,6 +224,10 @@ func (ve *variableExprNode) Run(ctx context.Context, variableName string, _ *Tag
 	} else {
 		return nil
 	}
+}
+
+func (ve *variableExprNode) Optimize() (bool, ExprNode) {
+	return false, ve
 }
 
 var variableRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*`)
