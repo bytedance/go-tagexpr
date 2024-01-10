@@ -94,7 +94,9 @@ func GetBody(r *http.Request) (*Body, error) {
 			return nil, err
 		}
 		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r.Body)
+		// Maximum size of decompressed body size. Currently 256 MB
+		var maximumSizeLimit int64 = 256 * 1024 * 1024
+		_, _ = io.CopyN(&buf, r.Body, maximumSizeLimit)
 		_ = closeBody()
 		_body := &Body{
 			Buffer:    &buf,
