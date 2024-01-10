@@ -57,6 +57,13 @@ func (v *Validator) VM() *tagexpr.VM {
 // NOTE:
 //  If checkAll=true, validate all the error.
 func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
+	return v.ValidateWithEnv(value, nil, checkAll...)
+}
+
+// Validate validates whether the fields of value is valid.
+// NOTE:
+//  If checkAll=true, validate all the error.
+func (v *Validator) ValidateWithEnv(value interface{}, env map[string]interface{},checkAll ...bool) error {
 	var all bool
 	if len(checkAll) > 0 {
 		all = checkAll[0]
@@ -75,7 +82,7 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 			if strings.Contains(eh.StringSelector(), tagexpr.ExprNameSeparator) {
 				return nil
 			}
-			r := eh.Eval()
+			r := eh.EvalWithEnv(env)
 			if r == nil {
 				return nil
 			}
@@ -96,7 +103,7 @@ func (v *Validator) Validate(value interface{}, checkAll ...bool) error {
 					}
 				}
 			}
-			msg := eh.TagExpr().EvalString(eh.StringSelector() + tagexpr.ExprNameSeparator + ErrMsgExprName)
+			msg := eh.TagExpr().EvalStringWithEnv(eh.StringSelector() + tagexpr.ExprNameSeparator + ErrMsgExprName,env)
 			if msg == "" && rerr != nil {
 				msg = rerr.Error()
 			}

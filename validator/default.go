@@ -17,6 +17,15 @@ func Validate(value interface{}, checkAll ...bool) error {
 	return defaultValidator.Validate(value, checkAll...)
 }
 
+// ValidateWithEnv uses the default validator to validate whether the fields of value is valid.
+// NOTE:
+//  The tag name is 'vd'
+//  If checkAll=true, validate all the error.
+func ValidateWithEnv(value interface{}, env map[string]interface{}, checkAll ...bool) error {
+	return defaultValidator.ValidateWithEnv(value, env, checkAll...)
+}
+
+
 // SetErrorFactory customizes the factory of validation error for the default validator.
 // NOTE:
 //  The tag name is 'vd'

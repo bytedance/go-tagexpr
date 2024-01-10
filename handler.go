@@ -127,3 +127,10 @@ func (e *ExprHandler) EvalString() string {
 func (e *ExprHandler) EvalBool() bool {
 	return FakeBool(e.Eval())
 }
+
+// EvalWithEnv evaluate the value of the struct tag expression.
+// NOTE:
+//  result types: float64, string, bool, nil
+func (e *ExprHandler) EvalWithEnv(env map[string]interface{}) interface{} {
+	return e.expr.s.exprs[e.selector].runWithEnv(e.base, e.targetExpr, env)
+}

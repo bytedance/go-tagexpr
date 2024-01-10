@@ -765,6 +765,15 @@ func (t *TagExpr) EvalString(exprSelector string) string {
 	return r
 }
 
+// EvalStringWithEnv evaluates the value of the struct tag expression by the selector expression.
+// NOTE:
+//
+//	If the expression value type is not string, return "".
+func (t *TagExpr) EvalStringWithEnv(exprSelector string, env map[string]interface{}) string {
+	r, _ := t.EvalWithEnv(exprSelector, env).(string)
+	return r
+}
+
 // EvalBool evaluates the value of the struct tag expression by the selector expression.
 // NOTE:
 //

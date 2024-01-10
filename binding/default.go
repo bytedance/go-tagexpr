@@ -50,3 +50,14 @@ func Bind(structPointer interface{}, req *http.Request, pathParams PathParams) e
 func Validate(value interface{}) error {
 	return defaultBinding.Validate(value)
 }
+
+
+// BindAndValidateWithEnv binds the request parameters and validates them if needed.
+func BindAndValidateWithEnv(structPointer interface{}, req *http.Request, pathParams PathParams, env map[string]interface{}) error {
+	return defaultBinding.BindAndValidateWithEnv(structPointer, req, pathParams, env)
+}
+
+// ValidateWithEnv validates whether the fields of value is valid.
+func ValidateWithEnv(value interface{}, env map[string]interface{}) error {
+	return defaultBinding.ValidateWithEnv(value, env)
+}

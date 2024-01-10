@@ -70,6 +70,15 @@ func Example() {
 	}
 	f := &F{}
 	f.f.g = 10
+
+	type G struct {
+		intValue int `vd:"$>minVal"`
+	}
+
+	g := &G{
+		intValue: 10,
+	}
+
 	fmt.Println(vd.Validate(f))
 
 	fmt.Println(vd.Validate(map[string]*F{"a": f}))
@@ -85,6 +94,9 @@ func Example() {
 	fmt.Println(vd.Validate(map[string]map[string]*F{}))
 	fmt.Println(vd.Validate([]map[string]*F{}))
 	fmt.Println(vd.Validate([]*F{}))
+	fmt.Println(vd.ValidateWithEnv(g, map[string]interface{}{"minVal": 9}))
+	fmt.Println(vd.ValidateWithEnv(g, map[string]interface{}{"minVal": 11}))
+
 
 	// Output:
 	// <nil>
@@ -105,4 +117,6 @@ func Example() {
 	// <nil>
 	// <nil>
 	// <nil>
+	// <nil>
+	// {"succ":false, "error":"validation failed: intValue"}
 }

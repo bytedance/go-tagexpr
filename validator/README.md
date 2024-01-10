@@ -9,6 +9,7 @@ A powerful validator that supports struct tag expression.
 - Support access to any field in the current structure
 - Support access to nested fields, non-exported fields, etc.
 - Support registers validator function expression
+- Support variable
 - Built-in len, sprintf, regexp, email, phone functions
 - Support simple mode, or specify error message mode
 - Use offset pointers to directly take values, better performance
