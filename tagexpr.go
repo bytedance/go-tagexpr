@@ -573,7 +573,7 @@ func (s *structVM) newChildField(parent *fieldVM, child *fieldVM, toBind bool) *
 				for i := 0; i < parent.ptrDeep; i++ {
 					newField = newField.Elem()
 				}
-				if (newField == reflect.Value{}) || (!initZero && newField.IsNil()) {
+				if (newField.Interface() == reflect.Value{}.Interface()) || (!initZero && newField.IsNil()) {
 					return reflect.Value{}
 				}
 				return child.reflectValueGetter(unsafe.Pointer(newField.Pointer()), initZero)
